@@ -252,7 +252,7 @@ dialog{border:none;padding:0;background:transparent;color:var(--text)}dialog::ba
           <label>Acessório de cabeça<select id="accessory"><option value="nenhum">Nenhum</option><option value="capuz">Capuz</option><option value="coroa">Diadema</option><option value="bandana">Bandana</option><option value="oculos">Visor</option><option value="tiara">Tiara rúnica</option><option value="meiaMascara">Meia máscara</option></select></label>
         </div></div>
         <div class="editor-panel" data-editor-panel="gear"><div class="custom-grid">
-          <label>Elmo<select id="helmet"><option value="nao" selected>Sem elmo</option><option value="sim">Com elmo</option></select><span class="help">Combina com a armadura e preserva chifres e orelhas. O cabelo e o acessório ficam guardados enquanto o elmo está equipado.</span></label>
+          <label>Elmo<select id="helmet"><option value="nao">Sem elmo</option><option value="sim" selected>Com elmo</option></select><span class="help">Combina com a armadura e preserva chifres e orelhas. O cabelo e o acessório ficam guardados enquanto o elmo está equipado.</span></label>
           <label>Conjunto inicial<select id="armorSet" disabled></select><span class="help">Você começa somente com este conjunto. Outros conjuntos ficam bloqueados até serem encontrados durante a progressão.</span></label><label>Estilo visual<select id="armorStyle"></select><span class="help">Ajusta a linguagem visual sem trocar o conjunto nem seus bônus.</span></label>
           <label>Ombreiras<select id="shoulders"><option value="nenhuma">Sem ombreiras</option><option value="leves">Leves</option><option value="medias" selected>Médias</option><option value="pesadas">Pesadas</option><option value="assimetrica">Assimétrica</option></select></label>
           <label>Capa / manto<select id="cape"><option value="nao">Sem capa</option><option value="ombro">Manto de um ombro</option><option value="curta">Capa curta</option><option value="longa">Capa longa</option><option value="rasgada">Capa desgastada</option></select></label>
@@ -730,7 +730,7 @@ function awardXp(h,enemy){h.xp+=xpReward(enemy);const levels=[];while(h.xp>=xpTo
 function spendLevelPoint(stat){const h=state.hero;if(!h||h.attributePoints<=0)return;h.attributePoints--;h.pendingAttributePoints[stat]++;if(stat==='life'){h.baseMaxHp+=5;h.maxHp+=5;h.hp+=5}if(stat==='mana'){h.baseMaxMana+=4;h.maxMana+=4;h.mana+=4}if(stat==='stamina'){h.baseMaxStam+=5;h.maxStam+=5;h.stam+=5}if(stat==='damage')h.basicDamageBonus=(h.basicDamageBonus||0)+1;renderLevelUp();render()}
 function confirmLevelUp(){const h=state.hero;if(!h||h.attributePoints>0||!h.ultUnlocked)return;h.pendingAttributePoints={life:0,mana:0,stamina:0,damage:0};$('#levelUpDialog').close();disableCombat(false);render();if(h.pendingBossVictory){h.pendingBossVictory=false;showBossVictory();return}if(state.pendingEncounter)return;setTimeout(openCamp,420)}
 
-function choiceCards(el,items,name,desc){el.innerHTML=items.map((x,i)=>{const extra=x.name&&raceLore[x.name];return `<label class="choice-card ${name==='race'?'race-card':''}"><input type="radio" name="${name}" value="${i}" ${i===0?'checked':''}><b>${x.name}</b><span>${desc(x)}${extra?`<span class="race-card-lore">${extra.title}: ${extra.text}</span><span class="race-card-traits">${extra.tags.map(t=>`<i>${t}</i>`).join('')}</span>`:''}</span></label>`}).join('')}
+function choiceCards(el,items,name,desc){el.innerHTML=items.map((x,i)=>{const extra=x.name&&raceLore[x.name];const checked=name==='class'?x.name==='Fighter':i===0;return `<label class="choice-card ${name==='race'?'race-card':''}"><input type="radio" name="${name}" value="${i}" ${checked?'checked':''}><b>${x.name}</b><span>${desc(x)}${extra?`<span class="race-card-lore">${extra.title}: ${extra.text}</span><span class="race-card-traits">${extra.tags.map(t=>`<i>${t}</i>`).join('')}</span>`:''}</span></label>`}).join('')}
 function buildBranches(){const opts=branches[getClass().name];$('#branchChoices').innerHTML=Object.entries(opts).map(([n,v],i)=>`<label class="subchoice"><input type="radio" name="branch" value="${n}" ${i===0?'checked':''}><span><b>${n}</b><small>${v.desc}</small></span></label>`).join('');$$('input[name="branch"]').forEach(x=>x.onchange=()=>{buildWeapons();buildAppearanceOptions(true);updatePreview()})}
 function buildWeapons(){const previous=$('input[name="weapon"]:checked')?.value,all=compatibleWeapons(),r=getRace(),legend=getUnlockedLegendary();const normal=all.filter(w=>!w.bossReward),options=legend?[...normal,legend]:normal,selected=options.some(w=>w.id===previous)?previous:options[0]?.id;$('#weaponRule').textContent=`${r.name} ${r.large?'usa armas grandes':'usa armas de porte normal'}. Escolha qualquer uma das armas iniciais compatíveis; a Relíquia Elemental Lendária é exclusiva da classe e aparece depois de derrotar o Boss Final.`;let html=normal.map(w=>`<label class="weapon-choice"><input type="radio" name="weapon" value="${w.id}" ${w.id===selected?'checked':''}><span><b>${w.name}</b><small>${w.desc}</small><em>ARMA INICIAL • ${w.large?'GRANDE • ':''}+${w.bonus} dano</em><span class="weapon-detail">Modelo único #${w.signature||'—'} • detalhes ornamentais exclusivos</span></span></label>`).join('');if(legend){html+=`<label class="weapon-choice boss-reward"><input type="radio" name="weapon" value="${legend.id}" ${legend.id===selected?'checked':''}><span><b>👑 ${legend.name}</b><small>${legend.desc}</small><em>RELÍQUIA DO ${legend.class.toUpperCase()} • +${legend.bonus} dano físico • +${legend.elementalBonus} ${legend.elementName}</em><span class="weapon-detail legendary-element">Arma exclusiva da classe ${legend.class}. Skill elemental usa mana. Modelo 3D lendário exclusivo.</span></span></label>`}$('#weaponChoices').innerHTML=html;$$('input[name="weapon"]').forEach(x=>x.onchange=updatePreview)}
 function hexShade(hex,amt){hex=(hex||'#777777').replace('#','');const n=parseInt(hex,16),r=clamp((n>>16)+amt,0,255),g=clamp(((n>>8)&255)+amt,0,255),b=clamp((n&255)+amt,0,255);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1)}
@@ -761,7 +761,7 @@ function buildAppearanceOptions(reset=false){
   else sel.value=profile.styles[0][0];
   $('#classIdentityTitle').textContent=`${cls} • ${branch}`;
   $('#classIdentityText').textContent=`${profile.identity} ${getBranch().desc}`;
-  if(reset){$('#material').value=defaultMaterialForClass(cls);$('#palettePreset').value='branch';applyPalette('branch');buildArmorChoices(true)}
+  if(reset){$('#helmet').value='sim';$('#material').value=defaultMaterialForClass(cls);$('#palettePreset').value='branch';applyPalette('branch');buildArmorChoices(true)}
   else {buildArmorChoices(false);updatePaletteStrip()}
 }
 function randomOption(id){const el=$('#'+id);if(!el||!el.options?.length)return;el.selectedIndex=rand(0,el.options.length-1)}
@@ -1146,6 +1146,209 @@ function addFineArmor(chest,hips,leftArm,rightArm,leftLeg,rightLeg,c,meta,m){
  if(cloth||leather)for(let i=-2;i<=2;i++)detailCurve(hips,[[i*.12,-.08,.35],[i*.135,-.25,.38],[i*.15,-.43,.36]],.012,cloth?armorMat:secondaryMat);
  if(c.material==='arcano')for(const x of[-.16,.16])makePart(g,new THREE.OctahedronGeometry(.028),auraMat,[x,-.20,.75]);
 }
+
+/* v18 — visual refinement pass
+   Stronger hair silhouettes, more readable armor side construction,
+   unmistakable dwarf anatomy, and clearer feminine silhouettes. */
+function addV18AppearanceRefinement(model,root,chest,hips,head,leftArm,rightArm,leftLeg,rightLeg,c,meta,mats,race,cls){
+ const {skinMat,hairMat,secondaryMat,armorMat,accentMat,metalMat,auraMat}=mats;
+ const female=c.gender==='feminino';
+ const dwarf=race==='Anão';
+ const orc=race==='Orc';
+ const heavy=['Tanke','Paladino','Fighter'].includes(cls);
+ const style=c.hairStyle||'curto';
+
+ // Hair overhaul: keep every lock attached to the scalp/head and add a real rear silhouette.
+ // Front/side detail from previous versions is intentionally replaced here so no strand can float.
+ if(c.helmet!=='sim' && style!=='careca'){
+   const hg=joint(head); hg.name='v18-hair-overhaul';
+   const shine=animeMaterial(hairMat.color.clone().lerp(new THREE.Color('#e8d8bf'),.18),{rough:.74});
+   const lock=(pts,r=.045)=>{detailCurve(hg,pts,r,hairMat,true);detailCurve(hg,pts.map(([x,y,z])=>[x+.005,y+.010,z+.008]),r*.16,shine,true)};
+
+   // Crown volume: overlapping locks instead of one smooth cap.
+   for(let i=-5;i<=5;i++){
+     const x=i*.073;
+     lock([[x*.78,.38,-.10],[x,.52,-.015],[x*.96,.34,.19]],.055);
+   }
+   // Front fringe/bangs.
+   const fringe=style==='mohawk'?5:(style==='longo'||style==='ondulado'?11:9);
+   for(let i=0;i<fringe;i++){
+     const x=(i-(fringe-1)/2)*.070;
+     lock([[x*.72,.40,.17],[x,.29,.40],[x+(i%2?.018:-.018),.18,.43]],.043);
+   }
+   // Side locks follow the cheek/neck instead of hovering beside the torso.
+   for(const side of[-1,1])for(let i=0;i<5;i++){
+     const x=side*(.31+i*.012), y=.27-i*.10;
+     lock([[side*.28,.31-i*.015,.10],[side*(.39+i*.014),y,.17],[side*(.36+i*.018),y-.12,.10]],.042);
+   }
+   // Back: dense layered locks anchored directly to the rear of the head.
+   const rearLong=['longo','ondulado','rabo','trancas','guerreiro'].includes(style);
+   const rows=rearLong?7:4;
+   for(let row=0;row<rows;row++){
+     const y=.28-row*.12;
+     const spread=.30+row*.025;
+     for(const side of[-1,1]){
+       for(let j=0;j<3;j++){
+         const x=side*(.07+j*.105+row*.008);
+         const z=-.34-row*.018;
+         const drop=rearLong?.68:.40;
+         lock([[x*.82,y,z],[x*1.04,y-.12,z-.06],[x*1.02,y-.30,z-.08],[x*(.98+j*.035),y-drop*.72,z-.035]],rearLong?.052:.044);
+       }
+     }
+   }
+   // Center-back locks prevent a bald-looking gap between the side curtains.
+   for(let i=-2;i<=2;i++){
+     const x=i*.065;
+     lock([[x,.29,-.38],[x*1.08,.04,-.48],[x*.95,-.22,-.47],[x*.90,rearLong?-.57:-.38,-.40]],rearLong?.050:.042);
+   }
+   if(style==='mohawk'){
+     for(let i=-2;i<=2;i++)lock([[i*.055,.36,.03],[i*.060,.61,.02],[i*.05,.39,-.12]],.070);
+   }
+   if(style==='rabo'){
+     const tail=joint(hg,[0,.08,-.42]);
+     for(let i=-2;i<=2;i++)lock([[i*.018,.08,0],[i*.028,-.15,-.12],[i*.045,-.48,-.10],[i*.035,-.82,.02]],.055);
+     makePart(tail,new THREE.TorusGeometry(.105,.020,8,20),shine,[0,.05,0],[1,1,1],[Math.PI/2,0,0]);
+   }
+   // Dwarven braids emerge from the side/back hair mass.
+   if(dwarf){
+     for(const side of[-1,1])for(let b=0;b<2;b++){
+       const x=side*(.22+b*.10);
+       const pts=[];
+       for(let i=0;i<12;i++)pts.push([x+Math.sin(i*.95+b)*.018,.16-i*.055,-.28-i*.018]);
+       detailCurve(hg,pts,.035,hairMat,true);
+       for(const y of[-.30,-.58])makePart(hg,new THREE.TorusGeometry(.038,.010,7,16),shine,[x,y,-.31],[1,1,1],[Math.PI/2,0,0]);
+     }
+   }
+ }
+
+ // Neck armor: a continuous gorget/collar is anchored to the chest so it never floats.
+ const neckGuard=joint(chest,[0,.66,.01]);
+ const neckHeavy=heavy||cls==='Berserker'||c.shoulders==='pesadas';
+ makePart(neckGuard,new THREE.CylinderGeometry(neckHeavy?.225:.205,neckHeavy?.245:.215,.18,20,1,true),neckHeavy?metalMat:armorMat,[0,-.01,.01]);
+ makePart(neckGuard,new THREE.TorusGeometry(neckHeavy?.235:.215,.028,8,28),accentMat,[0,-.08,.01],[1,1,.78],[Math.PI/2,0,0]);
+ makePart(neckGuard,new THREE.BoxGeometry(neckHeavy?.46:.40,.11,.10),neckHeavy?metalMat:secondaryMat,[0,-.10,.16],[1,1,1]);
+ for(const side of[-1,1]){
+   makePart(neckGuard,new THREE.BoxGeometry(.13,.22,.12),neckHeavy?metalMat:armorMat,[side*.18,-.08,.09],[1,1,1],[0,side*.18,side*.08]);
+   makePart(neckGuard,new THREE.SphereGeometry(.025,8,6),accentMat,[side*.19,-.13,.20],[1,.7,.55]);
+ }
+ if(orc){
+   makePart(neckGuard,new THREE.BoxGeometry(.56,.16,.16),metalMat,[0,-.13,.10],[1,1,1]);
+   for(let i=-2;i<=2;i++)makePart(neckGuard,new THREE.ConeGeometry(.026,.13,7),accentMat,[i*.11,-.20,.18],[1,1,1],[0,0,i*.20]);
+ }
+
+ // Hair 2.0: sculpted rear cap + layered locks + fine strand highlights. Everything remains under v18-hair-overhaul.
+ if(c.helmet!=='sim' && style!=='careca'){
+   const hg= model.getObjectByName('v18-hair-overhaul');
+   if(hg){
+     const hairDark=animeMaterial(hairMat.color.clone().multiplyScalar(.78),{rough:.82});
+     const hairLight=animeMaterial(hairMat.color.clone().lerp(new THREE.Color('#fff7df'),.30),{rough:.68});
+     // Rear scalp shell closes gaps between the old cap and the long back locks.
+     makePart(hg,new THREE.SphereGeometry(.466,28,18,0,Math.PI*2,.48,.78),hairDark,[0,.015,-.10],[1.03,1.04,1.08]);
+     // Three staggered rear tiers create a readable silhouette from behind.
+     const longBack=['longo','ondulado','rabo','trancas','guerreiro'].includes(style);
+     const tierCount=longBack?4:3;
+     for(let tier=0;tier<tierCount;tier++){
+       const yy=.22-tier*.15, depth=-.39-tier*.035, span=.30+tier*.035;
+       for(let i=-4;i<=4;i++){
+         const x=(i/4)*span;
+         const sway=(i%2)*.018;
+         const endY=yy-(longBack?.27:.16)-(Math.abs(i)*.012);
+         detailCurve(hg,[[x*.72,yy+.08,depth],[x,yy-.03,depth-.025],[x+sway,endY,depth-.04]],.034+(tier===0?.006:0),hairMat,true);
+         if(i%2===0)detailCurve(hg,[[x*.74,yy+.075,depth+.012],[x-.008,endY+.02,depth-.012]],.008,hairLight,true);
+       }
+     }
+     // Fine rear strands break up the large masses and make the hair feel authored rather than generated.
+     for(let i=-6;i<=6;i++){
+       const x=i*.050, y=.34-Math.abs(i)*.012, z=-.445-Math.abs(i)*.008;
+       detailCurve(hg,[[x,y,z],[x*.98,.10,z-.025],[x*(.94+(i%2)*.03),longBack?-.34:-.22,z-.035]],.010,hairLight,true);
+     }
+     if(longBack){
+       // A central layered fall gives the back a strong continuous silhouette.
+       for(let i=-2;i<=2;i++)detailCurve(hg,[[i*.045,.25,-.46],[i*.055,-.02,-.51],[i*.07,-.34,-.49],[i*.08,-.64,-.43]],.026,hairMat,true);
+     }
+   }
+ }
+
+ // Armor side detail: attach every moving piece to the actual arm joints.
+ // This removes the floating side plates caused by parenting arm geometry to the chest.
+ const sideMat=heavy?metalMat:armorMat;
+ for(const [arm,side] of [[leftArm,-1],[rightArm,1]]){
+   if(c.shoulders!=='nenhuma'){
+     makePart(arm.shoulder,new THREE.BoxGeometry(.22,.27,.16),sideMat,[side*.10,.02,.12],[1,1,1],[0,side*.12,side*.16]);
+     makePart(arm.shoulder,new THREE.BoxGeometry(.14,.18,.11),accentMat,[side*.14,-.10,.20],[1,1,1],[0,side*.18,side*.10]);
+   }
+   if(c.gloves!=='sem'){
+     makePart(arm.elbow,new THREE.SphereGeometry(.115,14,10),metalMat,[0,-.05,.14],[1.15,.82,.72]);
+     makePart(arm.elbow,new THREE.BoxGeometry(.19,.34,.13),sideMat,[0,-.27,.13],[1,1,1],[0,side*.08,side*.06]);
+     for(let i=0;i<3;i++)makePart(arm.elbow,new THREE.BoxGeometry(.17,.018,.020),accentMat,[0,-.18-i*.095,.205],[1,1,1],[0,side*.08,0]);
+   }
+ }
+ // Hip/tasset details remain on hips because they move with the pelvis.
+ for(const side of[-1,1]){
+   makePart(hips,new THREE.BoxGeometry(.25,.30,.12),sideMat,[side*.52,-.17,.22],[1,1,1],[0,side*.16,side*.08]);
+   for(let i=0;i<3;i++)makePart(hips,new THREE.BoxGeometry(.18,.16,.075),i%2?secondaryMat:sideMat,[side*(.53+i*.012),-.31-i*.13,.30],[1,1,1],[0,side*.10,side*(.04+i*.02)]);
+   detailCurve(hips,[[side*.56,.03,.34],[side*.60,-.19,.35],[side*.57,-.55,.31]],.010,accentMat);
+ }
+
+ // Stronger dwarf identity: broad head, heavy jaw/cheeks, nose, ears and clan gear.
+ if(dwarf){
+   root.scale.x*=1.08; root.scale.z*=1.05; head.scale.multiplyScalar(1.08);
+   makePart(head,new THREE.BoxGeometry(.42,.13,.22),skinMat,[0,.13,.35],[1.25,.85,.95]);
+   makePart(head,new THREE.SphereGeometry(.13,18,12),skinMat,[0,-.055,.47],[1.35,.90,.92]);
+   makePart(head,new THREE.BoxGeometry(.30,.16,.24),skinMat,[0,-.20,.33],[1.18,.88,.92]);
+   for(const side of[-1,1]){
+     makePart(head,new THREE.SphereGeometry(.125,16,10),skinMat,[side*.44,.01,.02],[1.08,.98,.72]);
+     makePart(head,new THREE.TorusGeometry(.045,.012,7,18),metalMat,[side*.47,-.055,.07],[1,1,1],[Math.PI/2,0,0]);
+     detailCurve(head,[[side*.25,.12,.39],[side*.34,.03,.43],[side*.25,-.06,.45]],.014,animeMaterial(skinMat.color.clone().multiplyScalar(.72),{rough:.78}));
+   }
+   // A dwarf beard should remain a beard, not a floating cone.
+   if(c.beard==='nenhuma')addBeard(head,{...c,beard:'trancada'},dwarf,hairMat);
+   makePart(chest,new THREE.TorusGeometry(.25,.025,8,24),metalMat,[0,.60,.02],[1.18,1,.72],[Math.PI/2,0,0]);
+ }
+
+ // Orc overhaul: broader skull, heavy brow, muzzle, tusks, pointed ears, jaw and war markings.
+ if(orc){
+   root.scale.x*=1.06; root.scale.z*=1.04; head.scale.multiplyScalar(1.06);
+   const orcShade=animeMaterial(skinMat.color.clone().multiplyScalar(.72),{skin:true,rough:.70});
+   makePart(head,new THREE.BoxGeometry(.62,.16,.24),orcShade,[0,.16,.34],[1.05,.75,.90],[0,0,0]);
+   makePart(head,new THREE.BoxGeometry(.58,.20,.28),skinMat,[0,-.19,.33],[1.08,.78,.90]);
+   makePart(head,new THREE.SphereGeometry(.18,18,12),skinMat,[0,-.08,.48],[1.12,.82,.92]);
+   makePart(head,new THREE.BoxGeometry(.24,.18,.22),orcShade,[0,-.02,.56],[1.18,.90,.80]);
+   for(const side of[-1,1]){
+     // Larger pointed ears with inner cartilage.
+     makePart(head,new THREE.ConeGeometry(.12,.50,14),skinMat,[side*.48,.05,.01],[1.10,1,.72],[0,0,-side*1.22]);
+     makePart(head,new THREE.ConeGeometry(.052,.27,12),orcShade,[side*.49,.06,.02],[1,1,.70],[0,0,-side*1.22]);
+     // Heavy cheek/jaw planes.
+     makePart(head,new THREE.SphereGeometry(.16,16,11),skinMat,[side*.22,-.18,.30],[1.25,.68,.76]);
+     // Prominent lower tusks.
+     const tuskLen=c.raceFeature==='presasLongas'?.42:c.raceFeature==='presasCurtas'?.24:.34;
+     detailCurve(head,[[side*.14,-.24,.48],[side*.18,-.33,.53],[side*.18,-.24+tuskLen,.55]],.055,animeMaterial('#ead9b8',{rough:.46}),true);
+     // Piercing + scar/war-paint detail.
+     makePart(head,new THREE.TorusGeometry(.047,.012,6,16),metalMat,[side*.50,-.07,.07],[1,1,1],[Math.PI/2,0,0]);
+     detailCurve(head,[[side*.27,.06,.47],[side*.31,-.04,.44],[side*.25,-.14,.42]],.010,orcShade);
+   }
+   // Trapezius/neck mass makes the Orc read as physically powerful rather than human with green skin.
+   makePart(chest,new THREE.BoxGeometry(.92,.22,.30),orcShade,[0,.43,.06],[1.05,.75,.85]);
+   for(const side of[-1,1])makePart(chest,new THREE.ConeGeometry(.055,.24,9),accentMat,[side*.40,.25,.50],[1,1,1],[0,0,side*.25]);
+ }
+
+ // Female silhouette: narrow shoulders/waist, fuller hips, and armor shaped around the body.
+ if(female){
+   hips.scale.x*=1.12; hips.scale.z*=1.05;
+   chest.scale.x*=.91; chest.scale.z*=.94;
+   for(const side of[-1,1]){
+     detailCurve(chest,[[side*.11,.35,.72],[side*.25,.43,.74],[side*.40,.33,.69]],.015,accentMat);
+     detailCurve(chest,[[side*.38,.10,.71],[side*.31,-.08,.72],[side*.25,-.25,.69]],.011,metalMat);
+     makePart(hips,new THREE.BoxGeometry(.23,.28,.09),sideMat,[side*.49,-.10,.29],[1,1,1],[0,side*.12,side*.08]);
+   }
+   // Hair-framing facial accents remain subtle and race-appropriate.
+   if(c.helmet!=='sim')for(const side of[-1,1]){
+     detailCurve(head,[[side*.09,.13,.45],[side*.16,.16,.46],[side*.23,.13,.45]],.008,hairMat);
+     for(let i=0;i<2;i++)makePart(head,new THREE.ConeGeometry(.007,.040,5),hairMat,[side*(.18+i*.028),.14,.455],[1,1,1],[0,side*.15,0]);
+   }
+ }
+}
+
 function addRaceRefinement(head,chest,c,race,m){
  const g=joint(head);g.name='racial-fine-detail';const {skinMat,hairMat,accentMat,metalMat,auraMat}=m;
  const shade=animeMaterial(skinMat.color.clone().multiplyScalar(.70),{rough:.78});
@@ -1355,25 +1558,18 @@ function addCape(chest,c,secondaryMat,mats){
 
 function addClassArmor(chest,hips,c,meta,mats){
  const cls=meta.class,style=c.armorStyle,{skinMat,armorMat,secondaryMat,accentMat,metalMat,auraMat}=mats,female=c.gender==='feminino';
- const heavy=['Tanke','Paladino','Fighter'].includes(cls),bareOrcBerserker=cls==='Tanke'&&meta.branch==='Berserker'&&meta.race==='Orc';
- if(bareOrcBerserker){
-  // Bare Orc Berserker: green skin, defined pectorals, abs and battle scars—no top armour.
-  const shade=animeMaterial(skinMat.color.clone().multiplyScalar(.72),{skin:true,rough:.65});
-  makePart(chest,new THREE.SphereGeometry(.47,24,16),skinMat,[-.24,.10,.02],[1.02,.82,.66]);makePart(chest,new THREE.SphereGeometry(.47,24,16),skinMat,[.24,.10,.02],[1.02,.82,.66]);
-  makePart(chest,new THREE.CapsuleGeometry(.38,.44,10,16),skinMat,[0,-.26,0],[1.15,1,.76]);
-  for(const side of[-1,1]){detailCurve(chest,[[side*.09,.25,.43],[side*.30,.19,.43],[side*.40,.06,.34]],.017,shade);for(let row=0;row<3;row++)makePart(chest,new THREE.SphereGeometry(.105-row*.010,14,10),skinMat,[side*.13,-.14-row*.16,.40],[1.15,.58,.23]);}
-  detailCurve(chest,[[0,.31,.45],[0,.06,.47],[0,-.42,.43]],.016,shade);for(const y of[.22,.04,-.14,-.32])makePart(chest,new THREE.BoxGeometry(.48,.014,.016),shade,[0,y,.45]);
-  return;
- }
+ const heavy=['Tanke','Paladino','Fighter'].includes(cls);
  makePart(chest,classChestGeometry(cls,female),heavy?metalMat:armorMat,[0,0,0]);
  // gola e cintura dão uma leitura de armadura completa, não apenas um cilindro no torso
  makePart(chest,new THREE.TorusGeometry(female?.44:.49,.045,8,32),heavy?metalMat:accentMat,[0,.47,0],[1,1,.88],[Math.PI/2,0,0]);
  makePart(chest,new THREE.BoxGeometry(heavy?1.08:.92,.105,.58),accentMat,[0,-.45,0]);
  if(cls==='Tanke'&&meta.branch==='Berserker'){
-  // Orc berserkers fight bare-chested; every other race receives a dark, layered Guts-inspired cuirass.
-  if(meta.race!=='Orc'){makePart(chest,new THREE.BoxGeometry(1.02,.76,.12),secondaryMat,[0,-.04,.52]);for(const side of[-1,1])makePart(chest,new THREE.BoxGeometry(.18,.66,.10),metalMat,[side*.34,-.05,.61],[1,1,1],[0,0,side*.12]);makePart(chest,new THREE.BoxGeometry(.09,.88,.045),accentMat,[0,-.05,.68],[1,1,1],[0,0,.52]);}
-  else {for(const side of[-1,1])makePart(chest,new THREE.BoxGeometry(.075,.96,.035),secondaryMat,[side*.24,-.03,.57],[1,1,1],[0,0,side*.38]);}
-  for(const side of[-1,1])makePart(chest,new THREE.BoxGeometry(.15,.11,.11),accentMat,[side*.46,.24,.55]);addFaulds(hips,mats,false);
+  // Berserkers are fully clothed: layered cuirass, reinforced straps and side plates.
+  makePart(chest,new THREE.BoxGeometry(1.04,.76,.12),secondaryMat,[0,-.04,.52]);
+  for(const side of[-1,1])makePart(chest,new THREE.BoxGeometry(.18,.66,.10),metalMat,[side*.34,-.05,.61],[1,1,1],[0,0,side*.12]);
+  makePart(chest,new THREE.BoxGeometry(.09,.88,.045),accentMat,[0,-.05,.68],[1,1,1],[0,0,.52]);
+  for(const side of[-1,1])makePart(chest,new THREE.BoxGeometry(.15,.11,.11),accentMat,[side*.46,.24,.55]);
+  addFaulds(hips,mats,false);
  }else if(cls==='Tanke'){
   makePart(chest,new THREE.BoxGeometry(1.18,.26,.18),metalMat,[0,.25,.54],[1,1,1],[-.06,0,0]);
   makePart(chest,new THREE.BoxGeometry(.42,.72,.12),armorMat,[0,-.08,.59]);
@@ -1888,15 +2084,15 @@ function buildAnimeHeroModel(c,meta,wname=''){
  const female=c.gender==='feminino',body={leve:.92,atletico:1,robusto:1.11}[c.bodyType]||1,height={baixo:.92,medio:1,alto:1.08}[c.heightType]||1,raceBody=rv.dwarf?.94:(rv.body||1),raceHeight=rv.dwarf?.82:rv.minotaur?1.07:1;root.scale.set(body*raceBody*(meta.large?1.02:1)*(female?.94:1),height*raceHeight,body*raceBody*(female?.94:1));
  const hips=joint(root,[0,-.43,0]);makePart(hips,new THREE.CylinderGeometry(female?.45:.50,female?.52:.58,.28,22),secondaryMat,[0,.05,0]);
  // Seat the torso into the belt/hips before scaling it, preventing a visible floating waist gap.
- const chest=joint(hips,[0,.52,0]);const tankScale=cls==='Tanke'?1.20:.90,bareOrcBerserker=cls==='Tanke'&&meta.branch==='Berserker'&&race==='Orc';chest.scale.set((female?.84:.93)*tankScale,(female?.91:.95)*tankScale,(female?.88:.94)*tankScale);addClassArmor(chest,hips,c,meta,mats);if(!bareOrcBerserker){addArmorSurfaceDetails(chest,hips,c,meta,mats);addChestDetail(chest,c,mats);addBackArmor(chest,hips,c,meta,mats)}const cape=addCape(chest,c,secondaryMat,mats);
- const armConfig=bareOrcBerserker?{...c,shoulders:'nenhuma'}:cls==='Mago'?{...c,shoulders:'nenhuma',gloves:'runicas'}:c,leftArm=addArm(chest,armConfig,-1,mats,meta),rightArm=addArm(chest,armConfig,1,mats,meta);const leftLeg=addLeg(hips,c,-1,mats),rightLeg=addLeg(hips,c,1,mats);addBranchSignature(chest,hips,leftArm,rightArm,c,meta,mats);
+ const chest=joint(hips,[0,.52,0]);const tankScale=cls==='Tanke'?1.20:.90;chest.scale.set((female?.84:.93)*tankScale,(female?.91:.95)*tankScale,(female?.88:.94)*tankScale);addClassArmor(chest,hips,c,meta,mats);addArmorSurfaceDetails(chest,hips,c,meta,mats);addChestDetail(chest,c,mats);addBackArmor(chest,hips,c,meta,mats);const cape=addCape(chest,c,secondaryMat,mats);
+ const armConfig=cls==='Mago'?{...c,shoulders:'nenhuma',gloves:'runicas'}:c,leftArm=addArm(chest,armConfig,-1,mats,meta),rightArm=addArm(chest,armConfig,1,mats,meta);const leftLeg=addLeg(hips,c,-1,mats),rightLeg=addLeg(hips,c,1,mats);addBranchSignature(chest,hips,leftArm,rightArm,c,meta,mats);
  const neck=joint(chest,[0,.70,0]);makePart(neck,new THREE.CylinderGeometry(.15,.19,.36,20),skinMat,[0,-.02,0]);const headJoint=joint(neck,[0,.45,0]);
  const fs=faceScales(c.faceShape);headJoint.scale.setScalar(rv.head||1);let headMesh;
  if(race==='Minotauro'){headMesh=makePart(headJoint,new THREE.SphereGeometry(.47,30,22),skinMat,[0,0,0],[1.05,1.0,.98]);makePart(headJoint,new THREE.CylinderGeometry(.20,.28,.42,20),skinMat,[0,-.08,.38],[1,1,1],[Math.PI/2,0,0]);makePart(headJoint,new THREE.SphereGeometry(.20,22,16),animeMaterial('#2c2420',{rough:.72}),[0,-.13,.58],[1.05,.58,.58])}else{headMesh=makePart(headJoint,new THREE.SphereGeometry(.45,30,22),skinMat,[0,0,0],fs);if(['angular','quadrado','largo'].includes(c.faceShape))makePart(headJoint,new THREE.BoxGeometry(c.faceShape==='largo'?.58:.52,.16,.29),skinMat,[0,-.25,.10])}
  const ec=eyeConfig(c.eyeShape),eyeY=race==='Minotauro'?.05:.04,eyeZ=race==='Minotauro'?.42:.41;addAnimeEye(headJoint,-.16,eyeY,eyeZ,ec,eye);addAnimeEye(headJoint,.16,eyeY,eyeZ,ec,eye);addBrow(headJoint,-.16,eyeY+.13,eyeZ+.02,c.browStyle,false,hair);addBrow(headJoint,.16,eyeY+.13,eyeZ+.02,c.browStyle,true,hair);
  if(female&&c.presentation!=='aventura'){const jewel=c.presentation==='mistica'?auraMat:accentMat;for(const side of[-1,1]){makePart(headJoint,new THREE.SphereGeometry(.035,12,9),jewel,[side*.43,-.12,.04]);if(c.presentation==='elegante')makePart(headJoint,new THREE.TorusGeometry(.052,.009,7,16),jewel,[side*.43,-.20,.04],[1,1,1],[Math.PI/2,0,0]);}if(c.presentation==='guerreira')makePart(headJoint,new THREE.BoxGeometry(.78,.045,.05),metalMat,[0,.23,.42]);}
  if(race!=='Minotauro'){addNose(headJoint,c.noseStyle,skinMat);addMouth(headJoint,c.mouthStyle);addFaceMark(headJoint,c.marking,aura)}
- addRaceHeadFeatures(headJoint,root,c,race,mats);if(!bareOrcBerserker)addRaceDetail(headJoint,chest,hips,leftLeg,rightLeg,c,race,mats);const hairGroup=addHair(headJoint,c,race,hairMat);addBeard(headJoint,c,race,hairMat);if(c.helmet!=='sim')addHeadAccessory(headJoint,c,mats);addHelmet(headJoint,c,meta,mats);addMageRegalia(headJoint,chest,hips,c,meta,mats);addRaceRefinement(headJoint,chest,c,race,mats);if(!bareOrcBerserker)addFineArmor(chest,hips,leftArm,rightArm,leftLeg,rightLeg,c,meta,mats);
+ addRaceHeadFeatures(headJoint,root,c,race,mats);addRaceDetail(headJoint,chest,hips,leftLeg,rightLeg,c,race,mats);const hairGroup=addHair(headJoint,c,race,hairMat);addBeard(headJoint,c,race,hairMat);if(c.helmet!=='sim')addHeadAccessory(headJoint,c,mats);addHelmet(headJoint,c,meta,mats);addMageRegalia(headJoint,chest,hips,c,meta,mats);addRaceRefinement(headJoint,chest,c,race,mats);addFineArmor(chest,hips,leftArm,rightArm,leftLeg,rightLeg,c,meta,mats);addV18AppearanceRefinement(model,root,chest,hips,headJoint,leftArm,rightArm,leftLeg,rightLeg,c,meta,mats,race,cls);
  if(c.buildDetail==='cicatrizes')makePart(chest,new THREE.BoxGeometry(.014,.27,.012),animeMaterial('#743d40'),[-.54,.02,.49],[1,1,1],[0,0,-.25]);if(c.buildDetail==='runas')for(const y of[-.13,.05,.23])makePart(chest,new THREE.TorusGeometry(.045,.008,5,12),auraMat,[-.54,y,.49],[1,1,1],[Math.PI/2,0,0]);if(c.buildDetail==='tatuagens')makePart(chest,new THREE.BoxGeometry(.018,.48,.012),animeMaterial('#233247'),[-.54,.02,.49],[1,1,1],[0,0,.45]);
  const weapons=addWeaponSet(leftArm.hand,rightArm.hand,chest,c,meta,mats,wname),weapon=weapons.primary,auraRing=makePart(root,new THREE.TorusGeometry(1.02,.014,8,64),auraMat,[0,-1.50,0],[1,1,1],[Math.PI/2,0,0]);if(['Mago','Clérigo','Paladino'].includes(cls))for(let i=0;i<3;i++){const a=i*Math.PI*2/3;makePart(chest,new THREE.OctahedronGeometry(.045,0),auraMat,[Math.cos(a)*.62,.20+Math.sin(a)*.08,Math.sin(a)*.62])}
  for(const item of [weapon,weapons.offhand])if(item){item.rotation.x=item.userData.weaponType==='sword'?.09:0;item.name='held-weapon';addWeaponFinish(item,mats);}
@@ -2130,7 +2326,7 @@ function startGame(){
 }
 function bind(){
   choiceCards($('#raceChoices'),races,'race',x=>x.passive);choiceCards($('#classChoices'),classes,'class',x=>x.desc);
-  $$('input[name="race"]').forEach(x=>x.onchange=()=>{buildRaceAppearance(true);buildWeapons();buildAppearanceOptions(true);updatePreview()});$$('input[name="class"]').forEach(x=>x.onchange=()=>{buildBranches();buildWeapons();buildAppearanceOptions(true);updatePreview()});
+  $$('input[name="race"]').forEach(x=>x.onchange=()=>{$('#helmet').value='sim';buildRaceAppearance(true);buildWeapons();buildAppearanceOptions(true);updatePreview()});$$('input[name="class"]').forEach(x=>x.onchange=()=>{$('#helmet').value='sim';buildBranches();buildWeapons();buildAppearanceOptions(true);updatePreview()});
   const appearanceIds=['gender','presentation','bodyType','heightType','stance','skinTone','raceFeature','racePattern','buildDetail','faceShape','eyeShape','eyeColor','browStyle','noseStyle','mouthStyle','marking','hairStyle','hairColor','beard','accessory','helmet','armorStyle','armorSet','shoulders','cape','gloves','boots','chestDetail','material'];
   appearanceIds.forEach(id=>$('#'+id).oninput=updatePreview);
   $('#gender').onchange=()=>{if($('#gender').value==='feminino'){$('#presentation').value='elegante';$('#hairStyle').value='ondulado';$('#beard').value='nenhuma';$('#accessory').value='tiara';$('#browStyle').value='arqueadas';$('#eyeShape').value='suaves';$('#faceShape').value='oval'}updatePreview()};
