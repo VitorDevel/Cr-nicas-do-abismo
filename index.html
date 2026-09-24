@@ -530,7 +530,7 @@ const branchPaletteOverrides={
 };
 
 const weaponCatalog=[
-{id:'tank_shield',class:'Tanke',large:false,name:'Escudo-Torre',bonus:4,price:95,rarity:'Comum',desc:'Defesa pesada e impacto.'},{id:'tank_maul',hammerModel:7,class:'Tanke',large:false,name:'Malho de Muralha',bonus:6,price:150,rarity:'Raro',desc:'Martelo de muralha com cabeça larga e pesada, feito para esmagar guardas sem perder estabilidade.'},{id:'tank_sentinel',class:'Tanke',large:false,name:'Escudo do Sentinela',bonus:9,price:225,rarity:'Épico',desc:'Escudo ornamentado com núcleo rúnico.'},{id:'tank_bastion_hammer',hammerModel:8,weaponType:'hammer',class:'Tanke',large:false,name:'Martelo-Bico do Bastião',bonus:6,price:135,rarity:'Raro',desc:'Martelo de guerra estreito com bico perfurante, pensado para abrir placas e manter a linha defensiva.'},{id:'tank_siege_mace',hammerModel:6,weaponType:'hammer',class:'Tanke',large:true,name:'Maça de Cerco',bonus:9,price:180,rarity:'Raro',desc:'Maça enorme de cabeça esférica maciça, feita para esmagar escudos e portas com um único impacto.'},
+{id:'tank_shield',shieldModel:17,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Escudo-Torre',bonus:4,price:95,rarity:'Comum',desc:'Escudo alto em formato de pipa, com face limpa e cobertura ampla para proteger o tronco na linha de frente.'},{id:'tank_maul',hammerModel:7,class:'Tanke',large:false,name:'Malho de Muralha',bonus:6,price:150,rarity:'Raro',desc:'Martelo de muralha com cabeça larga e pesada, feito para esmagar guardas sem perder estabilidade.'},{id:'tank_sentinel',shieldModel:16,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Escudo do Sentinela',bonus:9,price:225,rarity:'Épico',desc:'Escudo alto e ornamentado, coberto por ferragens, runas e um núcleo central próprio para uma guarda de elite.'},{id:'tank_bastion_hammer',hammerModel:8,weaponType:'hammer',class:'Tanke',large:false,name:'Martelo-Bico do Bastião',bonus:6,price:135,rarity:'Raro',desc:'Martelo de guerra estreito com bico perfurante, pensado para abrir placas e manter a linha defensiva.'},{id:'tank_siege_mace',hammerModel:6,weaponType:'hammer',class:'Tanke',large:true,name:'Maça de Cerco',bonus:9,price:180,rarity:'Raro',desc:'Maça enorme de cabeça esférica maciça, feita para esmagar escudos e portas com um único impacto.'},
 {id:'tank_anchor',class:'Tanke',large:true,name:'Âncora de Bastião',bonus:7,price:115,rarity:'Comum',desc:'Arma enorme para raças grandes.'},{id:'tank_colossus',hammerModel:12,class:'Tanke',large:true,name:'Martelo Colossal',bonus:10,price:185,rarity:'Raro',desc:'Martelo colossal de duas faces, grosso e maciço, criado para golpes lentos de impacto brutal.'},{id:'tank_worldbreaker',hammerModel:11,class:'Tanke',large:true,name:'Quebra-Mundos',bonus:13,price:270,rarity:'Lendário',desc:'Malho de cerco de duas faces, reforçado para partir placas, portões e formações defensivas.'},
 {id:'mage_staff',class:'Mago',large:false,name:'Cajado Arcano',bonus:5,price:100,rarity:'Comum',desc:'Catalisador mágico versátil.'},{id:'mage_codex',class:'Mago',large:false,name:'Códice Prismático',bonus:8,price:170,rarity:'Raro',desc:'Grimório flutuante que amplifica feitiços.'},{id:'mage_eclipse',class:'Mago',large:false,name:'Orbe do Eclipse',bonus:11,price:245,rarity:'Épico',desc:'Foco orbital de magia comprimida.'},{id:'mage_runeblade',swordModel:19,weaponType:'sword',class:'Mago',large:false,name:'Lâmina Rúnica do Arcanista',bonus:7,price:155,rarity:'Raro',desc:'Espada ritual estreita com guarda geométrica e núcleo rúnico, usada como foco para feitiços de curta distância.'},{id:'mage_comet_staff',weaponType:'staff',class:'Mago',large:true,name:'Bastão do Cometa',bonus:12,price:220,rarity:'Épico',desc:'Bastão alto de canalização com foco cristalino orbital, criado para concentrar magia em rajadas pesadas.'},
 {id:'mage_obelisk',class:'Mago',large:true,name:'Obelisco Arcano',bonus:8,price:125,rarity:'Comum',desc:'Catalisador grande.'},{id:'mage_cosmos',class:'Mago',large:true,name:'Pilar Celeste',bonus:11,price:205,rarity:'Épico',desc:'Poder mágico massivo.'},{id:'mage_voidspire',class:'Mago',large:true,name:'Agulha do Vazio',bonus:14,price:285,rarity:'Lendário',desc:'Cajado colossal com cristal do vazio.'},
@@ -556,12 +556,12 @@ const weaponCatalog=[
 // v17 — arsenal expandido: mais opções por classe, mantendo silhueta e descrição coerentes.
 const moreClassWeapons=[
  // TANKE — porte normal
- {id:'tank_fortress_shield',shieldModel:4,weaponType:'shield',class:'Tanke',large:false,name:'Escudo da Fortaleza',bonus:5,price:110,rarity:'Comum',desc:'Escudo de placa larga e reforçada, pensado para cobrir o tronco e sustentar uma postura defensiva firme.'},
- {id:'tank_spearbreaker_shield',shieldModel:11,weaponType:'shield',class:'Tanke',large:false,name:'Escudo Quebra-Lança',bonus:8,price:175,rarity:'Raro',desc:'Escudo espesso de frente agressiva, construído para receber cargas, desviar pontas e avançar sem abrir a guarda.'},
+ {id:'tank_fortress_shield',shieldModel:13,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Escudo da Fortaleza',bonus:5,price:110,rarity:'Comum',desc:'Escudo heráldico alto, com moldura espessa e reforços internos, pensado para cobrir o tronco e sustentar uma postura defensiva firme.'},
+ {id:'tank_spearbreaker_shield',shieldModel:19,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Escudo Quebra-Lança',bonus:8,price:175,rarity:'Raro',desc:'Escudo alto com saliências radiais em torno do umbo, construído para apanhar pontas, desviar lanças e avançar sem abrir a guarda.'},
  {id:'tank_garrison_hammer',hammerModel:7,weaponType:'hammer',class:'Tanke',large:false,name:'Martelo de Guarnição',bonus:7,price:155,rarity:'Raro',desc:'Martelo de cabeça larga e pesada, feito para golpes curtos de contenção sem comprometer a estabilidade do Tanke.'},
  {id:'tank_guard_mace',hammerModel:4,weaponType:'hammer',class:'Tanke',large:false,name:'Maça da Guarda de Ferro',bonus:10,price:225,rarity:'Épico',desc:'Maça simétrica de cabeça flangeada, apropriada para quebrar placas e manter pressão constante na linha de frente.'},
  // TANKE — porte grande
- {id:'tank_citadel_shield',shieldModel:20,weaponType:'shield',class:'Tanke',large:true,name:'Escudo Colossal da Cidadela',bonus:9,price:180,rarity:'Raro',desc:'Escudo colossal de grande superfície, criado para proteger corpos enormes e transformar o usuário em uma muralha móvel.'},
+ {id:'tank_citadel_shield',shieldModel:18,weaponType:'shield',class:'Tanke',large:true,adaptive:true,name:'Escudo Colossal da Cidadela',bonus:9,price:180,rarity:'Raro',desc:'Escudo alto, largo e profundamente estriado, criado para proteger o corpo inteiro e transformar o usuário em uma muralha móvel.'},
  {id:'tank_iron_gate_maul',hammerModel:11,weaponType:'hammer',class:'Tanke',large:true,name:'Malho Portão de Ferro',bonus:12,price:240,rarity:'Épico',desc:'Malho de cerco com duas faces maciças, pesado o bastante para partir portas, escudos e formações compactas.'},
  {id:'tank_leviathan_hammer',hammerModel:12,weaponType:'hammer',class:'Tanke',large:true,name:'Martelo do Leviatã',bonus:14,price:295,rarity:'Lendário',desc:'Martelo colossal de duas faces espessas, feito para um combatente enorme que prefere impacto bruto a velocidade.'},
  {id:'tank_spiked_siege_mace',hammerModel:1,weaponType:'hammer',class:'Tanke',large:true,name:'Maça Cravada de Cerco',bonus:13,price:275,rarity:'Lendário',desc:'Maça gigantesca com cabeça esférica coberta por espinhos, construída para esmagar armaduras, barricadas e criaturas grandes.'},
@@ -634,10 +634,61 @@ const moreClassWeapons=[
 ];
 weaponCatalog.push(...moreClassWeapons);
 
+// v18 — arsenal exclusivo do Tanke: todos os 20 modelos FBX de escudo enviados têm uma arma própria.
+const tankShieldArsenal=[
+ {id:'tank_radial_bastion',shieldModel:1,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Broquel Radial do Bastião',bonus:5,price:120,rarity:'Comum',desc:'Escudo circular de placas radiais anguladas, compacto no braço mas reforçado para espalhar o impacto ao redor do centro.'},
+ {id:'tank_bolt_shield',shieldModel:2,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Escudo do Ferrolho',bonus:6,price:135,rarity:'Comum',desc:'Escudo redondo com uma armação quadrada rebitada no centro, como um ferrolho de portão construído para travar golpes frontais.'},
+ {id:'tank_bladebreaker',shieldModel:3,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Escudo Quebra-Lâmina',bonus:7,price:150,rarity:'Raro',desc:'Escudo circular com barras diagonais, pontas e reforços salientes, feito para prender lâminas e desviar cortes para fora da guarda.'},
+ {id:'tank_tooth_crown',shieldModel:5,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Escudo da Coroa Dentada',bonus:7,price:160,rarity:'Raro',desc:'Escudo circular cercado por uma coroa de dentes metálicos e anéis concêntricos que protegem o centro contra impactos repetidos.'},
+ {id:'tank_riveted_plate',shieldModel:6,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Escudo de Placa Rebitada',bonus:8,price:175,rarity:'Raro',desc:'Escudo redondo de duas grandes placas verticais, aro grosso e fileiras de rebites, construído como uma porta portátil de aço.'},
+ {id:'tank_guardian_kite',shieldModel:7,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Escudo-Pipa do Guardião',bonus:8,price:185,rarity:'Raro',desc:'Escudo em formato de pipa com ombros largos e ponta inferior, oferecendo cobertura contínua do peito até a cintura.'},
+ {id:'tank_siege_shell',shieldModel:8,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Escudo Casco de Cerco',bonus:9,price:205,rarity:'Épico',desc:'Escudo oval abaulado e nervurado como um casco, feito para fazer golpes escorregarem pelas laterais sem atingir o portador.'},
+ {id:'tank_crossguard_shield',shieldModel:9,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Escudo Cruzado de Choque',bonus:9,price:215,rarity:'Épico',desc:'Escudo de silhueta cruzada com quatro asas rígidas em torno de um grande umbo, pensado para aparar ataques vindos de vários ângulos.'},
+ {id:'tank_plank_bulwark',shieldModel:10,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Escudo de Tábuas Blindadas',bonus:10,price:230,rarity:'Épico',desc:'Escudo irregular formado por placas longas sobrepostas como tábuas blindadas, reforçado para absorver pancadas de cerco.'},
+ {id:'tank_spiral_buckler',shieldModel:11,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Broquel Espiral',bonus:10,price:240,rarity:'Épico',desc:'Broquel circular de grande umbo espiralado, desenhado para receber o golpe no centro e desviá-lo ao longo da curvatura.'},
+ {id:'tank_winged_ram',shieldModel:12,weaponType:'shield',class:'Tanke',large:true,adaptive:true,name:'Escudo Alado de Aríete',bonus:11,price:255,rarity:'Épico',desc:'Escudo angular com abas superiores, laterais abertas e ponta inferior pronunciada, usado para avançar como um aríete entre formações.'},
+ {id:'tank_hex_guard',shieldModel:14,weaponType:'shield',class:'Tanke',large:true,adaptive:true,name:'Escudo Hexagonal de Guarda',bonus:11,price:265,rarity:'Épico',desc:'Escudo alto de faces geométricas e bordas chanfradas, simples e espesso para resistir a impactos diretos de armas pesadas.'},
+ {id:'tank_scale_wall',shieldModel:15,weaponType:'shield',class:'Tanke',large:true,adaptive:true,name:'Escudo de Escamas de Aço',bonus:12,price:280,rarity:'Lendário',desc:'Escudo alto facetado em vários painéis como escamas metálicas, criando uma parede rígida com múltiplas linhas de reforço.'},
+ {id:'tank_royal_bladewall',shieldModel:20,weaponType:'shield',class:'Tanke',large:true,adaptive:true,name:'Escudo Real de Lâminas',bonus:13,price:305,rarity:'Lendário',desc:'Escudo real de topo largo e corpo afunilado, ornamentado por longas nervuras em forma de lâminas para uma defesa imponente.'}
+];
+weaponCatalog.push(...tankShieldArsenal);
+
 const legendaryClassById={legend_dragonflare:'Paladino',legend_frostlumen:'Clérigo',legend_stormbrand:'Arqueiro',legend_prismheart:'Mago',legend_nightfang:'Assassino',legend_worldroot:'Fighter',legend_aegis:'Tanke'};
-weaponCatalog.push({id:'legend_aegis',class:'Tanke',large:false,adaptive:true,name:'Aegis do Colosso Elemental',bonus:30,elementalBonus:29,elementTheme:'astral',elementName:'NÚCLEO PRISMÁTICO',skillName:'Muralha Prismática',price:9999,rarity:'Lendário Elemental',bossReward:true,legendFace:7,weaponType:'shield',desc:'Escudo colossal que concentra energia elemental. Relíquia exclusiva do Tanke.'});
+weaponCatalog.push({id:'legend_aegis',shieldModel:4,weaponType:'shield',class:'Tanke',large:false,adaptive:true,name:'Aegis do Colosso Elemental',bonus:30,elementalBonus:29,elementTheme:'astral',elementName:'NÚCLEO PRISMÁTICO',skillName:'Muralha Prismática',price:9999,rarity:'Lendário Elemental',bossReward:true,legendFace:7,weaponType:'shield',desc:'Escudo colossal que concentra energia elemental. Relíquia exclusiva do Tanke.'});
 weaponCatalog.forEach(w=>{if(w.bossReward){w.class=legendaryClassById[w.id]||w.class;w.adaptive=true;delete w.universal}});
 weaponCatalog.forEach((w,i)=>{w.signature=i+1;w.detailSeed=(i+1)*17+3});
+// Automatic FBX assignment: every uploaded sword, hammer/mace, and shield model must be used.
+// The system walks through the full uploaded pool before repeating any model.
+const AUTO_MODEL_POOLS={
+ sword:['2','3','4','5','6','7','8','9','13','14','15','16','17','18','19','20','21','22','23'],
+ hammer:['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','20'],
+ shield:['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20']
+};
+function importedWeaponFamily(w){
+ const n=w?.name||'',t=w?.weaponType||'';
+ if(t==='shield'||/Escudo|Aegis/.test(n))return 'shield';
+ if(t==='hammer'||/Malho|Martelo|Maça|Clava|Quebra-Mundos/.test(n))return 'hammer';
+ if(t==='sword'||/Espada|Lâmina|Montante|Gládio|Sabre|Cutelo/.test(n))return 'sword';
+ return '';
+}
+function assignNonRepeatingImportedModels(){
+ const classes=['Tanke','Mago','Paladino','Clérigo','Assassino','Arqueiro','Fighter','Racial'];
+ for(const family of ['sword','hammer','shield']){
+  const pool=AUTO_MODEL_POOLS[family];
+  let cursor=0;
+  for(const cls of classes){
+   const items=weaponCatalog
+    .filter(w=>w.class===cls&&importedWeaponFamily(w)===family)
+    .sort((a,b)=>(a.large===b.large?0:(a.large?-1:1))||String(a.name).localeCompare(String(b.name),'pt-BR'));
+   for(const item of items){
+    if(family==='shield'&&item.shieldModel&&pool.includes(String(item.shieldModel))){cursor++;continue}
+    item[family+'Model']=Number(pool[cursor%pool.length]);
+    cursor++;
+   }
+  }
+ }
+}
+assignNonRepeatingImportedModels();
 const relicSkills={
   legend_dragonflare:{name:'Sopro do Dragão',cost:20},
   legend_frostlumen:{name:'Prisão de Geada',cost:20},
@@ -787,14 +838,21 @@ function getRace(){return races[selectedIndex('race')]}
 function getClass(){return classes[selectedIndex('class')]}
 function getBranchName(){const opts=branches[getClass().name];return $('input[name="branch"]:checked')?.value||Object.keys(opts)[0]}
 function getBranch(){return branches[getClass().name][getBranchName()]}
+function weaponAllowedForBuild(w,cls,race,large,bossUnlocked=false){
+ if(!w)return false;
+ const visibleBoss=!w.bossReward||bossUnlocked;
+ const sizeMatch=w.universal||w.adaptive||w.large===large;
+ if(cls==='Tanke'){
+  // Tanke class equipment is shield-only. The only exception is equipment tied to the selected race.
+  const tankShield=w.class==='Tanke'&&importedWeaponFamily(w)==='shield';
+  const raceWeapon=w.race===race;
+  return visibleBoss&&sizeMatch&&(tankShield||raceWeapon);
+ }
+ return visibleBoss&&sizeMatch&&(w.class===cls||w.race===race||w.universal===true);
+}
 function compatibleWeapons(cls=getClass().name,large=getRace().large,race=getRace().name){
  const branch=getBranchName?.()||'',bossUnlocked=!!state.hero?.bossDefeated||!!getUnlockedLegendaryId();
- return weaponCatalog.filter(w=>{
-  const classMatch=(w.class===cls||w.race===race||w.universal===true);
-  const visibleBoss=!w.bossReward||bossUnlocked;
-  const sizeMatch=w.universal||w.adaptive||w.large===large;
-  return classMatch&&sizeMatch&&visibleBoss;
- }).sort((a,b)=>{
+ return weaponCatalog.filter(w=>weaponAllowedForBuild(w,cls,race,large,bossUnlocked)).sort((a,b)=>{
   const rank=w=>w.class===cls?0:(w.universal?1:2);
   const lanceRank=w=>branch==='Lanceiro'&&/Lança/.test(w.name)?-1:0;
   return lanceRank(a)-lanceRank(b)||rank(a)-rank(b)||a.price-b.price;
@@ -817,7 +875,7 @@ function confirmLevelUp(){const h=state.hero;if(!h||h.attributePoints>0||!h.ultU
 
 function choiceCards(el,items,name,desc){el.innerHTML=items.map((x,i)=>{const extra=x.name&&raceLore[x.name];const checked=name==='class'?x.name==='Fighter':i===0;return `<label class="choice-card ${name==='race'?'race-card':''}"><input type="radio" name="${name}" value="${i}" ${checked?'checked':''}><b>${x.name}</b><span>${desc(x)}${extra?`<span class="race-card-lore">${extra.title}: ${extra.text}</span><span class="race-card-traits">${extra.tags.map(t=>`<i>${t}</i>`).join('')}</span>`:''}</span></label>`}).join('')}
 function buildBranches(){const opts=branches[getClass().name];$('#branchChoices').innerHTML=Object.entries(opts).map(([n,v],i)=>`<label class="subchoice"><input type="radio" name="branch" value="${n}" ${i===0?'checked':''}><span><b>${n}</b><small>${v.desc}</small></span></label>`).join('');$$('input[name="branch"]').forEach(x=>x.onchange=()=>{buildWeapons();buildAppearanceOptions(true);updatePreview()})}
-function buildWeapons(){const previous=$('input[name="weapon"]:checked')?.value,all=compatibleWeapons(),r=getRace(),legend=getUnlockedLegendary();const normal=all.filter(w=>!w.bossReward),options=legend?[...normal,legend]:normal,selected=options.some(w=>w.id===previous)?previous:options[0]?.id;$('#weaponRule').textContent=`${r.name} ${r.large?'usa armas grandes':'usa armas de porte normal'}. Escolha qualquer uma das armas iniciais compatíveis; a Relíquia Elemental Lendária é exclusiva da classe e aparece depois de derrotar o Boss Final.`;let html=normal.map(w=>`<label class="weapon-choice"><input type="radio" name="weapon" value="${w.id}" ${w.id===selected?'checked':''}><span><b>${w.name}</b><small>${w.desc}</small><em>ARMA INICIAL • ${w.rarity?.toUpperCase()||'COMUM'} • ${w.large?'GRANDE • ':''}+${w.bonus} dano</em><span class="weapon-detail">Modelo único #${w.signature||'—'} • detalhes ornamentais exclusivos</span></span></label>`).join('');if(legend){html+=`<label class="weapon-choice boss-reward"><input type="radio" name="weapon" value="${legend.id}" ${legend.id===selected?'checked':''}><span><b>👑 ${legend.name}</b><small>${legend.desc}</small><em>RELÍQUIA DO ${legend.class.toUpperCase()} • +${legend.bonus} dano físico • +${legend.elementalBonus} ${legend.elementName}</em><span class="weapon-detail legendary-element">Arma exclusiva da classe ${legend.class}. Skill elemental usa mana. Modelo 3D lendário exclusivo.</span></span></label>`}$('#weaponChoices').innerHTML=html;$$('input[name="weapon"]').forEach(x=>x.onchange=updatePreview)}
+function buildWeapons(){const previous=$('input[name="weapon"]:checked')?.value,all=compatibleWeapons(),r=getRace(),legend=getUnlockedLegendary();const normal=all.filter(w=>!w.bossReward),options=legend?[...normal,legend]:normal,selected=options.some(w=>w.id===previous)?previous:options[0]?.id;$('#weaponRule').textContent=`${r.name} ${r.large?'usa armas grandes':'usa armas de porte normal'}. Escolha qualquer uma das armas iniciais compatíveis; a Relíquia Elemental Lendária é exclusiva da classe e aparece depois de derrotar o Boss Final.`;let html=normal.map(w=>`<label class="weapon-choice"><input type="radio" name="weapon" value="${w.id}" ${w.id===selected?'checked':''}><span><b>${w.name}</b><small>${w.desc}</small><em>ARMA INICIAL • ${w.rarity?.toUpperCase()||'COMUM'} • ${w.large?'GRANDE • ':''}+${w.bonus} dano</em><span class="weapon-detail">${importedWeaponFamily(w)?`Modelo ${importedWeaponFamily(w).toUpperCase()} FBX ${String(w[importedWeaponFamily(w)+'Model']||'auto').padStart(2,'0')} • sem repetição nesta classe`:`Modelo procedural único #${w.signature||'—'} • detalhes ornamentais exclusivos`}</span></span></label>`).join('');if(legend){html+=`<label class="weapon-choice boss-reward"><input type="radio" name="weapon" value="${legend.id}" ${legend.id===selected?'checked':''}><span><b>👑 ${legend.name}</b><small>${legend.desc}</small><em>RELÍQUIA DO ${legend.class.toUpperCase()} • +${legend.bonus} dano físico • +${legend.elementalBonus} ${legend.elementName}</em><span class="weapon-detail legendary-element">Arma exclusiva da classe ${legend.class}. Skill elemental usa mana. Modelo 3D lendário exclusivo.</span></span></label>`}$('#weaponChoices').innerHTML=html;$$('input[name="weapon"]').forEach(x=>x.onchange=updatePreview)}
 function hexShade(hex,amt){hex=(hex||'#777777').replace('#','');const n=parseInt(hex,16),r=clamp((n>>16)+amt,0,255),g=clamp(((n>>8)&255)+amt,0,255),b=clamp((n&255)+amt,0,255);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1)}
 function paletteForCurrent(mode=$('#palettePreset')?.value||'branch'){
   const cls=getClass().name,branch=getBranchName(),theme=getBranch().theme,profile=appearanceProfiles[cls];
@@ -1401,14 +1459,21 @@ function addV18AppearanceRefinement(model,root,chest,hips,head,leftArm,rightArm,
  // This removes the floating side plates caused by parenting arm geometry to the chest.
  const sideMat=heavy?metalMat:armorMat;
  for(const [arm,side] of [[leftArm,-1],[rightArm,1]]){
-   if(c.shoulders!=='nenhuma'){
-     makePart(arm.shoulder,new THREE.BoxGeometry(.22,.27,.16),sideMat,[side*.10,.02,.12],[1,1,1],[0,side*.12,side*.16]);
-     makePart(arm.shoulder,new THREE.BoxGeometry(.14,.18,.11),accentMat,[side*.14,-.10,.20],[1,1,1],[0,side*.18,side*.10]);
+   const activePauldron=c.shoulders!=='nenhuma'&&!(c.shoulders==='assimetrica'&&side>0);
+   if(activePauldron&&c.shoulders==='medias'){
+     makePart(arm.shoulder,new THREE.BoxGeometry(.18,.16,.12),sideMat,[side*.10,-.02,.15],[1,1,1],[0,side*.12,side*.12]);
+   }else if(activePauldron&&(c.shoulders==='pesadas'||c.shoulders==='assimetrica')){
+     makePart(arm.shoulder,new THREE.BoxGeometry(.24,.25,.17),metalMat,[side*.11,.03,.12],[1,1,1],[0,side*.14,side*.16]);
+     makePart(arm.shoulder,new THREE.BoxGeometry(.15,.17,.11),accentMat,[side*.15,-.11,.21],[1,1,1],[0,side*.18,side*.10]);
    }
-   if(c.gloves!=='sem'){
-     makePart(arm.elbow,new THREE.SphereGeometry(.115,14,10),metalMat,[0,-.05,.14],[1.15,.82,.72]);
-     makePart(arm.elbow,new THREE.BoxGeometry(.19,.34,.13),sideMat,[0,-.27,.13],[1,1,1],[0,side*.08,side*.06]);
-     for(let i=0;i<3;i++)makePart(arm.elbow,new THREE.BoxGeometry(.17,.018,.020),accentMat,[0,-.18-i*.095,.205],[1,1,1],[0,side*.08,0]);
+   if(c.gloves==='couro'){
+     for(const y of[-.18,-.34])makePart(arm.elbow,new THREE.TorusGeometry(.112,.010,6,18),accentMat,[0,y,.03],[1,1,1],[Math.PI/2,0,0]);
+   }else if(c.gloves==='runicas'){
+     makePart(arm.elbow,new THREE.OctahedronGeometry(.032,0),auraMat,[0,-.28,.205],[1,1,.48]);
+   }else if(c.gloves==='manoplas'){
+     makePart(arm.elbow,new THREE.SphereGeometry(.118,14,10),metalMat,[0,-.05,.14],[1.15,.82,.72]);
+     makePart(arm.elbow,new THREE.BoxGeometry(.20,.32,.14),metalMat,[0,-.27,.13],[1,1,1],[0,side*.08,side*.06]);
+     for(let i=0;i<3;i++)makePart(arm.elbow,new THREE.BoxGeometry(.18,.020,.022),accentMat,[0,-.18-i*.095,.21],[1,1,1],[0,side*.08,0]);
    }
  }
  // Hip/tasset details remain on hips because they move with the pelvis.
@@ -1518,8 +1583,8 @@ function addBranchSignature(chest,hips,leftArm,rightArm,c,meta,mats){
  const b=meta.branch||'',{metalMat,secondaryMat,accentMat,auraMat,armorMat}=mats;
  const gem=(parent,p,r=.05)=>makePart(parent,new THREE.OctahedronGeometry(r,0),auraMat,p,[1,1,.5]);
  if(b==='Colosso Pesado'){for(const side of[-1,1])makePart(chest,new THREE.BoxGeometry(.23,.42,.15),metalMat,[side*.48,.05,.57]);}
- else if(b==='Guardião Arcano'){for(const side of[-1,1]){makePart(leftArm.shoulder,new THREE.TorusGeometry(.20,.018,7,24),auraMat,[0,.04,.28],[1,1,.5],[Math.PI/2,0,0]);gem(chest,[side*.27,.18,.71]);}}
- else if(b==='Berserker'){for(const side of[-1,1]){if(meta.race!=='Orc')makePart(leftArm.shoulder,new THREE.ConeGeometry(.065,.30,8),metalMat,[side*.12,.17,.05],[1,1,1],[0,0,side*.52]);makePart(hips,new THREE.BoxGeometry(.12,.42,.06),secondaryMat,[side*.36,-.36,.48],[1,1,1],[0,0,side*.25]);}}
+ else if(b==='Guardião Arcano'){for(const [arm,side] of [[leftArm,-1],[rightArm,1]]){if(c.shoulders!=='nenhuma'&&!(c.shoulders==='assimetrica'&&side>0))makePart(arm.shoulder,new THREE.TorusGeometry(.20,.018,7,24),auraMat,[0,.04,.28],[1,1,.5],[Math.PI/2,0,0]);gem(chest,[side*.27,.18,.71]);}}
+ else if(b==='Berserker'){for(const [arm,side] of [[leftArm,-1],[rightArm,1]]){if(meta.race!=='Orc'&&c.shoulders!=='nenhuma'&&!(c.shoulders==='assimetrica'&&side>0))makePart(arm.shoulder,new THREE.ConeGeometry(.065,.30,8),metalMat,[side*.12,.17,.05],[1,1,1],[0,0,side*.52]);makePart(hips,new THREE.BoxGeometry(.12,.42,.06),secondaryMat,[side*.36,-.36,.48],[1,1,1],[0,0,side*.25]);}}
  else if(b==='Cavaleiro de Espinhos'){for(const side of[-1,1])for(let i=0;i<3;i++)makePart(chest,new THREE.ConeGeometry(.035,.20,7),accentMat,[side*(.30+i*.08),.25-i*.16,.68],[1,1,1],[0,0,-side*.72]);}
  else if(b==='Vanguarda de Cerco'){makePart(chest,new THREE.BoxGeometry(1.25,.12,.16),metalMat,[0,.40,.42]);}
  else if(b==='Piromante'){for(const side of[-1,1])makePart(chest,new THREE.ConeGeometry(.045,.22,8),auraMat,[side*.31,.18,.66],[1,1,1],[0,0,side*.38]);}
@@ -1548,7 +1613,7 @@ function addBranchSignature(chest,hips,leftArm,rightArm,c,meta,mats){
  else if(b==='Arqueiro Acrobático'){for(const side of[-1,1])makePart(hips,new THREE.BoxGeometry(.10,.45,.04),accentMat,[side*.35,-.28,.48],[1,1,1],[0,0,side*.40]);}
  else if(b==='Lanceiro'){makePart(chest,new THREE.BoxGeometry(.11,.86,.045),accentMat,[0,-.02,.70]);makePart(chest,new THREE.BoxGeometry(.62,.06,.045),metalMat,[0,.25,.70]);}
  else if(b==='Mestre de Armas'){for(const side of[-1,1])makePart(hips,new THREE.CylinderGeometry(.045,.045,.50,8),metalMat,[side*.48,-.18,-.34],[1,1,1],[0,0,side*.50]);}
- else if(b==='Pugilista de Guerra'){for(const arm of[leftArm,rightArm])makePart(arm.elbow,new THREE.SphereGeometry(.16,16,12),metalMat,[0,-.28,.08],[1.2,.75,.9]);}
+ else if(b==='Pugilista de Guerra'&&c.gloves==='manoplas'){for(const arm of[leftArm,rightArm])makePart(arm.elbow,new THREE.SphereGeometry(.16,16,12),metalMat,[0,-.28,.08],[1.2,.75,.9]);}
  else if(b==='Gladiador'){for(const side of[-1,1])makePart(chest,new THREE.BoxGeometry(.13,.52,.05),metalMat,[side*.34,.02,.68],[1,1,1],[0,0,side*.24]);}
  else if(b==='Cavaleiro de Campo'){makePart(chest,new THREE.BoxGeometry(.08,.92,.04),accentMat,[0,.02,.69]);}
 }
@@ -1780,27 +1845,103 @@ function addArmorSignature(chest,hips,sig,mats){
 }
 function addChestDetail(chest,c,mats){const {accentMat,auraMat,secondaryMat}=mats;if(c.chestDetail==='emblema')makePart(chest,new THREE.OctahedronGeometry(.11,0),accentMat,[0,.05,.71],[1,1,.45]);else if(c.chestDetail==='runas')for(const y of[-.10,.08,.26])makePart(chest,new THREE.TorusGeometry(.052,.009,5,14,Math.PI*1.5),auraMat,[0,y,.71],[1,1,1],[Math.PI/2,0,0]);else if(c.chestDetail==='faixas'){makePart(chest,new THREE.BoxGeometry(.08,.92,.035),secondaryMat,[.18,-.02,.70],[1,1,1],[0,0,.48]);makePart(chest,new THREE.BoxGeometry(.08,.92,.035),secondaryMat,[-.18,-.02,.70],[1,1,1],[0,0,-.48])}else if(c.chestDetail==='gemas')for(const x of[-.18,0,.18])makePart(chest,new THREE.OctahedronGeometry(.06,0),auraMat,[x,.05,.71],[1,1,.42])}
 function addShoulderArmor(shoulder,c,side,mats){
- if(c.shoulders==='nenhuma')return;const {armorMat,metalMat,accentMat,auraMat}=mats,size={leves:.20,medias:.29,pesadas:.38,assimetrica:.35}[c.shoulders]||.29;if(c.shoulders==='assimetrica'&&side>0)return;
- const mat=c.shoulders==='leves'?armorMat:metalMat;makePart(shoulder,new THREE.SphereGeometry(size,24,16),mat,[0,.03,0],[1.42,.52,1.12]);
- makePart(shoulder,new THREE.BoxGeometry(size*2.32,.075,size*1.50),accentMat,[side*.035,-.05,.02],[1,1,1],[0,0,side*.06]);
- makePart(shoulder,new THREE.TorusGeometry(size*.72,.018,7,28),accentMat,[0,.02,.17],[1,1,.72],[Math.PI/2,0,0]);
- if(c.shoulders==='medias'||c.shoulders==='pesadas'){makePart(shoulder,new THREE.BoxGeometry(size*1.85,.085,size*.75),metalMat,[0,-.13,.12],[1,1,1],[0,0,side*.03]);for(const x of[-size*.50,size*.50])makePart(shoulder,new THREE.SphereGeometry(.024,8,7),accentMat,[x,-.10,.29],[1,.7,.55])}
- if(c.shoulders==='pesadas'){makePart(shoulder,new THREE.BoxGeometry(size*2.15,.12,size*1.55),metalMat,[0,.12,-.02]);makePart(shoulder,new THREE.ConeGeometry(.055,.26,12),metalMat,[side*.18,.19,0],[1,1,1],[0,0,side<0?-.55:.55]);makePart(shoulder,new THREE.OctahedronGeometry(.045,0),auraMat,[0,.13,.31],[1,1,.55])}
+ const style=c.shoulders||'nenhuma';
+ if(style==='nenhuma'||(style==='assimetrica'&&side>0))return;
+ const {armorMat,metalMat,accentMat,auraMat,secondaryMat}=mats;
+ if(style==='leves'){
+  // Low-profile leather/cloth cap: noticeably smaller and lighter than the other choices.
+  makePart(shoulder,new THREE.SphereGeometry(.205,22,14),armorMat,[0,.025,.015],[1.30,.34,.94]);
+  makePart(shoulder,new THREE.BoxGeometry(.30,.042,.20),secondaryMat,[side*.015,-.075,.06],[1,1,1],[0,0,side*.08]);
+  makePart(shoulder,new THREE.TorusGeometry(.105,.011,7,22),accentMat,[0,-.055,.15],[1,1,.72],[Math.PI/2,0,0]);
+  return;
+ }
+ if(style==='medias'){
+  makePart(shoulder,new THREE.SphereGeometry(.285,24,16),metalMat,[0,.035,0],[1.45,.48,1.12]);
+  makePart(shoulder,new THREE.BoxGeometry(.54,.080,.30),accentMat,[side*.025,-.055,.03],[1,1,1],[0,0,side*.06]);
+  makePart(shoulder,new THREE.BoxGeometry(.43,.095,.22),metalMat,[0,-.145,.115],[1,1,1],[0,0,side*.035]);
+  for(const x of[-.13,.13])makePart(shoulder,new THREE.SphereGeometry(.022,8,6),accentMat,[x,-.105,.235],[1,.7,.55]);
+  return;
+ }
+ // Heavy and asymmetric use a true articulated pauldron silhouette; asymmetric is left shoulder only.
+ const asymmetric=style==='assimetrica';
+ const s=asymmetric?.355:.385;
+ makePart(shoulder,new THREE.SphereGeometry(s,26,18),metalMat,[0,.055,-.005],[1.52,.50,1.18]);
+ makePart(shoulder,new THREE.BoxGeometry(s*1.72,.12,s*.82),metalMat,[0,-.11,.12],[1,1,1],[0,0,side*.04]);
+ makePart(shoulder,new THREE.BoxGeometry(s*2.12,.13,s*1.42),metalMat,[side*.025,.14,-.02],[1,1,1],[0,0,side*.075]);
+ makePart(shoulder,new THREE.BoxGeometry(s*1.80,.055,s*.54),accentMat,[0,.02,.30],[1,1,1],[0,0,side*.035]);
+ makePart(shoulder,new THREE.TorusGeometry(s*.66,.019,7,28),accentMat,[0,.035,.20],[1,1,.72],[Math.PI/2,0,0]);
+ makePart(shoulder,new THREE.ConeGeometry(.060,.29,10),metalMat,[side*.20,.22,-.02],[1,1,1],[0,0,side<0?-.56:.56]);
+ if(asymmetric){
+  makePart(shoulder,new THREE.ConeGeometry(.045,.22,9),accentMat,[-side*.17,.18,.02],[1,1,1],[0,0,side<0?.45:-.45]);
+  makePart(shoulder,new THREE.OctahedronGeometry(.050,0),auraMat,[0,.14,.32],[1,1,.55]);
+ }
 }
+
 
 
 function addArm(torso,c,side,mats,meta={}){
- const {skinMat,armorMat,secondaryMat,metalMat,auraMat,accentMat}=mats,stance=c.stance;const shoulder=joint(torso,[side*.70,.28,.18],[0,0,side*(stance==='defensiva'?.22:stance==='arcana'?.30:stance==='furtiva'?.05:.12)]);addShoulderArmor(shoulder,c,side,mats);
+ const {skinMat,armorMat,secondaryMat,metalMat,auraMat,accentMat}=mats;
+ const stance=c.stance||'heroica';
  const strong=['Tanke','Paladino','Fighter'].includes(meta.class),berserker=meta.branch==='Berserker',bulk=(strong?1.22:1)*(berserker?1.18:1)*(c.bodyType==='robusto'?1.10:1);
- makePart(shoulder,new THREE.CapsuleGeometry(.105*bulk,.42*bulk,8,12),skinMat,[0,-.28,0],[1,1,.98]);
- if(c.shoulders!=='nenhuma'){makePart(shoulder,new THREE.CylinderGeometry(.135,.112,.25,18),c.shoulders==='leves'?armorMat:metalMat,[0,-.24,0]);makePart(shoulder,new THREE.TorusGeometry(.12,.016,7,22),accentMat,[0,-.36,0],[1,1,1],[Math.PI/2,0,0])}
- const elbow=joint(shoulder,[0,-.57*bulk,0],[-1.05,0,0]);makePart(elbow,new THREE.CapsuleGeometry(.095*bulk,.38*bulk,8,12),skinMat,[0,-.24,0],[1,1,.98]);
- if(c.gloves!=='sem'){const bracerMat=c.gloves==='couro'?secondaryMat:c.gloves==='runicas'?auraMat:metalMat;makePart(elbow,new THREE.CylinderGeometry(.12,.10,.36,18),bracerMat,[0,-.28,0]);makePart(elbow,new THREE.BoxGeometry(.245,.085,.205),accentMat,[0,-.16,.06]);makePart(elbow,new THREE.BoxGeometry(.18,.18,.045),bracerMat,[0,-.30,.13]);if(c.gloves==='runicas')makePart(elbow,new THREE.TorusGeometry(.065,.010,6,18),auraMat,[0,-.29,.17],[1,1,1],[Math.PI/2,0,0])}
- const hand=joint(elbow,[0,-.51*bulk,0],[-elbow.rotation.x,0,0]);const gloveMat=c.gloves==='sem'?skinMat:c.gloves==='couro'?secondaryMat:c.gloves==='runicas'?auraMat:metalMat,gSize=(c.gloves==='manoplas'?.145:.118)*(strong?1.08:1);makePart(hand,new THREE.SphereGeometry(gSize,20,14),gloveMat,[0,0,0],[1,.88,1]);
- for(let i=0;i<4;i++)makePart(hand,new THREE.CapsuleGeometry(.023,.072,4,8),gloveMat,[-.069+i*.046,-.042,.092],[1,1,1],[Math.PI/2,0,0]);makePart(hand,new THREE.CapsuleGeometry(.032,.065,4,8),gloveMat,[-side*.10,.015,.04],[1,1,1],[0,0,side*.65]);
- if(c.gloves==='manoplas'){for(const x of[-.07,-.023,.023,.07])makePart(hand,new THREE.BoxGeometry(.036,.135,.058),metalMat,[x,-.10,.045],[1,1,1],[.12,0,0]);makePart(hand,new THREE.BoxGeometry(.21,.075,.15),accentMat,[0,.03,.04])}
+ const skinShade=animeMaterial(skinMat.color.clone().multiplyScalar(.86),{skin:true});
+ const skinDeep=animeMaterial(skinMat.color.clone().multiplyScalar(.72),{skin:true});
+ const pose={heroica:{sx:-.08,sy:side<0?.18:-.12,sz:side*.20,ex:-1.08,ez:side*.05,wx:.16,wz:side*.06},defensiva:{sx:-.02,sy:side<0?.10:-.06,sz:side*.30,ex:-1.18,ez:side*.09,wx:.22,wz:side*.10},arcana:{sx:-.18,sy:side<0?.22:-.18,sz:side*.18,ex:-1.00,ez:side*.04,wx:.10,wz:side*.04},furtiva:{sx:.04,sy:side<0?.08:-.12,sz:side*.10,ex:-1.22,ez:side*.12,wx:.20,wz:side*.08}}[stance];
+ const shoulder=joint(torso,[side*.68,.28,.17],[pose.sx,pose.sy,pose.sz]);
+ addShoulderArmor(shoulder,c,side,mats);
+ // Anatomical arm masses: deltoid, bicep/tricep and tapered forearm.
+ makePart(shoulder,new THREE.CapsuleGeometry(.112*bulk,.43*bulk,8,14),skinMat,[0,-.29,0],[1.06,1,.95]);
+ makePart(shoulder,new THREE.SphereGeometry(.125*bulk,18,14),skinMat,[side*.015,-.08,.04],[1.14,1.02,1.08]);
+ makePart(shoulder,new THREE.SphereGeometry(.090*bulk,16,12),skinShade,[-side*.015,-.28,.12],[1.30,.92,.78]);
+ makePart(shoulder,new THREE.SphereGeometry(.082*bulk,16,12),skinDeep,[side*.01,-.35,-.08],[1.12,.86,.70]);
+ const activePauldron=c.shoulders!=='nenhuma'&&!(c.shoulders==='assimetrica'&&side>0);
+ if(activePauldron){
+  if(c.shoulders==='leves')makePart(shoulder,new THREE.TorusGeometry(.108,.013,7,22),secondaryMat,[0,-.37,0],[1,1,1],[Math.PI/2,0,0]);
+  else makePart(shoulder,new THREE.CylinderGeometry(c.shoulders==='pesadas'||c.shoulders==='assimetrica'?.145:.132,.105,.26,18),c.shoulders==='medias'?armorMat:metalMat,[0,-.25,0]);
+ }
+ const elbow=joint(shoulder,[0,-.59*bulk,.02],[pose.ex,0,pose.ez]);
+ makePart(elbow,new THREE.CapsuleGeometry(.098*bulk,.40*bulk,8,14),skinMat,[0,-.24,0],[1,.95,.92]);
+ makePart(elbow,new THREE.SphereGeometry(.072*bulk,16,12),skinShade,[0,-.08,.02],[1.10,.74,.94]);
+ makePart(elbow,new THREE.SphereGeometry(.062*bulk,16,12),skinShade,[side*.03,-.30,.09],[1.24,.72,.78]);
+ makePart(elbow,new THREE.SphereGeometry(.054*bulk,14,10),skinDeep,[-side*.05,-.36,-.03],[1.18,.62,.70]);
+ const glove=c.gloves||'simples';
+ if(glove==='simples'){
+  makePart(elbow,new THREE.CylinderGeometry(.108,.094,.22,16),secondaryMat,[0,-.35,.01]);
+  makePart(elbow,new THREE.TorusGeometry(.103,.010,6,18),accentMat,[0,-.25,.015],[1,1,1],[Math.PI/2,0,0]);
+ }else if(glove==='couro'){
+  makePart(elbow,new THREE.CylinderGeometry(.126,.098,.37,16),secondaryMat,[0,-.29,.02]);
+  for(const y of[-.18,-.31,-.43])makePart(elbow,new THREE.TorusGeometry(.112,.010,6,18),accentMat,[0,y,.02],[1,1,1],[Math.PI/2,0,0]);
+  makePart(elbow,new THREE.BoxGeometry(.19,.12,.050),secondaryMat,[0,-.30,.12]);
+ }else if(glove==='runicas'){
+  makePart(elbow,new THREE.CylinderGeometry(.122,.094,.38,18),armorMat,[0,-.30,.02]);
+  makePart(elbow,new THREE.BoxGeometry(.205,.20,.052),metalMat,[0,-.29,.13]);
+  for(const y of[-.18,-.30,-.42])makePart(elbow,new THREE.TorusGeometry(.100,.009,6,20),auraMat,[0,y,.14],[1,1,1],[Math.PI/2,0,0]);
+  makePart(elbow,new THREE.OctahedronGeometry(.038,0),auraMat,[0,-.30,.19],[1,1,.45]);
+ }else if(glove==='manoplas'){
+  makePart(elbow,new THREE.CylinderGeometry(.142,.105,.40,18),metalMat,[0,-.30,.02]);
+  makePart(elbow,new THREE.BoxGeometry(.265,.090,.220),accentMat,[0,-.16,.07]);
+  makePart(elbow,new THREE.BoxGeometry(.205,.23,.070),metalMat,[0,-.31,.145]);
+  for(const y of[-.22,-.34,-.46])makePart(elbow,new THREE.BoxGeometry(.19,.028,.16),armorMat,[0,y,.12]);
+ }
+ const hand=joint(elbow,[0,-.52*bulk,.02],[pose.wx,0,pose.wz]);
+ const gloveMat=glove==='sem'?skinMat:glove==='couro'||glove==='simples'?secondaryMat:glove==='runicas'?armorMat:metalMat;
+ const gSize=(glove==='manoplas'?.152:.122)*(strong?1.08:1);
+ makePart(hand,new THREE.BoxGeometry(gSize*1.22,gSize*.74,gSize*.96),gloveMat,[0,-.005,.02],[1,1,1],[.18,0,0]);
+ makePart(hand,new THREE.SphereGeometry(gSize*.72,18,12),gloveMat,[0,.03,-.01],[1.10,.80,.76]);
+ for(let i=0;i<4;i++)makePart(hand,new THREE.CapsuleGeometry(.020*(strong?1.05:1),.090,4,8),gloveMat,[-.058+i*.039,-.065,.087],[1,1,.92],[Math.PI/2+.12,0,0]);
+ makePart(hand,new THREE.CapsuleGeometry(.026,.076,4,8),gloveMat,[-side*.095,-.005,.03],[1,1,.95],[0,side*.34,side*.55]);
+ if(glove==='couro'||glove==='simples')makePart(hand,new THREE.TorusGeometry(gSize*.42,.009,6,18),accentMat,[0,.015,-.02],[1,1,1],[Math.PI/2,0,0]);
+ if(glove==='runicas'){
+  makePart(hand,new THREE.TorusGeometry(gSize*.48,.010,6,18),auraMat,[0,.015,.04],[1,1,1],[Math.PI/2,0,0]);
+  makePart(hand,new THREE.OctahedronGeometry(.026,0),auraMat,[0,.03,.12],[1,1,.45]);
+ }
+ if(glove==='manoplas'){
+  for(const x of[-.07,-.023,.023,.07])makePart(hand,new THREE.BoxGeometry(.036,.135,.058),metalMat,[x,-.10,.045],[1,1,1],[.12,0,0]);
+  makePart(hand,new THREE.BoxGeometry(.21,.075,.15),accentMat,[0,.03,.04]);
+  makePart(hand,new THREE.BoxGeometry(.18,.05,.17),metalMat,[0,-.03,.09]);
+ }
  return {shoulder,elbow,hand}
 }
+
 
 function addLeg(hips,c,side,mats){
  const {armorMat,secondaryMat,metalMat,accentMat,auraMat}=mats,hip=joint(hips,[side*.23,-.10,0]);makePart(hip,new THREE.CapsuleGeometry(.14,.48,8,12),secondaryMat,[0,-.32,0]);
@@ -2089,6 +2230,22 @@ function addWeaponSet(leftHand,rightHand,chest,c,meta,mats,name=''){
  else if(/Malho|Martelo|Maça|Quebra-Mundos|Clava/.test(n))primary=addImportedHammerWeapon(rightHand,mats,{large,solar:/Solar|Serafim|Juramento|Sagrado/.test(n),world:/Quebra-Mundos/.test(n),runic:/Rúnic|Relicário|Dracônic/.test(n),modelKey:c.hammerModel||'auto',weaponData})
  else primary=addImportedSwordWeapon(rightHand,mats,{large,holy:cls==='Paladino'||/Consagrada|Aurora|Juramento/.test(n),dark:/Profano|Fantasma/.test(n),name:n,modelKey:c.swordModel||'auto',weaponData});
  const sig=(weaponCatalog.find(w=>w.name===n)||{}).signature||1;if(primary&&!primary.userData.importedFBX)addWeaponUniqueDetails(primary,mats,sig,n,'primary');if(offhand&&!offhand.userData.importedFBX)addWeaponUniqueDetails(offhand,mats,sig+37,n,'offhand');
+ // Seat every held object into the palm and push the grip toward the fingers.
+ // +Z is the character's front, so a positive X rotation makes the weapon lean forward.
+ const seatInGrip=w=>{if(!w)return;const t=w.userData.weaponType||'';
+  const front=t==='shield'?.235:(t==='orb'||t==='codex'?.135:(t==='bow'?.105:.285));
+  w.position.z+=front;
+  if(t==='shield'){w.position.y+=.014;}
+  else if(!['orb','codex','bow'].includes(t)){w.position.y+=.036;}
+  // Aggressive forward cant: blade/pole tips project clearly in front of the character; tank shields tilt forward too.
+  const leanByType={
+   sword:1.10,spear:1.05,dagger:1.02,axe:.94,hammer:.90,staff:.86,elemental_relic:1.00,censer:.78,
+   shield:.65,bow:.20,orb:.20,codex:.20
+  };
+  w.userData.forwardLean=leanByType[t]??.64;
+  w.userData.gripSeated=true
+ };
+ seatInGrip(primary);seatInGrip(offhand);
  return {primary,offhand}
 }
 
@@ -2382,7 +2539,7 @@ function buildAnimeHeroModel(c,meta,wname=''){
  const hips=joint(root,[0,-.43,0]);makePart(hips,new THREE.CylinderGeometry(female?.45:.50,female?.52:.58,.28,22),secondaryMat,[0,.05,0]);
  // Seat the torso into the belt/hips before scaling it, preventing a visible floating waist gap.
  const chest=joint(hips,[0,.52,0]);const tankScale=cls==='Tanke'?1.20:.90;chest.scale.set((female?.84:.93)*tankScale,(female?.91:.95)*tankScale,(female?.88:.94)*tankScale);addClassArmor(chest,hips,c,meta,mats);addArmorSurfaceDetails(chest,hips,c,meta,mats);addChestDetail(chest,c,mats);addBackArmor(chest,hips,c,meta,mats);const cape=addCape(chest,c,secondaryMat,mats);
- const armConfig=cls==='Mago'?{...c,shoulders:'nenhuma',gloves:'runicas'}:c,leftArm=addArm(chest,armConfig,-1,mats,meta),rightArm=addArm(chest,armConfig,1,mats,meta);const leftLeg=addLeg(hips,c,-1,mats),rightLeg=addLeg(hips,c,1,mats);addBranchSignature(chest,hips,leftArm,rightArm,c,meta,mats);
+ const leftArm=addArm(chest,c,-1,mats,meta),rightArm=addArm(chest,c,1,mats,meta);const leftLeg=addLeg(hips,c,-1,mats),rightLeg=addLeg(hips,c,1,mats);addBranchSignature(chest,hips,leftArm,rightArm,c,meta,mats);
  const neck=joint(chest,[0,.70,0]);makePart(neck,new THREE.CylinderGeometry(.15,.19,.36,20),skinMat,[0,-.02,0]);const headJoint=joint(neck,[0,.45,0]);
  const fs=faceScales(c.faceShape);headJoint.scale.setScalar(rv.head||1);let headMesh;
  if(race==='Minotauro'){headMesh=makePart(headJoint,new THREE.SphereGeometry(.47,30,22),skinMat,[0,0,0],[1.05,1.0,.98]);makePart(headJoint,new THREE.CylinderGeometry(.20,.28,.42,20),skinMat,[0,-.08,.38],[1,1,1],[Math.PI/2,0,0]);makePart(headJoint,new THREE.SphereGeometry(.20,22,16),animeMaterial('#2c2420',{rough:.72}),[0,-.13,.58],[1.05,.58,.58])}else{headMesh=makePart(headJoint,new THREE.SphereGeometry(.45,30,22),skinMat,[0,0,0],fs);if(['angular','quadrado','largo'].includes(c.faceShape))makePart(headJoint,new THREE.BoxGeometry(c.faceShape==='largo'?.58:.52,.16,.29),skinMat,[0,-.25,.10])}
@@ -2392,7 +2549,13 @@ function buildAnimeHeroModel(c,meta,wname=''){
  addRaceHeadFeatures(headJoint,root,c,race,mats);addRaceDetail(headJoint,chest,hips,leftLeg,rightLeg,c,race,mats);const hairGroup=addHair(headJoint,c,race,hairMat);addBeard(headJoint,c,race,hairMat);if(c.helmet!=='sim')addHeadAccessory(headJoint,c,mats);addHelmet(headJoint,c,meta,mats);addMageRegalia(headJoint,chest,hips,c,meta,mats);addRaceRefinement(headJoint,chest,c,race,mats);addFineArmor(chest,hips,leftArm,rightArm,leftLeg,rightLeg,c,meta,mats);addV18AppearanceRefinement(model,root,chest,hips,headJoint,leftArm,rightArm,leftLeg,rightLeg,c,meta,mats,race,cls);
  if(c.buildDetail==='cicatrizes')makePart(chest,new THREE.BoxGeometry(.014,.27,.012),animeMaterial('#743d40'),[-.54,.02,.49],[1,1,1],[0,0,-.25]);if(c.buildDetail==='runas')for(const y of[-.13,.05,.23])makePart(chest,new THREE.TorusGeometry(.045,.008,5,12),auraMat,[-.54,y,.49],[1,1,1],[Math.PI/2,0,0]);if(c.buildDetail==='tatuagens')makePart(chest,new THREE.BoxGeometry(.018,.48,.012),animeMaterial('#233247'),[-.54,.02,.49],[1,1,1],[0,0,.45]);
  const weapons=addWeaponSet(leftArm.hand,rightArm.hand,chest,c,meta,mats,wname),weapon=weapons.primary,auraRing=makePart(root,new THREE.TorusGeometry(1.02,.014,8,64),auraMat,[0,-1.50,0],[1,1,1],[Math.PI/2,0,0]);if(['Mago','Clérigo','Paladino'].includes(cls))for(let i=0;i<3;i++){const a=i*Math.PI*2/3;makePart(chest,new THREE.OctahedronGeometry(.045,0),auraMat,[Math.cos(a)*.62,.20+Math.sin(a)*.08,Math.sin(a)*.62])}
- for(const item of [weapon,weapons.offhand])if(item){item.rotation.x=item.userData.weaponType==='sword'?.09:0;item.name='held-weapon';if(!item.userData.importedFBX)addWeaponFinish(item,mats);}
+ for(const item of [weapon,weapons.offhand])if(item){
+  const t=item.userData.weaponType||'';
+  item.rotation.x=item.userData.forwardLean??({sword:1.10,spear:1.05,dagger:1.02,axe:.94,hammer:.90,staff:.86,elemental_relic:1.00,censer:.78,shield:.65,bow:.20,orb:.20,codex:.20}[t]??.90);
+  if(['sword','hammer','axe','staff','spear','dagger','elemental_relic','censer'].includes(t))item.rotation.z+=(item.userData.baseRotZ||0)*.08;
+  item.name='held-weapon';
+  if(!item.userData.importedFBX)addWeaponFinish(item,mats);
+ }
  const stance=c.stance||'heroica';if(stance==='defensiva'){leftArm.shoulder.rotation.z=-.26;rightArm.shoulder.rotation.z=.26}else if(stance==='arcana'){leftArm.shoulder.rotation.x=-.18;rightArm.shoulder.rotation.x=-.12}else if(stance==='furtiva'){chest.rotation.x=.06;leftArm.shoulder.rotation.z=-.06;rightArm.shoulder.rotation.z=.06}
  model.traverse(n=>{if(n.isGroup)n.userData.restRotation=n.rotation.clone()});
  model.userData.parts={root,chest,headJoint,hair:hairGroup,cape,weapon,offhand:weapons.offhand,aura:auraRing,leftShoulder:leftArm.shoulder,rightShoulder:rightArm.shoulder,leftArm:leftArm.shoulder,rightArm:rightArm.shoulder};model.userData.meta=meta;return model
@@ -2558,14 +2721,14 @@ function choosePath(side){$('#pathDialog').close();const h=state.hero,roll=Math.
 window.choosePath=choosePath;
 
 function openCamp(){const h=state.hero;$('#campSummary').innerHTML=`${h.name} terminou a batalha com <b>${Math.max(0,Math.round(h.hp))}/${h.maxHp} HP</b>, ${Math.round(h.mana)}/${h.maxMana} mana e ${Math.round(h.stam)}/${h.maxStam} stamina.`;$('#campDialog').showModal()}
-function battleLoot(){const h=state.hero;const roll=Math.random();const weaponPool=weaponCatalog.filter(w=>(w.class===h.class||w.race===h.race||w.universal)&&(w.universal||w.large===h.large)&&!w.bossReward&&(!h.inventoryWeapons||!h.inventoryWeapons.includes(w.id)));const armorPool=progressionArmorCandidates(h,true);if(armorPool.length&&((h.wins||0)%2===0||roll<.28)){const x=pick(armorPool);h.inventoryArmors.push(x.id);log(`No saque, você encontrou um conjunto: <b>${x.name}</b>. Foi enviado ao inventário.`,'good');return}if(roll<.34&&weaponPool.length){const x=pick(weaponPool);h.inventoryWeapons.push(x.id);log(`No saque, você encontrou <b>${x.name}</b>. Foi enviado ao inventário.`,'good');return}if(roll<.64){const kinds=['life','mana','stamina'],k=pick(kinds),names={life:'cura',mana:'mana',stamina:'stamina'};h.pots[k]++;log(`Você encontrou uma <b>poção de ${names[k]}</b> no campo de batalha.`,'good');return}const coins=rand(18,40);h.coins+=coins;log(`Você vasculhou a área e encontrou mais <b class="coin">${coins} moedas</b>.`,'good')}
+function battleLoot(){const h=state.hero;const roll=Math.random();const weaponPool=weaponCatalog.filter(w=>weaponAllowedForBuild(w,h.class,h.race,h.large,false)&&!w.bossReward&&(!h.inventoryWeapons||!h.inventoryWeapons.includes(w.id)));const armorPool=progressionArmorCandidates(h,true);if(armorPool.length&&((h.wins||0)%2===0||roll<.28)){const x=pick(armorPool);h.inventoryArmors.push(x.id);log(`No saque, você encontrou um conjunto: <b>${x.name}</b>. Foi enviado ao inventário.`,'good');return}if(roll<.34&&weaponPool.length){const x=pick(weaponPool);h.inventoryWeapons.push(x.id);log(`No saque, você encontrou <b>${x.name}</b>. Foi enviado ao inventário.`,'good');return}if(roll<.64){const kinds=['life','mana','stamina'],k=pick(kinds),names={life:'cura',mana:'mana',stamina:'stamina'};h.pots[k]++;log(`Você encontrou uma <b>poção de ${names[k]}</b> no campo de batalha.`,'good');return}const coins=rand(18,40);h.coins+=coins;log(`Você vasculhou a área e encontrou mais <b class="coin">${coins} moedas</b>.`,'good')}
 function postBattleChoice(kind){const h=state.hero;if(kind==='rest'){const hp=Math.round(h.maxHp*.25),ma=Math.round(h.maxMana*.55),st=Math.round(h.maxStam*.55);h.hp=Math.min(h.maxHp,h.hp+hp);h.mana=Math.min(h.maxMana,h.mana+ma);h.stam=Math.min(h.maxStam,h.stam+st);log(`Você descansou: +${hp} HP, +${ma} mana e +${st} stamina.`,'good')}else if(kind==='heal'){const hp=Math.round(h.maxHp*.55),ma=Math.round(h.maxMana*.12),st=Math.round(h.maxStam*.12);h.hp=Math.min(h.maxHp,h.hp+hp);h.mana=Math.min(h.maxMana,h.mana+ma);h.stam=Math.min(h.maxStam,h.stam+st);log(`Você tratou os ferimentos e recuperou <b>${hp} HP</b>.`,'good')}else if(kind==='loot'){battleLoot()}$('#campDialog').close();render();finishPostBattle()}
 function finishPostBattle(){state.pendingEncounter=true;if(maybeOpenShop())return;setTimeout(openPathChoice,650)}
 window.postBattleChoice=postBattleChoice;
 
 function shopScheduleReset(){state.nextShopWin=(state.hero?.wins||0)+rand(3,6)}
 function maybeOpenShop(){if(state.hero.wins>=state.nextShopWin){shopScheduleReset();setTimeout(openShop,380);return true}return false}
-function shopWeaponCandidates(){const h=state.hero;return weaponCatalog.filter(w=>(w.class===h.class||w.race===h.race||w.universal)&&(w.universal||w.large===h.large)&&(!w.bossReward||h.bossDefeated)&&!h.inventoryWeapons.includes(w.id))}
+function shopWeaponCandidates(){const h=state.hero;return weaponCatalog.filter(w=>weaponAllowedForBuild(w,h.class,h.race,h.large,!!h.bossDefeated)&&!h.inventoryWeapons.includes(w.id))}
 function shopArmorCandidates(){const h=state.hero;return progressionArmorCandidates(h,true)}
 function generateShopStock(){const h=state.hero,items=[{type:'potion',kind:'life',name:'Poção de Cura',price:18,desc:'+35 HP'},{type:'potion',kind:'mana',name:'Poção de Mana',price:18,desc:'+30 mana'},{type:'potion',kind:'stamina',name:'Poção de Stamina',price:18,desc:'+30 stamina'},{type:'service',kind:'weaponUp',name:'Melhorar Arma Equipada',price:55+(effectiveWeapon(h).upgrade*30),desc:'+1 dano permanente na arma equipada'},{type:'service',kind:'armorUp',name:'Reforçar Armadura',price:50+(effectiveArmor(h).upgrade*30),desc:'+1 ARM permanente na armadura equipada'}];const wc=shopWeaponCandidates(),ac=shopArmorCandidates();if(wc.length)items.push({type:'weapon',item:pick(wc),name:'Arma nova'});if(ac.length)items.push({type:'armor',item:pick(ac),name:'Armadura nova'});return items}
 function openShop(){if($('#shopDialog').open)return;state.shopStock=generateShopStock();renderShop();$('#shopDialog').showModal();requestAnimationFrame(renderMerchant3D);log('Um <b>Mercador Errante</b> apareceu entre as ruínas.','shop')}
@@ -2574,7 +2737,7 @@ function buyShop(i){const h=state.hero,s=state.shopStock[i];const price=s.type==
 window.buyShop=buyShop;
 
 function usePotion(k){const h=state.hero;if(h.pots[k]<=0)return;h.pots[k]--;if(k==='life'){const n=35;h.hp=Math.min(h.maxHp,h.hp+n);floatNum('#heroFrame',n,'heal')}if(k==='mana')h.mana=Math.min(h.maxMana,h.mana+30);if(k==='stamina')h.stam=Math.min(h.maxStam,h.stam+30);render();renderInventory()}
-function equipWeapon(id){state.hero.weaponId=id;log(`Equipou <b>${effectiveWeapon().name}</b>.`,'good');render();renderInventory()}
+function equipWeapon(id){const h=state.hero,w=weaponCatalog.find(x=>x.id===id);if(!h||!w)return;if(!weaponAllowedForBuild(w,h.class,h.race,h.large,!!h.bossDefeated)){log('O Tanke só pode equipar escudos da classe; armas raciais continuam permitidas.','bad');return}h.weaponId=id;log(`Equipou <b>${effectiveWeapon().name}</b>.`,'good');render();renderInventory()}
 function equipArmor(id){state.hero.armorId=id;recomputeMaxima(state.hero,true);log(`Equipou <b>${effectiveArmor().name}</b>.`,'good');render();renderInventory()}
 function armorBonusMarkup(a){return a?.bonusTitle?`<span class="armor-bonus"><b>${a.bonusTitle}</b>${a.bonusDesc||''}</span>`:''}
 function renderInventory(){const h=state.hero,w=effectiveWeapon(h),a=effectiveArmor(h);$('#inventoryStats').innerHTML=`<b>${h.name}</b><br>${h.custom.gender==='feminino'?'Feminino':'Masculino'} • ${h.race}<br>${h.class} • ${h.branch}<br><span class="coin">💰 ${h.coins} moedas</span><br>🏆 Vitórias da run: <b>${h.wins}</b> • Total: <b>${state.totalWins}</b><br>ARM ${h.arm} • Poder ${h.pow} • Magia ${h.mag} • Destreza ${h.dex}<br>🛡 Conjuntos descobertos: <b>${Math.max(0,(h.inventoryArmors||[]).length-1)}</b> • ${h.bossDefeated?'👑 Arma lendária desbloqueada':'👑 Boss Final ainda não derrotado'}`;$('#inventoryPotions').innerHTML=[['life','Cura'],['mana','Mana'],['stamina','Stamina']].map(([k,n])=>`<div class="item"><b>${n}</b><div class="small">Quantidade: ${h.pots[k]}</div><button onclick="usePotion('${k}')">Usar</button></div>`).join('');$('#inventoryEquipped').innerHTML=`<div class="item-grid"><div class="item equipped"><b>${w.name}</b><div class="small">${w.rarity} • +${w.bonus} dano${w.upgrade?` • melhoria +${w.upgrade}`:''}<br>${w.desc||''}</div></div><div class="item equipped"><b>${a.name}</b><div class="small">${a.rarity||'Base'} • +${a.def} ARM${a.hp?` • +${a.hp} HP`:''}${a.mana?` • +${a.mana} mana`:''}<br>${a.desc||''}${armorBonusMarkup(a)}</div></div></div>`;$('#inventoryWeapons').innerHTML=h.inventoryWeapons.map(id=>{const base=weaponCatalog.find(x=>x.id===id),up=h.weaponUpgrades[id]||0;return `<div class="item ${id===h.weaponId?'equipped':''}"><span class="rarity">${base.rarity}</span><b>${base.name}</b><div class="small">+${base.bonus+up} dano${base.elementalBonus?` • +${base.elementalBonus} ${base.elementName||'elemental'}`:''}${up?` • melhoria +${up}`:''}<br>${base.desc||''}</div>${id===h.weaponId?'<div class="small">✓ Equipada</div>':`<button onclick="equipWeapon('${id}')">Equipar</button>`}</div>`}).join('');$('#inventoryArmors').innerHTML=h.inventoryArmors.length?h.inventoryArmors.map(id=>{const base=armorCatalog.find(x=>x.id===id),up=h.armorUpgrades[id]||0;return `<div class="item ${id===h.armorId?'equipped':''}"><span class="rarity">${base.rarity}</span><b>${base.name}</b><div class="small">+${base.def+up} ARM${base.hp?` • +${base.hp} HP`:''}${base.mana?` • +${base.mana} mana`:''}<br>${base.desc||''}${armorBonusMarkup(base)}<div class="armor-branch">${base.branch||'Conjunto de classe'}</div></div>${id===h.armorId?'<div class="small">✓ Equipada</div>':`<button onclick="equipArmor('${id}')">Equipar</button>`}</div>`}).join(''):'<div class="small">Você ainda não comprou nenhuma armadura adicional.</div>'}
