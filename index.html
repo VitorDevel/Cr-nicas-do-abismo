@@ -193,6 +193,48 @@ dialog{border:none;padding:0;background:transparent;color:var(--text)}dialog::ba
 .legendary-die-list{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}.legendary-die-list span{padding:7px 5px;border-radius:10px;border:1px solid rgba(255,255,255,.08);color:#95aabc;font-size:10px}.legendary-die-list span.selected{border-color:rgba(241,201,94,.65);color:#fff1ba;background:rgba(241,201,94,.08)}
 @keyframes d6Roll{0%{transform:rotateX(0) rotateY(0) rotateZ(0) scale(.45);filter:brightness(.8)}35%{transform:rotateX(180deg) rotateY(280deg) rotateZ(180deg) scale(1.12);filter:brightness(1.35)}70%{transform:rotateX(340deg) rotateY(520deg) rotateZ(340deg) scale(.96)}100%{transform:rotateX(360deg) rotateY(540deg) rotateZ(360deg) scale(1)}}
 @media(max-width:520px){.legendary-die-list{grid-template-columns:1fr 1fr}}
+
+
+/* v18 — criação de personagem organizada */
+.creator{gap:18px}
+.creator-intro{display:flex;justify-content:space-between;gap:18px;align-items:flex-end;padding:2px 2px 0}
+.creator-intro h2{font-family:Georgia,serif;font-size:28px;color:#fff0bd}
+.creator-progress{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.creator-step-pill{padding:6px 9px;border:1px solid rgba(241,201,94,.16);border-radius:999px;background:rgba(241,201,94,.035);font-size:10px;color:#cdbf8e;font-weight:800;letter-spacing:.05em}
+.creator-grid{grid-template-columns:minmax(350px,.78fr) minmax(560px,1.22fr);gap:18px}
+.creator-col{gap:12px}
+.creator-section-card{border:1px solid rgba(255,255,255,.085);border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,.014));overflow:hidden}
+.creator-section-head{display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid rgba(255,255,255,.07);background:linear-gradient(90deg,rgba(241,201,94,.055),transparent)}
+.creator-section-number{display:grid;place-items:center;width:27px;height:27px;flex:0 0 27px;border-radius:8px;background:#f1c95e;color:#241b0c;font-weight:1000;font-size:12px}
+.creator-section-head b{display:block;color:#ffe39b;font-size:14px}.creator-section-head span{display:block;color:#8fa5b9;font-size:10px;margin-top:2px}
+.creator-section-body{padding:14px}
+.creator-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.creator-form-grid .wide{grid-column:1/-1}
+.creator-form-grid label,.weapon-picker-grid label,.editor-section-picker{font-weight:800;color:#dfeaf5}
+.creator-form-grid label>span,.weapon-picker-grid label>span{font-weight:500;color:#8096aa;font-size:10px;line-height:1.35}
+.compat-choice-store{display:none!important}
+.selection-summary{margin-top:10px;padding:10px 11px;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(4,12,20,.36);color:#9fb4c7;font-size:11px;line-height:1.45}
+.selection-summary b{color:#ffe39b}
+.weapon-picker-grid{display:grid;grid-template-columns:.72fr 1.28fr;gap:10px}
+.weapon-selected-card{margin-top:11px;padding:12px 13px;border-radius:14px;border:1px solid rgba(241,201,94,.22);background:linear-gradient(135deg,rgba(241,201,94,.055),rgba(80,150,210,.035));display:grid;gap:5px}
+.weapon-selected-card strong{font-family:Georgia,serif;color:#ffe5a1;font-size:17px}.weapon-selected-card span{font-size:11px;color:#9eb3c6;line-height:1.42}.weapon-selected-card em{font-style:normal;color:#e4c66f;font-size:10px;font-weight:900;letter-spacing:.035em;text-transform:uppercase}
+.weapon-rule-compact{padding:9px 10px;border-left:3px solid rgba(241,201,94,.65);border-radius:8px;background:rgba(241,201,94,.035)}
+.creator-compat-inputs{display:none!important}
+.editor-tabs{display:none!important}
+.editor-section-picker{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);background:#091522;display:grid;grid-template-columns:auto minmax(220px,340px);align-items:center;justify-content:space-between;gap:12px;color:#ffe19a}
+.editor-section-picker select{min-width:220px}
+.rpg-customizer{border-radius:18px}
+.editor-panel{padding:14px 14px 16px}
+.advanced-options{grid-column:1/-1;margin-top:3px;border:1px solid rgba(104,207,255,.14);border-radius:13px;background:rgba(104,207,255,.025);overflow:hidden}
+.advanced-options summary{cursor:pointer;padding:11px 12px;color:#acd9ee;font-size:11px;font-weight:900;letter-spacing:.04em;list-style:none}.advanced-options summary::-webkit-details-marker{display:none}.advanced-options summary::after{content:'+';float:right;color:#7ec7ea;font-size:16px}.advanced-options[open] summary::after{content:'−'}
+.advanced-options[open] summary{border-bottom:1px solid rgba(104,207,255,.12)}
+.advanced-options .custom-grid{padding:12px!important}
+.creator-preview-area{position:relative}
+#startBtn{min-height:52px;font-size:14px;letter-spacing:.06em;box-shadow:0 10px 30px rgba(220,165,58,.16)}
+@media(min-width:1181px){.creator-preview-area{position:sticky;top:12px}}
+@media(max-width:1180px){.creator-grid{grid-template-columns:1fr}.creator-preview-area{position:static}.creator-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.creator-intro{align-items:flex-start;flex-direction:column}.creator-progress{justify-content:flex-start}.creator-form-grid,.weapon-picker-grid{grid-template-columns:1fr}.editor-section-picker{grid-template-columns:1fr;padding:10px 12px}.editor-section-picker select{min-width:0}.creator-section-body{padding:12px}.creator{padding:12px}}
+
 </style>
 </head>
 <body>
@@ -203,28 +245,45 @@ dialog{border:none;padding:0;background:transparent;color:var(--text)}dialog::ba
 </header>
 
 <section id="createScreen" class="card creator">
-  <div><p class="eyebrow">CRIAÇÃO DE PERSONAGEM</p><h2 style="margin:0">Construa seu aventureiro</h2><div class="small">Modelo 3D anime com armaduras multicamada, armas únicas por item e progressão de equipamento encontrada durante a aventura.</div></div>
+  <div class="creator-intro"><div><p class="eyebrow">CRIAÇÃO DE PERSONAGEM</p><h2 style="margin:0">Construa seu aventureiro</h2><div class="small">Escolha primeiro identidade e arma. Depois ajuste apenas a aparência que quiser — o resto já vem pronto para jogar.</div></div><div class="creator-progress"><span class="creator-step-pill">1 • Identidade</span><span class="creator-step-pill">2 • Arma</span><span class="creator-step-pill">3 • Aparência</span></div></div>
   <div class="creator-grid">
     <div class="creator-col">
-      <label>Nome<input id="heroName" maxlength="28" value="Adventurer" placeholder="Nome do personagem"></label>
-      <fieldset><legend>Raça</legend><div id="raceChoices" class="choice-grid"></div></fieldset>
-      <fieldset><legend>Classe</legend><div id="classChoices" class="choice-grid"></div></fieldset>
-      <fieldset id="branchField"><legend>Ramificação</legend><div id="branchChoices" class="subchoices"></div></fieldset>
-      <fieldset><legend>Arma inicial</legend><div id="weaponRule" class="small" style="margin-bottom:8px"></div><div id="weaponChoices" class="weapon-choices"></div><div class="small" style="margin-top:8px">🏆 Vitórias totais da conta: <b id="creatorTotalWins">0</b> • A Relíquia Lendária só aparece após derrotar o Boss Final.</div></fieldset>
+      <section class="creator-section-card">
+        <div class="creator-section-head"><span class="creator-section-number">1</span><div><b>Identidade do personagem</b><span>Nome, raça, classe e especialização em um só lugar.</span></div></div>
+        <div class="creator-section-body">
+          <div class="creator-form-grid">
+            <label class="wide">Nome<input id="heroName" maxlength="28" value="Adventurer" placeholder="Nome do personagem"></label>
+            <label>Raça<select id="raceSelect"></select><span id="raceSelectHelp">Escolha sua origem.</span></label>
+            <label>Classe<select id="classSelect"></select><span id="classSelectHelp">Define estilo de combate e equipamento.</span></label>
+            <label class="wide">Ramificação<select id="branchSelect"></select><span id="branchSelectHelp">Especialização da classe selecionada.</span></label>
+          </div>
+          <div id="identitySummary" class="selection-summary"></div>
+          <div id="raceChoices" class="compat-choice-store"></div>
+          <div id="classChoices" class="compat-choice-store"></div>
+          <div id="branchChoices" class="compat-choice-store"></div>
+        </div>
+      </section>
+      <section class="creator-section-card">
+        <div class="creator-section-head"><span class="creator-section-number">2</span><div><b>Arma inicial</b><span>Primeiro escolha o tipo; depois escolha a arma.</span></div></div>
+        <div class="creator-section-body">
+          <div id="weaponRule" class="small weapon-rule-compact" style="margin-bottom:10px"></div>
+          <div class="weapon-picker-grid">
+            <label>Categoria<select id="weaponCategorySelect"></select><span>Mostra apenas armas desse grupo.</span></label>
+            <label>Arma<select id="weaponSelect"></select><span>Lista somente opções compatíveis com sua build.</span></label>
+          </div>
+          <div id="weaponSelectedCard" class="weapon-selected-card"></div>
+          <div id="weaponChoices" class="creator-compat-inputs"></div>
+          <div class="small" style="margin-top:10px">🏆 Vitórias totais da conta: <b id="creatorTotalWins">0</b> • A Relíquia Lendária só aparece após derrotar o Boss Final.</div>
+        </div>
+      </section>
     </div>
-    <div class="creator-col">
-      <fieldset class="rpg-customizer"><legend>Editor de Aparência</legend>
+    <div class="creator-col creator-preview-area">
+      <fieldset class="rpg-customizer"><legend>3 • Editor de Aparência</legend>
         <div class="customizer-head">
           <div class="class-identity"><strong id="classIdentityTitle">Identidade visual</strong><span id="classIdentityText">Equipamento e cores seguem a classe e a ramificação.</span></div>
           <div class="editor-actions"><button id="randomizeAppearance" type="button">🎲 Aleatorizar</button><button id="restoreClassPalette" type="button">🎨 Cores da classe</button></div>
         </div>
-        <div class="editor-tabs">
-          <button type="button" class="editor-tab active" data-editor-tab="body">Corpo</button>
-          <button type="button" class="editor-tab" data-editor-tab="face">Rosto</button>
-          <button type="button" class="editor-tab" data-editor-tab="hair">Cabelo</button>
-          <button type="button" class="editor-tab" data-editor-tab="gear">Equipamento</button>
-          <button type="button" class="editor-tab" data-editor-tab="colors">Cores & Materiais</button>
-        </div>
+        <label class="editor-section-picker">Editar aparência<select id="editorSectionSelect"><option value="body">Corpo & raça</option><option value="face">Rosto</option><option value="hair">Cabelo & acessórios</option><option value="gear">Equipamento</option><option value="colors">Cores & materiais</option></select></label>
         <div class="editor-panel active" data-editor-panel="body"><div class="custom-grid">
           <label>Personagem<select id="gender"><option value="masculino" selected>Masculino</option><option value="feminino">Feminino</option></select><span class="help">Muda proporções faciais e silhueta.</span></label>
           <label>Apresentação<select id="presentation"><option value="aventura" selected>Aventureira</option><option value="elegante">Elegante</option><option value="mistica">Mística</option><option value="guerreira">Guerreira</option></select><span class="help">Ajusta detalhes visuais sem limitar classe ou equipamento.</span></label>
@@ -259,9 +318,11 @@ dialog{border:none;padding:0;background:transparent;color:var(--text)}dialog::ba
           <label>Luvas<select id="gloves"><option value="simples">Luvas simples</option><option value="manoplas" selected>Manoplas</option><option value="couro">Couro reforçado</option><option value="runicas">Luvas rúnicas</option><option value="sem">Sem luvas</option></select></label>
           <label>Botas<select id="boots"><option value="aventureiro" selected>Botas de aventureiro</option><option value="placas">Grevas de placas</option><option value="leves">Botas leves</option><option value="rituais">Botas rituais</option></select></label>
           <label>Detalhe do peito<select id="chestDetail"><option value="emblema" selected>Emblema da classe</option><option value="runas">Runas</option><option value="faixas">Faixas / correias</option><option value="gemas">Gemas</option><option value="nenhum">Sem detalhe</option></select></label>
+          <details class="advanced-options"><summary>Modelos 3D avançados (opcional)</summary><div class="custom-grid">
           <label>Modelo de espada<select id="swordModel"><option value="auto" selected>Automático pelo item</option><option value="2">Espada FBX 02</option><option value="3">Espada FBX 03</option><option value="4">Espada FBX 04</option><option value="5">Espada FBX 05</option><option value="6">Espada FBX 06</option><option value="7">Espada FBX 07</option><option value="8">Espada FBX 08</option><option value="9">Espada FBX 09</option><option value="13">Espada FBX 13</option><option value="14">Espada FBX 14</option><option value="15">Espada FBX 15</option><option value="16">Espada FBX 16</option><option value="17">Espada FBX 17</option><option value="18">Espada FBX 18</option><option value="19">Espada FBX 19</option><option value="20">Espada FBX 20</option><option value="21">Espada FBX 21</option><option value="22">Espada FBX 22</option><option value="23">Espada FBX 23</option></select><span class="help">Usa os modelos FBX enviados para espadas, lâminas, montantes e gládios. Outras armas ignoram esta opção.</span></label>
           <label>Modelo de escudo<select id="shieldModel"><option value="auto" selected>Automático pelo item</option><option value="1">Escudo FBX 01</option><option value="2">Escudo FBX 02</option><option value="3">Escudo FBX 03</option><option value="4">Escudo FBX 04</option><option value="5">Escudo FBX 05</option><option value="6">Escudo FBX 06</option><option value="7">Escudo FBX 07</option><option value="8">Escudo FBX 08</option><option value="9">Escudo FBX 09</option><option value="10">Escudo FBX 10</option><option value="11">Escudo FBX 11</option><option value="12">Escudo FBX 12</option><option value="13">Escudo FBX 13</option><option value="14">Escudo FBX 14</option><option value="15">Escudo FBX 15</option><option value="16">Escudo FBX 16</option><option value="17">Escudo FBX 17</option><option value="18">Escudo FBX 18</option><option value="19">Escudo FBX 19</option><option value="20">Escudo FBX 20</option></select><span class="help">Usa os modelos FBX enviados para os escudos do Tanke e para escudos lendários. Outras armas ignoram esta opção.</span></label>
           <label>Modelo de martelo / maça<select id="hammerModel"><option value="auto" selected>Automático pelo item</option><option value="1">Martelo/Maça FBX 01</option><option value="2">Martelo/Maça FBX 02</option><option value="3">Martelo/Maça FBX 03</option><option value="4">Martelo/Maça FBX 04</option><option value="5">Martelo/Maça FBX 05</option><option value="6">Martelo/Maça FBX 06</option><option value="7">Martelo/Maça FBX 07</option><option value="8">Martelo/Maça FBX 08</option><option value="9">Martelo/Maça FBX 09</option><option value="10">Martelo/Maça FBX 10</option><option value="11">Martelo/Maça FBX 11</option><option value="12">Martelo/Maça FBX 12</option><option value="13">Martelo/Maça FBX 13</option><option value="14">Martelo/Maça FBX 14</option><option value="15">Martelo/Maça FBX 15</option><option value="16">Martelo/Maça FBX 16</option><option value="20">Martelo/Maça FBX 20</option></select><span class="help">Usa os modelos FBX enviados para martelos, malhos e maças. No modo automático, cada arma recebe um modelo que combina com sua descrição.</span></label>
+          </div></details>
         </div></div>
         <div class="editor-panel" data-editor-panel="colors">
           <div class="custom-grid">
@@ -858,7 +919,7 @@ function compatibleWeapons(cls=getClass().name,large=getRace().large,race=getRac
   return lanceRank(a)-lanceRank(b)||rank(a)-rank(b)||a.price-b.price;
  })
 }
-function selectedWeapon(){return weaponCatalog.find(w=>w.id===$('input[name="weapon"]:checked')?.value)||compatibleWeapons()[0]}
+function selectedWeapon(){return weaponCatalog.find(w=>w.id===($('#weaponSelect')?.value||$('input[name="weapon"]:checked')?.value))||compatibleWeapons()[0]}
 function currentTier(){const w=state.hero?.wins||0;return w>=14?'strong':w<5?'weak':w<12?'medium':'strong'}
 function heroLevel(){return state.hero?.level||1}
 function xpToNextLevel(level){return 100+Math.max(0,level-1)*75}
@@ -874,8 +935,70 @@ function spendLevelPoint(stat){const h=state.hero;if(!h||h.attributePoints<=0)re
 function confirmLevelUp(){const h=state.hero;if(!h||h.attributePoints>0||!h.ultUnlocked)return;h.pendingAttributePoints={life:0,mana:0,stamina:0,damage:0};$('#levelUpDialog').close();disableCombat(false);render();if(h.pendingBossVictory){h.pendingBossVictory=false;showBossVictory();return}if(state.pendingEncounter)return;setTimeout(openCamp,420)}
 
 function choiceCards(el,items,name,desc){el.innerHTML=items.map((x,i)=>{const extra=x.name&&raceLore[x.name];const checked=name==='class'?x.name==='Fighter':i===0;return `<label class="choice-card ${name==='race'?'race-card':''}"><input type="radio" name="${name}" value="${i}" ${checked?'checked':''}><b>${x.name}</b><span>${desc(x)}${extra?`<span class="race-card-lore">${extra.title}: ${extra.text}</span><span class="race-card-traits">${extra.tags.map(t=>`<i>${t}</i>`).join('')}</span>`:''}</span></label>`}).join('')}
-function buildBranches(){const opts=branches[getClass().name];$('#branchChoices').innerHTML=Object.entries(opts).map(([n,v],i)=>`<label class="subchoice"><input type="radio" name="branch" value="${n}" ${i===0?'checked':''}><span><b>${n}</b><small>${v.desc}</small></span></label>`).join('');$$('input[name="branch"]').forEach(x=>x.onchange=()=>{buildWeapons();buildAppearanceOptions(true);updatePreview()})}
-function buildWeapons(){const previous=$('input[name="weapon"]:checked')?.value,all=compatibleWeapons(),r=getRace(),legend=getUnlockedLegendary();const normal=all.filter(w=>!w.bossReward),options=legend?[...normal,legend]:normal,selected=options.some(w=>w.id===previous)?previous:options[0]?.id;$('#weaponRule').textContent=`${r.name} ${r.large?'usa armas grandes':'usa armas de porte normal'}. Escolha qualquer uma das armas iniciais compatíveis; a Relíquia Elemental Lendária é exclusiva da classe e aparece depois de derrotar o Boss Final.`;let html=normal.map(w=>`<label class="weapon-choice"><input type="radio" name="weapon" value="${w.id}" ${w.id===selected?'checked':''}><span><b>${w.name}</b><small>${w.desc}</small><em>ARMA INICIAL • ${w.rarity?.toUpperCase()||'COMUM'} • ${w.large?'GRANDE • ':''}+${w.bonus} dano</em><span class="weapon-detail">${importedWeaponFamily(w)?`Modelo ${importedWeaponFamily(w).toUpperCase()} FBX ${String(w[importedWeaponFamily(w)+'Model']||'auto').padStart(2,'0')} • sem repetição nesta classe`:`Modelo procedural único #${w.signature||'—'} • detalhes ornamentais exclusivos`}</span></span></label>`).join('');if(legend){html+=`<label class="weapon-choice boss-reward"><input type="radio" name="weapon" value="${legend.id}" ${legend.id===selected?'checked':''}><span><b>👑 ${legend.name}</b><small>${legend.desc}</small><em>RELÍQUIA DO ${legend.class.toUpperCase()} • +${legend.bonus} dano físico • +${legend.elementalBonus} ${legend.elementName}</em><span class="weapon-detail legendary-element">Arma exclusiva da classe ${legend.class}. Skill elemental usa mana. Modelo 3D lendário exclusivo.</span></span></label>`}$('#weaponChoices').innerHTML=html;$$('input[name="weapon"]').forEach(x=>x.onchange=updatePreview)}
+function refreshIdentitySummary(){
+  const r=getRace(),c=getClass(),branch=getBranchName(),b=getBranch();
+  if($('#raceSelectHelp'))$('#raceSelectHelp').textContent=r?.passive||'Escolha sua origem.';
+  if($('#classSelectHelp'))$('#classSelectHelp').textContent=c?.desc||'Define estilo de combate e equipamento.';
+  if($('#branchSelectHelp'))$('#branchSelectHelp').textContent=b?.desc||'Especialização da classe selecionada.';
+  if($('#identitySummary'))$('#identitySummary').innerHTML=`<b>${r?.name||'Raça'} • ${c?.name||'Classe'}</b><br>${branch}<br><span>${r?.passive||''}</span>`;
+}
+function syncPrimarySelects(){
+  const raceSel=$('#raceSelect'),classSel=$('#classSelect');if(!raceSel||!classSel)return;
+  raceSel.innerHTML=races.map((r,i)=>`<option value="${i}">${r.name}${r.large?' • porte grande':''}</option>`).join('');
+  classSel.innerHTML=classes.map((c,i)=>`<option value="${i}">${c.name}</option>`).join('');
+  raceSel.value=String(selectedIndex('race'));classSel.value=String(selectedIndex('class'));
+  refreshIdentitySummary();
+}
+function buildBranches(){
+  const opts=branches[getClass().name],previous=$('input[name="branch"]:checked')?.value;
+  const names=Object.keys(opts),selected=names.includes(previous)?previous:names[0];
+  $('#branchChoices').innerHTML=Object.entries(opts).map(([n,v])=>`<label class="subchoice"><input type="radio" name="branch" value="${n}" ${n===selected?'checked':''}><span><b>${n}</b><small>${v.desc}</small></span></label>`).join('');
+  const sel=$('#branchSelect');if(sel){sel.innerHTML=Object.entries(opts).map(([n,v])=>`<option value="${n}">${n}</option>`).join('');sel.value=selected;}
+  $$('input[name="branch"]').forEach(x=>x.onchange=()=>{if(sel)sel.value=x.value;refreshIdentitySummary();buildWeapons();buildAppearanceOptions(true);updatePreview()});
+  refreshIdentitySummary();
+}
+function weaponCategory(w){
+  if(w?.bossReward)return 'Relíquias lendárias';
+  const family=(typeof importedWeaponFamily==='function'?importedWeaponFamily(w):'')||w?.weaponType||'',n=(w?.name||'').toLowerCase();
+  if(family==='shield'||/escudo/.test(n))return 'Escudos';
+  if(family==='hammer'||/martelo|malho|maça|maca|âncora|ancora|quebra-mundos/.test(n))return 'Martelos & maças';
+  if(family==='sword'||/espada|lâmina|lamina|montante|gládio|gladio|katana|sabre|rapieira/.test(n))return 'Espadas & lâminas';
+  if(/arco|besta|flecha/.test(n))return 'Arcos & distância';
+  if(/lança|lanca|alabarda|tridente|haste/.test(n))return 'Lanças & hastes';
+  if(/cajado|báculo|baculo|cetro|orbe|códice|codice|grimório|grimorio|obelisco|pilar|agulha|relicário|relicario|turíbulo|turibulo|foco/.test(n))return 'Focos mágicos';
+  if(/adaga|punhal|kunai|shuriken|foice|garra/.test(n)||w?.class==='Assassino')return 'Armas leves';
+  return 'Outras';
+}
+function weaponCategoryIcon(cat){return {'Escudos':'🛡','Martelos & maças':'🔨','Espadas & lâminas':'⚔','Arcos & distância':'🏹','Lanças & hastes':'🔱','Focos mágicos':'✨','Armas leves':'🗡','Relíquias lendárias':'👑','Outras':'◆'}[cat]||'◆'}
+function renderSelectedWeaponCard(w){
+  const card=$('#weaponSelectedCard');if(!card)return;
+  if(!w){card.innerHTML='<span>Nenhuma arma compatível encontrada.</span>';return}
+  const model=importedWeaponFamily(w)?`Modelo ${importedWeaponFamily(w).toUpperCase()} FBX ${String(w[importedWeaponFamily(w)+'Model']||'auto').padStart(2,'0')}`:`Modelo procedural #${w.signature||'—'}`;
+  card.innerHTML=`<strong>${w.bossReward?'👑 ':''}${w.name}</strong><span>${w.desc||''}</span><em>${w.rarity||'Comum'} • ${w.large?'porte grande • ':''}+${w.bonus} dano${w.elementalBonus?` • +${w.elementalBonus} ${w.elementName||'elemental'}`:''}</em><span>${model}</span>`;
+}
+function selectWeaponById(id){
+  const radio=$(`input[name="weapon"][value="${id}"]`);if(radio)radio.checked=true;
+  const w=weaponCatalog.find(x=>x.id===id);renderSelectedWeaponCard(w);updatePreview();
+}
+function populateWeaponSelect(category,preferred){
+  const weaponSel=$('#weaponSelect'),catSel=$('#weaponCategorySelect');if(!weaponSel||!catSel)return;
+  const options=compatibleWeapons().filter(w=>!w.bossReward||w.id===getUnlockedLegendary()?.id).filter(w=>weaponCategory(w)===category);
+  weaponSel.innerHTML=options.map(w=>`<option value="${w.id}">${w.name} • +${w.bonus}${w.rarity?` • ${w.rarity}`:''}</option>`).join('');
+  const chosen=options.some(w=>w.id===preferred)?preferred:options[0]?.id;
+  if(chosen){weaponSel.value=chosen;const radio=$(`input[name="weapon"][value="${chosen}"]`);if(radio)radio.checked=true;renderSelectedWeaponCard(weaponCatalog.find(w=>w.id===chosen));}
+  else renderSelectedWeaponCard(null);
+}
+function buildWeapons(){
+  const previous=$('#weaponSelect')?.value||$('input[name="weapon"]:checked')?.value,all=compatibleWeapons(),r=getRace(),legend=getUnlockedLegendary();
+  const normal=all.filter(w=>!w.bossReward),options=legend?[...normal,legend]:normal,selected=options.some(w=>w.id===previous)?previous:options[0]?.id;
+  $('#weaponRule').textContent=`${r.name} ${r.large?'usa armas grandes':'usa armas de porte normal'}. As opções abaixo já foram filtradas para sua raça e classe.`;
+  $('#weaponChoices').innerHTML=options.map(w=>`<input type="radio" name="weapon" value="${w.id}" ${w.id===selected?'checked':''}>`).join('');
+  const categories=[...new Set(options.map(weaponCategory))];
+  const catSel=$('#weaponCategorySelect');
+  if(catSel){catSel.innerHTML=categories.map(cat=>`<option value="${cat}">${weaponCategoryIcon(cat)} ${cat}</option>`).join('');const selectedWeaponObj=options.find(w=>w.id===selected)||options[0],chosenCat=selectedWeaponObj?weaponCategory(selectedWeaponObj):categories[0];catSel.value=chosenCat||'';populateWeaponSelect(chosenCat,selected);catSel.onchange=()=>{populateWeaponSelect(catSel.value,null);updatePreview()};}
+  const weaponSel=$('#weaponSelect');if(weaponSel)weaponSel.onchange=()=>selectWeaponById(weaponSel.value);
+  refreshIdentitySummary();
+}
 function hexShade(hex,amt){hex=(hex||'#777777').replace('#','');const n=parseInt(hex,16),r=clamp((n>>16)+amt,0,255),g=clamp(((n>>8)&255)+amt,0,255),b=clamp((n&255)+amt,0,255);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1)}
 function paletteForCurrent(mode=$('#palettePreset')?.value||'branch'){
   const cls=getClass().name,branch=getBranchName(),theme=getBranch().theme,profile=appearanceProfiles[cls];
@@ -2785,8 +2908,13 @@ function startGame(){
   render();
 }
 function bind(){
-  choiceCards($('#raceChoices'),races,'race',x=>x.passive);choiceCards($('#classChoices'),classes,'class',x=>x.desc);
-  $$('input[name="race"]').forEach(x=>x.onchange=()=>{$('#helmet').value='sim';buildRaceAppearance(true);buildWeapons();buildAppearanceOptions(true);updatePreview()});$$('input[name="class"]').forEach(x=>x.onchange=()=>{$('#helmet').value='sim';buildBranches();buildWeapons();buildAppearanceOptions(true);updatePreview()});
+  choiceCards($('#raceChoices'),races,'race',x=>x.passive);choiceCards($('#classChoices'),classes,'class',x=>x.desc);syncPrimarySelects();
+  const applyRaceSelection=()=>{$('#helmet').value='sim';buildRaceAppearance(true);buildWeapons();buildAppearanceOptions(true);refreshIdentitySummary();updatePreview()};
+  const applyClassSelection=()=>{$('#helmet').value='sim';buildBranches();buildWeapons();buildAppearanceOptions(true);refreshIdentitySummary();updatePreview()};
+  $$('input[name="race"]').forEach(x=>x.onchange=()=>{if($('#raceSelect'))$('#raceSelect').value=x.value;applyRaceSelection()});$$('input[name="class"]').forEach(x=>x.onchange=()=>{if($('#classSelect'))$('#classSelect').value=x.value;applyClassSelection()});
+  $('#raceSelect').onchange=()=>{const r=$(`input[name="race"][value="${$('#raceSelect').value}"]`);if(r){r.checked=true;applyRaceSelection()}};
+  $('#classSelect').onchange=()=>{const c=$(`input[name="class"][value="${$('#classSelect').value}"]`);if(c){c.checked=true;applyClassSelection()}};
+  $('#branchSelect').onchange=()=>{const b=$(`input[name="branch"][value="${$('#branchSelect').value}"]`);if(b){b.checked=true;refreshIdentitySummary();buildWeapons();buildAppearanceOptions(true);updatePreview()}};
   const appearanceIds=['gender','presentation','bodyType','heightType','stance','skinTone','raceFeature','racePattern','buildDetail','faceShape','eyeShape','eyeColor','browStyle','noseStyle','mouthStyle','marking','hairStyle','hairColor','beard','accessory','helmet','armorStyle','armorSet','shoulders','cape','gloves','boots','chestDetail','swordModel','shieldModel','hammerModel','material'];
   appearanceIds.forEach(id=>$('#'+id).oninput=updatePreview);
   $('#gender').onchange=()=>{if($('#gender').value==='feminino'){$('#presentation').value='elegante';$('#hairStyle').value='ondulado';$('#beard').value='nenhuma';$('#accessory').value='tiara';$('#browStyle').value='arqueadas';$('#eyeShape').value='suaves';$('#faceShape').value='oval'}updatePreview()};
@@ -2795,6 +2923,7 @@ function bind(){
   $('#restoreClassPalette').onclick=()=>{$('#palettePreset').value='branch';applyPalette('branch');updatePreview()};
   $('#randomizeAppearance').onclick=randomizeAppearance;
   $$('.editor-tab').forEach(btn=>btn.onclick=()=>{$$('.editor-tab').forEach(x=>x.classList.toggle('active',x===btn));$$('.editor-panel').forEach(p=>p.classList.toggle('active',p.dataset.editorPanel===btn.dataset.editorTab))});
+  const editorSectionSelect=$('#editorSectionSelect');if(editorSectionSelect)editorSectionSelect.onchange=()=>{$$('.editor-panel').forEach(p=>p.classList.toggle('active',p.dataset.editorPanel===editorSectionSelect.value))};
   buildRaceAppearance(true);buildBranches();buildWeapons();buildAppearanceOptions(true);ensure3D();updatePreview();buildDice();
   $('#startBtn').onclick=startGame;$$('[data-act]').forEach(b=>b.onclick=()=>performAction(b.dataset.act));$('#raceUltBtn').onclick=performRaceUltimate;$$('[data-camp]').forEach(b=>b.onclick=()=>postBattleChoice(b.dataset.camp));$$('[data-level-stat]').forEach(b=>b.onclick=()=>spendLevelPoint(b.dataset.levelStat));$$('[data-ult-choice]').forEach(b=>b.onclick=()=>chooseUltimate(b.dataset.ultChoice));$('#confirmLevelUp').onclick=confirmLevelUp;$$('[data-admin]').forEach(b=>b.onclick=()=>{if(b.dataset.admin==='boss')enterFinalBossAdmin();else adminKillBoss()});
   $('#campDialog')?.addEventListener('cancel',e=>e.preventDefault());$('#shopDialog')?.addEventListener('cancel',e=>{e.preventDefault();$('#closeShop')?.click()});$('#adminDialog')?.addEventListener('cancel',e=>{e.preventDefault();$('#closeAdmin')?.click()});$('#bossVictoryDialog')?.addEventListener('cancel',e=>e.preventDefault());
