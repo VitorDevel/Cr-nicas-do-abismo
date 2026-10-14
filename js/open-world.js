@@ -466,113 +466,180 @@
     m.beginPath(); m.arc(mx(SHRINE.x), my(SHRINE.y), 6, 0, TAU); m.fill();
   }
 
+  /* ---------- biomas vivos: terreno determinístico e vegetação característica ---------- */
   const CHUNK_SIZE = 720;
   const worldChunks = new Map();
   const chunkPalettes = {
-    forest: { ground: '#527a42', light: '#759551', dark: '#355b37', path: '#b5a477' },
-    frost: { ground: '#718c8b', light: '#a7bcad', dark: '#49666d', path: '#becbbb' },
-    dunes: { ground: '#9b784b', light: '#c09b63', dark: '#725239', path: '#d3b780' },
-    marsh: { ground: '#496d59', light: '#6b8a5c', dark: '#2d4d46', path: '#9b9870' },
-    ash: { ground: '#625a57', light: '#88766b', dark: '#403b43', path: '#a18e7c' }
+    forest:  { name:'Floresta Esmeralda', icon:'🌳', ground:'#386842',light:'#68a65e',dark:'#214e3b',path:'#a89f78',element:'natureza',hint:'Bosques floridos, raízes e feras' },
+    frost:   { name:'Tundra Glacial',icon:'❄',ground:'#b5d9d7',light:'#edf8ef',dark:'#7ca6b9',path:'#c3d4d2',element:'gelo',hint:'Geada, cristais e predadores congelados' },
+    dunes:   { name:'Mar de Dunas',icon:'☀',ground:'#d8b777',light:'#f0d5a0',dark:'#ae814c',path:'#dfc18e',element:'fogo',hint:'Areia, cactos e escorpiões' },
+    marsh:   { name:'Pântano Tóxico',icon:'☠',ground:'#426f5d',light:'#80a978',dark:'#234c48',path:'#86916a',element:'natureza',hint:'Musgos, cogumelos e águas venenosas' },
+    ash:     { name:'Ermos da Sombra',icon:'☾',ground:'#525369',light:'#7b7894',dark:'#2c3049',path:'#777581',element:'arcano',hint:'Névoa, túmulos e espectros' },
+    volcano: { name:'Vulcão Carmesim',icon:'🔥',ground:'#363337',light:'#625150',dark:'#211f2b',path:'#76645b',element:'fogo',hint:'Magma, basalto e demônios' },
+    storm:   { name:'Planícies da Tempestade',icon:'⚡',ground:'#456f73',light:'#77a9a7',dark:'#264957',path:'#94a5a3',element:'raio',hint:'Campos elétricos e espíritos do trovão' },
+    crystal: { name:'Jardins de Cristal',icon:'💎',ground:'#526f8f',light:'#8fb1c7',dark:'#344b78',path:'#839bbd',element:'arcano',hint:'Cristais luminosos e construtos' },
+    arcane:  { name:'Terras Astrais',icon:'✦',ground:'#514877',light:'#9b82c5',dark:'#2c315b',path:'#807ba7',element:'arcano',hint:'Runas, portais e magia instável' }
   };
-  function biomeForChunk(cx, cy) {
-    // Continuous directional climate plus stable coordinate noise (no finite-world edges).
-    const h = Math.sin(cx * .57 + cy * .37) * .65 + Math.cos(cy * .38 - cx * .2) * .4;
-    if (cy < -3 || (cy < -1 && h > .52)) return 'frost';
-    if (cy > 3 && cx > 0 || (cx > 5 && h > -.25)) return 'dunes';
-    if (cy > 3 || h < -.72) return 'marsh';
-    if (cx < -4) return 'ash';
-    return 'forest';
+  const biomeAnchors = [
+    ['forest',1.9,1.6],['marsh',1,2.55],['frost',4.85,.8],['dunes',5.1,3],['volcano',3,2.1],
+    ['arcane',2.1,-.1],['ash',-.2,.75],['forest',1.1,3.7],
+    ['ash',-3.2,1.2],['storm',3.9,-3.1],['crystal',-2.4,-2.2],
+    ['volcano',7.7,-1.5],['frost',1.7,-4.2],['marsh',-1.7,5.9],
+    ['forest',-5,4.2],['arcane',-6.5,-3.6],['dunes',9,2.8],['storm',9,-5]
+  ];
+  const hashCoord=(x,y,seed=13)=>{
+    let n=Math.imul(x,374761393)^Math.imul(y,668265263)^Math.imul(seed,1442695041);
+    n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967296;
+  };
+  function biomeForChunk(cx,cy){
+    // Anchored regions around story entrances, then repeating domain-warped climate indefinitely.
+    if(cx===2&&cy===2)return 'volcano';
+    if(cx===1&&cy===3)return 'forest';
+    if(Math.abs(cx)>12||Math.abs(cy)>10){
+      const v=Math.sin(cx*.22+Math.cos(cy*.14)*1.6)+Math.cos(cy*.22-cx*.09);
+      const n=hashCoord(Math.floor(cx/4),Math.floor(cy/4));
+      return Object.keys(chunkPalettes)[Math.floor((v+2)*1.45+n*3)%9];
+    }
+    let winner='forest',score=Infinity;
+    for(const [type,ax,ay] of biomeAnchors){
+      const warpX=Math.sin(cx*.8+cy*.6)*.25,warpY=Math.cos(cy*.7-cx*.42)*.27;
+      const d=Math.hypot((cx+warpX-ax)*.93,cy+warpY-ay)+hashCoord(Math.floor(ax*10),Math.floor(ay*10))*.03;
+      if(d<score){score=d;winner=type;}
+    }
+    return winner;
   }
-  function worldRegionName(x, y) {
-    if (dun) return dun.def.name;
-    if (x >= 0 && y >= 0 && x <= world.width && y <= world.height) return 'Ruínas da Floresta';
-    const names = { forest: 'Bosque das Fronteiras', frost: 'Campos de Geada', dunes: 'Dunas de Cinza', marsh: 'Pântanos Verdes', ash: 'Terras Cinzentas' };
-    return names[biomeForChunk(Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE))];
-  }
-  function buildWorldChunk(cx, cy) {
-    let seed = (Math.imul(cx, 374761393) ^ Math.imul(cy, 668265263) ^ 0x5f356495) >>> 0;
-    const next = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
-    const biome = biomeForChunk(cx, cy);
-    const colors = chunkPalettes[biome], tile = document.createElement('canvas');
-    tile.width = CHUNK_SIZE; tile.height = CHUNK_SIZE;
-    const g = tile.getContext('2d'), ox = cx * CHUNK_SIZE, oy = cy * CHUNK_SIZE;
-    g.fillStyle = colors.ground; g.fillRect(0, 0, CHUNK_SIZE, CHUNK_SIZE);
-    for (let i = 0; i < 1400; i++) {
-      g.globalAlpha = .12 + next() * .18;
-      g.fillStyle = next() > .52 ? colors.light : colors.dark;
-      g.beginPath(); g.ellipse(next() * CHUNK_SIZE, next() * CHUNK_SIZE, 1 + next() * 5, 1 + next() * 3, next() * TAU, 0, TAU); g.fill();
+  function biomeAt(x,y){return biomeForChunk(Math.floor(x/CHUNK_SIZE),Math.floor(y/CHUNK_SIZE));}
+  function worldRegionName(x,y){return dun?dun.def.name:chunkPalettes[biomeAt(x,y)].name;}
+  function buildWorldChunk(cx,cy){
+    let seed=(Math.imul(cx,374761393)^Math.imul(cy,668265263)^0x5f356495)>>>0;
+    const next=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+    const biome=biomeForChunk(cx,cy), col=chunkPalettes[biome], tile=document.createElement('canvas');
+    tile.width=CHUNK_SIZE;tile.height=CHUNK_SIZE;
+    const g=tile.getContext('2d'),ox=cx*CHUNK_SIZE,oy=cy*CHUNK_SIZE, S=CHUNK_SIZE;
+    g.fillStyle=col.ground;g.fillRect(0,0,S,S);
+    const oval=(x,y,rx,ry,c,a=1)=>{g.globalAlpha=a;g.fillStyle=c;g.beginPath();g.ellipse(x,y,rx,ry,0,0,TAU);g.fill();g.globalAlpha=1;};
+    // Soft overlapping vegetation fields replace the old dry, dotted terrain.
+    for(let i=0;i<165;i++){
+      const x=next()*S,y=next()*S,r=23+next()*112;
+      oval(x,y,r,r*(.3+next()*.43),next()>.5?col.light:col.dark,.035+next()*.105);
     }
-    g.globalAlpha = 1;
-    g.strokeStyle = 'rgba(19,30,22,.32)'; g.lineWidth = 24; g.lineCap = 'round';
-    g.beginPath();
-    for (let x = -24; x <= CHUNK_SIZE + 24; x += 24) {
-      const y = CHUNK_SIZE * 1.35 + Math.sin((ox + x) / 680) * 250 - oy;
-      if (x === -24) g.moveTo(x, y); else g.lineTo(x, y);
+    // Thick grass, frost, dunes, spores or sparks: biome-specific microtextures.
+    for(let i=0;i<1900;i++){
+      const x=next()*S,y=next()*S, v=next(), size=.7+next()*3.4;
+      g.globalAlpha=.22+next()*.35;
+      g.strokeStyle=v>.50?col.light:col.dark;
+      g.lineWidth=.65+next()*.9;
+      g.beginPath();g.moveTo(x,y);
+      if(biome==='dunes') g.lineTo(x+3+next()*13,y-1-next()*2);
+      else if(biome==='frost')g.lineTo(x+next()*2,y-2-size);
+      else g.lineTo(x+(next()-.5)*3,y-3-size);
+      g.stroke();
     }
-    g.stroke();
-    g.strokeStyle = colors.path; g.lineWidth = 16; g.stroke();
-    g.globalAlpha = .35; g.strokeStyle = '#e7d6aa'; g.lineWidth = 2; g.setLineDash([18, 22]);
-    g.beginPath();
-    for (let x = -24; x <= CHUNK_SIZE + 24; x += 24) {
-      const y = CHUNK_SIZE * 1.35 + Math.sin((ox + x) / 680) * 250 - oy;
-      if (x === -24) g.moveTo(x, y); else g.lineTo(x, y);
+    g.globalAlpha=1;
+    // Clearings and natural ponds appear only in appropriate biomes.
+    if(['forest','marsh','frost','storm'].includes(biome))for(let i=0;i<3;i++){
+      const x=85+next()*550,y=85+next()*550,r=25+next()*46;
+      if(biome==='marsh'||biome==='storm'){
+        oval(x,y,r+6,r*.6+5,col.dark,.65);oval(x,y,r,r*.6,biome==='marsh'?'#27576a':'#4cabb8',.9);
+        oval(x-7,y-6,r*.5,r*.19,'#8ac2bc',.28);
+      }else oval(x,y,r,r*.5,biome==='frost'?'#effdf9':'#87a96a',.25);
     }
-    g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
-    for (let i = 0; i < 36; i++) {
-      const x = next() * CHUNK_SIZE, y = next() * CHUNK_SIZE, r = 3 + next() * 12;
-      g.fillStyle = 'rgba(20,30,22,.24)'; g.beginPath(); g.ellipse(x + 2, y + 4, r * 1.2, r * .7, .3, 0, TAU); g.fill();
-      g.fillStyle = biome === 'frost' ? '#9aa9a1' : biome === 'dunes' ? '#a8916b' : '#777b67';
-      g.beginPath(); g.ellipse(x, y, r, r * .65, .3, 0, TAU); g.fill();
+    // Distinct landmarks: frozen vents, volcanic fissures, lightning, rune stones and flowers.
+    for(let i=0;i<110;i++){
+      const x=next()*S,y=next()*S,rad=2+next()*6;
+      if(biome==='forest'){oval(x,y,rad*1.6,rad*.65,'#28563b',.35);oval(x-2,y-2,rad*.45,rad*.5,['#e6cf85','#e8a2cc','#c9e8ff'][i%3]);}
+      else if(biome==='frost'){g.strokeStyle=i%3?'#f4ffff':'#96cdda';g.lineWidth=1.5;g.beginPath();g.moveTo(x-rad,y);g.lineTo(x+rad,y);g.moveTo(x,y-rad);g.lineTo(x,y+rad);g.stroke();}
+      else if(biome==='dunes'){g.strokeStyle='#ffdf9b';g.lineWidth=1+rad*.2;g.beginPath();g.arc(x,y,rad,0,Math.PI);g.stroke();}
+      else if(biome==='marsh'){oval(x,y,rad*1.8,rad,'#203d43',.6);oval(x,y-3,rad*.9,rad*.6,i%4?'#a5c970':'#d5a5df',.85);}
+      else if(biome==='volcano'){g.strokeStyle=i%3?'#a54d36':'#ff7c35';g.lineWidth=2;g.beginPath();g.moveTo(x-rad,y-rad);g.lineTo(x,y);g.lineTo(x+rad,y+rad*.7);g.stroke();}
+      else if(biome==='storm'){g.strokeStyle='#c3ece2';g.globalAlpha=.35+next()*.4;g.lineWidth=1.6;g.beginPath();g.moveTo(x,y-rad);g.lineTo(x-3,y);g.lineTo(x+1,y);g.lineTo(x-3,y+rad);g.stroke();g.globalAlpha=1;}
+      else if(biome==='crystal'||biome==='arcane'){g.fillStyle=i%2?'#aee8fa':'#bc9af5';g.globalAlpha=.25+next()*.45;g.beginPath();g.moveTo(x,y-rad*2);g.lineTo(x+rad,y);g.lineTo(x,y+rad);g.lineTo(x-rad,y);g.closePath();g.fill();g.globalAlpha=1;}
+      else {oval(x,y,rad*2,rad,'#313044',.35);oval(x,y,rad*.45,rad*.45,'#b2a5de',.65);}
     }
-    // Deterministic local ruins, paths, mushrooms, monoliths and camps, visible forever at the same coordinates.
-    const landmarks = [], npcs = [];
-    const oc = (x, y, r, color) => { g.fillStyle = color; g.beginPath(); g.ellipse(x, y, r, r * .66, 0, 0, TAU); g.fill(); };
-    for (let i = 0; i < 45; i++) {
-      const x = next() * CHUNK_SIZE, y = next() * CHUNK_SIZE, rad = 2 + next() * 6;
-      if (biome === 'frost') { oc(x,y,rad,'#e2eded'); oc(x+2,y-3,rad*.5,'#c3dbdf'); }
-      else if (biome === 'marsh') { oc(x,y,rad,'#294f56'); oc(x,y-2,rad*.4,'#83bb7e'); }
-      else if (biome === 'dunes') { oc(x,y,rad,'#ddc390'); oc(x+2,y+2,rad*.4,'#a77847'); }
-      else { oc(x,y,rad,'#385e32'); oc(x+2,y-1,rad*.38,'#e1c38b'); }
+    // Transition strips: adjacent biomes meet gradually instead of forming square walls.
+    const edge=135;
+    for(const [nx,ny,side] of [[cx-1,cy,'left'],[cx+1,cy,'right'],[cx,cy-1,'top'],[cx,cy+1,'bottom']]){
+      const other=biomeForChunk(nx,ny);
+      if(other===biome)continue;
+      const c=chunkPalettes[other].ground+'88';
+      let grad;
+      if(side==='left'){grad=g.createLinearGradient(0,0,edge,0);grad.addColorStop(0,c);grad.addColorStop(1,'#00000000');g.fillStyle=grad;g.fillRect(0,0,edge,S);}
+      if(side==='right'){grad=g.createLinearGradient(S,0,S-edge,0);grad.addColorStop(0,c);grad.addColorStop(1,'#00000000');g.fillStyle=grad;g.fillRect(S-edge,0,edge,S);}
+      if(side==='top'){grad=g.createLinearGradient(0,0,0,edge);grad.addColorStop(0,c);grad.addColorStop(1,'#00000000');g.fillStyle=grad;g.fillRect(0,0,S,edge);}
+      if(side==='bottom'){grad=g.createLinearGradient(0,S,0,S-edge);grad.addColorStop(0,c);grad.addColorStop(1,'#00000000');g.fillStyle=grad;g.fillRect(0,S-edge,S,edge);}
     }
-    if (next() > .30 && (cx < -1 || cy < -1 || cx > 5 || cy > 3)) {
-      const x = 130 + next() * 440, y = 120 + next() * 460, kind = next() > .55 ? 'camp' : 'altar';
-      landmarks.push({ x: ox + x, y: oy + y, kind });
-      oc(x, y, kind === 'camp' ? 62 : 42, kind === 'camp' ? '#7a6a50' : '#454858');
-      for (let k = 0; k < 7; k++) { const a = k * TAU/7; oc(x + Math.cos(a)*31, y + Math.sin(a)*24, 7, '#94958c'); }
-      if (kind === 'altar') { g.fillStyle = '#b5c4de'; g.fillRect(x-7,y-25,14,34); g.fillStyle='#83dff5'; g.fillRect(x-3,y-29,6,12); }
-      else { g.fillStyle = '#d18e4d'; g.beginPath(); g.moveTo(x-24,y+10); g.lineTo(x,y-26); g.lineTo(x+24,y+10); g.fill(); }
-      if (kind === 'camp') {
-        const roles = ['healer','merchant','scout','blacksmith','bard'];
-        npcs.push({ x: ox + x + 42, y: oy + y + 12, role: roles[Math.floor(next()*roles.length)], seed: next()*TAU, cx, cy });
+    const trees=[],landmarks=[],npcs=[],features=[];
+    const treeCount={forest:57,frost:30,dunes:13,marsh:38,ash:24,volcano:22,storm:32,crystal:35,arcane:27}[biome];
+    for(let i=0;i<treeCount;i++){
+      const x=ox+38+next()*(S-76),y=oy+38+next()*(S-76);
+      if(Math.hypot(x-SPAWN.x,y-SPAWN.y)<660)continue;
+      trees.push({x,y,radius:14+next()*18,shade:Math.floor(next()*4),phase:next()*TAU,biome});
+    }
+    for(let i=0;i<16;i++){
+      const x=ox+48+next()*(S-96),y=oy+48+next()*(S-96);
+      if(Math.hypot(x-SPAWN.x,y-SPAWN.y)<620)continue;
+      features.push({x,y,size:9+next()*20,kind:biome,phase:next()*TAU});
+    }
+    if(next()>.28&&Math.hypot(ox+360-SPAWN.x,oy+360-SPAWN.y)>750){
+      const x=ox+130+next()*460,y=oy+130+next()*450;
+      const kind=next()>.35?'camp':'altar';
+      landmarks.push({x,y,kind});features.push({x,y,size:38,kind:kind==='camp'?'camp':'altar',phase:next()*TAU});
+      if(kind==='camp'){
+        const roles=['healer','merchant','scout','blacksmith','bard','alchemist','ranger','sage'];
+        npcs.push({x:x+43,y:y+16,role:roles[Math.floor(next()*roles.length)],seed:next()*TAU,cx,cy});
       }
     }
-    const chunkTrees = [];
-    if (biome !== 'dunes') for (let i = 0, count = 10 + Math.floor(next() * 9); i < count; i++) {
-      const x = ox + 35 + next() * (CHUNK_SIZE - 70), y = oy + 35 + next() * (CHUNK_SIZE - 70);
-      if (x >= 0 && x <= world.width && y >= 0 && y <= world.height) continue;
-      chunkTrees.push({ x, y, radius: 13 + next() * 16, shade: Math.floor(next() * 4), phase: next() * TAU });
-    }
-    return { x: ox, y: oy, tile, trees: chunkTrees, landmarks, npcs };
+    return {x:ox,y:oy,tile,trees,landmarks,npcs,features,biome};
   }
-  function ensureWorldChunks(x, y) {
-    const cx = Math.floor(x / CHUNK_SIZE), cy = Math.floor(y / CHUNK_SIZE);
-    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
-      const key = `${cx + dx},${cy + dy}`;
-      if (!worldChunks.has(key)) worldChunks.set(key, buildWorldChunk(cx + dx, cy + dy));
+  function ensureWorldChunks(x,y){
+    const cx=Math.floor(x/CHUNK_SIZE),cy=Math.floor(y/CHUNK_SIZE);
+    for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){
+      const key=`${cx+dx},${cy+dy}`;
+      if(!worldChunks.has(key))worldChunks.set(key,buildWorldChunk(cx+dx,cy+dy));
     }
-    for (const key of worldChunks.keys()) {
-      const [chunkX, chunkY] = key.split(',').map(Number);
-      if (Math.abs(chunkX - cx) > 2 || Math.abs(chunkY - cy) > 2) worldChunks.delete(key);
+    for(const key of worldChunks.keys()){
+      const [tx,ty]=key.split(',').map(Number);
+      if(Math.abs(tx-cx)>2||Math.abs(ty-cy)>2)worldChunks.delete(key);
     }
   }
-  function drawWorldChunks(viewX, viewY, viewW, viewH) {
-    ensureWorldChunks(player.x, player.y);
-    for (const chunk of worldChunks.values()) {
-      if (chunk.x > viewX + viewW || chunk.x + CHUNK_SIZE < viewX || chunk.y > viewY + viewH || chunk.y + CHUNK_SIZE < viewY) continue;
-      ctx.drawImage(chunk.tile, chunk.x, chunk.y);
+  function drawWorldChunks(vx,vy,vw,vh){
+    ensureWorldChunks(player.x,player.y);
+    for(const chunk of worldChunks.values()){
+      if(chunk.x>vx+vw||chunk.x+CHUNK_SIZE<vx||chunk.y>vy+vh||chunk.y+CHUNK_SIZE<vy)continue;
+      ctx.drawImage(chunk.tile,chunk.x,chunk.y);
     }
   }
+  function drawBiomeFeature(f){
+    const {x,y,size:r,kind:k}=f,t=gameTime+f.phase;
+    ctx.save();ctx.translate(x,y);
+    ctx.fillStyle='#10192255';ctx.beginPath();ctx.ellipse(1,6,r*.7,r*.32,0,0,TAU);ctx.fill();
+    if(k==='camp'){ctx.fillStyle='#906947';ctx.beginPath();ctx.moveTo(-r,12);ctx.lineTo(0,-r*.7);ctx.lineTo(r,12);ctx.closePath();ctx.fill();ctx.fillStyle='#493726';ctx.beginPath();ctx.moveTo(-9,12);ctx.lineTo(0,-7);ctx.lineTo(9,12);ctx.fill();}
+    else if(k==='altar'){ctx.fillStyle='#5d6b77';ctx.fillRect(-r*.32,-r*.9,r*.64,r*1.2);ctx.fillStyle='#ace8ef';ctx.fillRect(-4,-r-5,8,13);}
+    else if(k==='dunes'){ctx.fillStyle='#389268';ctx.fillRect(-4,-r,8,r+12);ctx.fillRect(-r*.4,-r*.5,5,r*.35);ctx.fillRect(r*.25,-r*.75,5,r*.38);ctx.fillStyle='#c7d79b';ctx.fillRect(-2,-r,2,r);}
+    else if(k==='frost'){ctx.fillStyle='#dff5f8';ctx.beginPath();ctx.moveTo(0,-r*1.8);ctx.lineTo(r*.65,4);ctx.lineTo(-r*.6,5);ctx.fill();ctx.fillStyle='#8ac3da';ctx.beginPath();ctx.moveTo(0,-r*1.8);ctx.lineTo(r*.65,4);ctx.lineTo(0,-4);ctx.fill();}
+    else if(k==='volcano'){ctx.fillStyle='#161b23';ctx.beginPath();ctx.moveTo(-r*.7,6);ctx.lineTo(-r*.2,-r*1.35);ctx.lineTo(r*.8,4);ctx.fill();ctx.fillStyle='#fb733d';ctx.beginPath();ctx.moveTo(-r*.25,0);ctx.lineTo(-r*.2,-r*.8);ctx.lineTo(r*.22,0);ctx.fill();}
+    else if(k==='crystal'||k==='arcane'){for(let q=0;q<3;q++){const xx=(q-1)*r*.33;ctx.fillStyle=q%2?'#73e8ec':'#a996ff';ctx.beginPath();ctx.moveTo(xx,-r*(1+q*.24));ctx.lineTo(xx+r*.3,4);ctx.lineTo(xx-r*.3,4);ctx.fill();}ctx.globalAlpha=.35+.2*Math.sin(t*2);ctx.fillStyle='#bbf3ff';ctx.beginPath();ctx.arc(0,-r*.5,r*.55,0,TAU);ctx.fill();}
+    else if(k==='storm'){ctx.strokeStyle='#bbe8ee';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,-r*1.3);ctx.lineTo(-r*.3,-r*.3);ctx.lineTo(r*.1,-r*.3);ctx.lineTo(-r*.2,r*.6);ctx.stroke();ctx.fillStyle='#c0faff';ctx.beginPath();ctx.arc(0,-r,4+2*Math.sin(t*4),0,TAU);ctx.fill();}
+    else if(k==='marsh'){ctx.fillStyle='#295d50';ctx.fillRect(-4,-r*.6,8,r);ctx.fillStyle='#ca6e8c';ctx.beginPath();ctx.ellipse(0,-r*.7,r*.8,r*.3,0,0,TAU);ctx.fill();ctx.fillStyle='#eec0ca';ctx.beginPath();ctx.arc(-r*.2,-r*.75,3,0,TAU);ctx.fill();}
+    else if(k==='forest'){ctx.fillStyle='#4d8b45';for(let q=0;q<5;q++){const a=q*TAU/5;ctx.beginPath();ctx.ellipse(Math.cos(a)*r*.4,Math.sin(a)*r*.4,r*.5,r*.33,a,0,TAU);ctx.fill();}ctx.fillStyle='#ecc275';ctx.beginPath();ctx.arc(0,0,r*.16,0,TAU);ctx.fill();}
+    else{ctx.fillStyle='#282837';ctx.fillRect(-r*.4,-r*.55,r*.8,r*.8);ctx.fillStyle='#bca8d9';ctx.beginPath();ctx.arc(0,-r*.45,r*.2,0,TAU);ctx.fill();}
+    ctx.restore();
+  }
+  function drawBiomeTree(t){
+    if(t.biome==='forest'||t.biome==='marsh'||t.biome==='storm'){
+      if(t.biome==='forest')return drawTree(t);
+      ctx.save();ctx.translate(t.x,t.y);ctx.fillStyle=t.biome==='marsh'?'#394935':'#3c5458';ctx.fillRect(-3,-8,6,22);
+      for(let i=0;i<4;i++){ctx.fillStyle=t.biome==='marsh'?['#2b5246','#4c7954','#718d4e'][i%3]:['#457a7b','#70aaa2','#8fb9bb'][i%3];ctx.beginPath();ctx.arc((i%2?1:-1)*t.radius*.33,-t.radius*.45-i*3,t.radius*(.35+i*.06),0,TAU);ctx.fill();}ctx.restore();return;
+    }
+    ctx.save();ctx.translate(t.x,t.y);const r=t.radius;
+    ctx.fillStyle='#0e182366';ctx.beginPath();ctx.ellipse(1,7,r*.6,r*.25,0,0,TAU);ctx.fill();
+    if(t.biome==='frost'){ctx.fillStyle='#486b74';ctx.fillRect(-3,-r*.8,6,r);for(let i=2;i>=0;i--){ctx.fillStyle=['#a7d3d7','#dff7f4','#effffd'][i];ctx.beginPath();ctx.moveTo(0,-r*2+i*r*.42);ctx.lineTo(-r*(.85-i*.15),-r*.2+i*r*.38);ctx.lineTo(r*(.85-i*.15),-r*.2+i*r*.38);ctx.fill();}}
+    else if(t.biome==='dunes'){ctx.fillStyle='#447f54';ctx.fillRect(-5,-r,10,r+8);ctx.fillRect(-r*.55,-r*.5,6,r*.4);ctx.fillRect(r*.28,-r*.82,6,r*.5);}
+    else if(t.biome==='volcano'||t.biome==='ash'){ctx.fillStyle=t.biome==='volcano'?'#212129':'#383449';ctx.beginPath();ctx.moveTo(-r*.65,6);ctx.lineTo(-r*.18,-r*1.7);ctx.lineTo(r*.16,-r*.6);ctx.lineTo(r*.6,6);ctx.fill();ctx.strokeStyle=t.biome==='volcano'?'#fa7138':'#9d8dcb';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-r*.15,-r);ctx.lineTo(r*.08,-r*.5);ctx.stroke();}
+    else {ctx.fillStyle='#33405e';ctx.fillRect(-4,-r,8,r+8);ctx.fillStyle=t.biome==='crystal'?'#9adbf3':'#b2a0e7';for(let i=0;i<5;i++){const a=i*TAU/5;ctx.beginPath();ctx.moveTo(0,-r*.8);ctx.lineTo(Math.cos(a)*r,-r*.9+Math.sin(a)*r);ctx.lineTo(Math.cos(a+.4)*r*.5,-r*.8+Math.sin(a+.4)*r*.5);ctx.fill();}}
+    ctx.restore();
+  }
+
   buildGround();
   buildMini();
   heroImage.addEventListener('load', () => { /* o santuário é desenhado em tempo real */ });
@@ -862,7 +929,7 @@
     player.effectTick = .55;
     const raw = (player.burn > 0 ? 3.2 + wave * .25 : 0) + (player.poison > 0 ? 2.1 + wave * .22 : 0);
     if (raw > 0) {
-      const dmg = Math.max(1, Math.ceil(raw * (1 - ARMORS[cust.armorType].guard) * (1 - (player.relics.ward || 0) * .055)));
+      const dmg = Math.max(1, Math.ceil(raw * (1 - ARMORS[cust.armorType].guard) * (starterBoon('shield') ? .85 : 1) * (1 - (player.relics.ward || 0) * .055)));
       player.hp -= dmg; floatText(player.x, player.y - 36, `-${dmg} DoT`, '#f4a66d', 12);
       if (player.hp <= 0) die();
     }
@@ -878,7 +945,7 @@
   }
   function hurtPlayer(amount, fromX, fromY, heavy = false, element = null) {
     if (player.dead || player.invuln > 0 || inSafeZone(player.x, player.y)) return;
-    const dmg = Math.max(1, Math.round(amount * (1 - ARMORS[cust.armorType].guard) * (1 - (player.relics.ward || 0) * .055) * (player.curse > 0 ? 1.25 : 1) * rand(.9, 1.1)));
+    const dmg = Math.max(1, Math.round(amount * (1 - ARMORS[cust.armorType].guard) * (starterBoon('shield') ? .85 : 1) * (1 - (player.relics.ward || 0) * .055) * (player.curse > 0 ? 1.25 : 1) * rand(.9, 1.1)));
     player.hp -= dmg;
     if (element && Math.random() < .48) statusToPlayer(element, 2.8);
     player.invuln = .6;
@@ -901,7 +968,7 @@
     const lost = Math.floor(player.coins * .1);
     player.coins -= lost;
     sfx('death');
-    showBanner('VOCÊ CAIU', lost ? `O abismo levou ${lost} moedas` : 'Renascendo no santuário...');
+    showBanner('VOCÊ CAIU', 'Sua jornada acabou. Crie um novo aventureiro.');
     for (const e of enemies) if (!e.dead && e.type !== 'dummy') { e.state = 'idle'; e.timer = 1.5; }
   }
   function respawnPlayer() {
@@ -1172,7 +1239,7 @@
     quest.stage = Math.min(quests.length - 1, quest.stage + 1);
     quest.progress = 0;
     if (quest.stage === 3) spawnBoss();
-    el.worldMessage.textContent = quests[quest.stage].msg;
+    el.worldMessage.textContent = 'Purifique todas as masmorras · Abismo por Abismo.';
     saveGame();
   }
   function questTargetOld() {
@@ -1437,6 +1504,23 @@
   stick.addEventListener('pointerup', releaseStick);
   stick.addEventListener('pointercancel', releaseStick);
 
+  let biomeExposure=0;
+  function updateBiomeHazards(dt){
+    if(inSafeZone(player.x,player.y)||player.dead)return;
+    if(dun && player.x<540)return;
+    const biome=dun?dun.def.biome:biomeAt(player.x,player.y);
+    if(!['frost','marsh','volcano','storm','ash','arcane','crystal'].includes(biome))return;
+    biomeExposure+=dt;
+    if(biomeExposure<9.5)return;
+    biomeExposure=0;
+    const resistance=starterBoon('shield') ? .35 : 1;
+    if(Math.random()>.58*resistance)return;
+    const element=chunkPalettes[biome].element;
+    statusToPlayer(element,biome==='volcano'?3.8:2.2);
+    const msgs={frost:'O frio atravessa sua armadura',marsh:'Esporos tóxicos no ar',volcano:'Cinzas incandescentes',storm:'Descarga elétrica no solo',ash:'A sombra sussurra',arcane:'Fluxo arcano instável',crystal:'Cristais vibram com energia'};
+    showToast('☁ '+msgs[biome]);
+  }
+
   /* ---------- atualização ---------- */
   function update(rawDt) {
     if (paused) return;
@@ -1463,13 +1547,13 @@
     player.hurt = Math.max(0, player.hurt - dt);
     player.aimLock = Math.max(0, player.aimLock - dt);
     player.buff = Math.max(0, player.buff - dt);
-    tickPlayerStatus(dt);
+    tickPlayerStatus(dt);updateBiomeHazards(dt);
     if (player.swing && (player.swing.t += dt) >= player.swing.dur) player.swing = null;
     if (player.spin && (player.spin.t += dt) >= player.spin.dur) player.spin = null;
 
     if (player.dead) {
       player.deadT += dt;
-      if (player.deadT > 2.2) respawnPlayer();
+      if(player.deadT>2.2){restartToCreation();return;}
     } else {
       if ((keys.has(' ') || keys.has('j') || attackHeld) && !paused) playerAttack();
       else if (autoAttack && player.attackCd <= 0) {
@@ -1488,7 +1572,7 @@
       if (mag > 1) { dx /= mag; dy /= mag; }
       const moving = mag > .05;
       player.motion += ((moving ? 1 : 0) - player.motion) * Math.min(1,dt * 12);
-      const water = !dun && player.x >= 0 && player.y >= 0 && player.x <= world.width && player.y <= world.height && inRiver(player.x, player.y);
+      const water = !dun && player.x >= 0 && player.y >= 0 && player.x <= world.width && player.y <= world.height && Math.hypot(player.x-SPAWN.x,player.y-SPAWN.y)<640 && inRiver(player.x, player.y);
       let vx = 0, vy = 0;
       if (player.dashT > 0) {
         player.dashT -= dt;
@@ -1741,7 +1825,23 @@
       ctx.beginPath(); ctx.arc(0, 0, t.r * 1.5, 0, TAU); ctx.fill();
     }
     const dirX = Math.cos(e.face) >= 0 ? 1 : -1;
-    switch (e.type) {
+    if(additionalMobs[e.type] || ['tempestade','prisma','rei_sombras'].includes(e.type)){
+      const ele=enemyElement(e),r=t.r,large=t.boss;
+      ctx.fillStyle=ele==='fogo'?'#42312c':ele==='gelo'?'#3f6974':ele==='raio'?'#4c6567':ele==='natureza'?'#315a41':'#36304c';
+      if(['stag','snowstalker','shockhound','sandscorpion','thunderhawk'].includes(e.type)){
+        ctx.beginPath();ctx.ellipse(0,0,r*.85,r*.6,0,0,TAU);ctx.fill();
+        ctx.fillStyle=t.color;ctx.beginPath();ctx.ellipse(-r*.2,-r*.4,r*.6,r*.5,-.3,0,TAU);ctx.fill();
+        for(const side of [-1,1]){ctx.strokeStyle=t.color;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(side*r*.6,-3);ctx.lineTo(side*r*.8,r*.6);ctx.stroke();}
+      }else{
+        ctx.beginPath();ctx.moveTo(0,-r*1.65);ctx.lineTo(-r*.9,r*.6);ctx.lineTo(r*.9,r*.6);ctx.closePath();ctx.fill();
+        ctx.fillStyle=t.color;ctx.globalAlpha=.85;ctx.beginPath();ctx.ellipse(0,-r*.4,r*.65,r*.78,0,0,TAU);ctx.fill();ctx.globalAlpha=1;
+        if(['crystalguard','prismite','prisma','icegolem','lavagolem','mossbeast'].includes(e.type)){
+          for(let q=0;q<5;q++){const xx=(q-2)*r*.33;ctx.fillStyle=q%2?t.color:'#e4dff9';ctx.beginPath();ctx.moveTo(xx,-r*(1.4+Math.sin(q)*.22));ctx.lineTo(xx+r*.25,-r*.45);ctx.lineTo(xx-r*.25,-r*.45);ctx.fill();}
+        }
+      }
+      ctx.fillStyle='#fff9cb';for(const side of [-1,1]){ctx.beginPath();ctx.arc(side*r*.22,-r*.42,Math.max(1.8,r*.09),0,TAU);ctx.fill();}
+      if(large){ctx.strokeStyle=t.color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-r*.3,r*1.35,gameTime,gameTime+Math.PI*1.3);ctx.stroke();}
+    } else switch (e.type) {
       case 'slime': {
         const sq = 1 + bob * .08 + (e.state === 'windup' ? -.18 : 0);
         ctx.fillStyle = '#3f9d73';
@@ -1961,11 +2061,14 @@
     ctx.translate(-sx, -sy);
 
     if (dun) drawDungeonBg(); else {
-    drawWorldChunks(sx, sy, viewW, viewH);
+    // chão original apenas como base dos monumentos e rios do mapa inicial
     // chão pré-renderizado
     const x0 = Math.max(0, Math.floor(sx)), y0 = Math.max(0, Math.floor(sy));
     const x1 = Math.min(world.width, Math.ceil(sx + viewW)), y1 = Math.min(world.height, Math.ceil(sy + viewH));
     if (x1 > x0 && y1 > y0) ctx.drawImage(ground, x0 * GS, y0 * GS, (x1 - x0) * GS, (y1 - y0) * GS, x0, y0, x1 - x0, y1 - y0);
+    drawWorldChunks(sx, sy, viewW, viewH);
+    // Clareira inicial preservada, sem a camada de terreno procedural.
+    if(x1>x0&&y1>y0){ctx.save();ctx.beginPath();ctx.arc(SPAWN.x,SPAWN.y,640,0,TAU);ctx.clip();ctx.drawImage(ground,x0*GS,y0*GS,(x1-x0)*GS,(y1-y0)*GS,x0,y0,x1-x0,y1-y0);ctx.restore();}
 
     // brilho da água
     ctx.strokeStyle = 'rgba(200,255,248,.28)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
@@ -1984,8 +2087,14 @@
     drawList.length = 0;
     const m = 70;
     const vis = (x, y) => x > sx - m && x < sx + viewW + m && y > sy - m && y < sy + viewH + m;
-    for (const t of trees) if (!dun && vis(t.x, t.y)) drawList.push({ y: t.y + t.radius * .45, k: 0, o: t });
-    if (!dun) for (const chunk of worldChunks.values()) for (const t of chunk.trees) if (vis(t.x, t.y)) drawList.push({ y: t.y + t.radius * .45, k: 0, o: t });
+    for(const t of trees)if(!dun&&vis(t.x,t.y)){
+      const oldZone=Math.hypot(t.x-SPAWN.x,t.y-SPAWN.y)<640;
+      drawList.push({y:t.y+t.radius*.45,k:oldZone?0:5,o:oldZone?t:{...t,biome:biomeAt(t.x,t.y)}});
+    }
+    if (!dun) for (const chunk of worldChunks.values()) {
+      for (const t of chunk.trees) if (vis(t.x,t.y)) drawList.push({y:t.y+t.radius*.45,k:5,o:t});
+      for (const f of chunk.features) if(vis(f.x,f.y))drawList.push({y:f.y+f.size*.5,k:6,o:f});
+    }
     for (const p of (dun ? dun.pillars : pillars)) if (vis(p.x, p.y)) drawList.push({ y: p.y + 8, k: 1, o: p });
     for (const e of enemies) if (!e.dead && vis(e.x, e.y)) drawList.push({ y: e.y, k: 2, o: e });
     if (!dun) {
@@ -1997,6 +2106,8 @@
     for (const d of drawList) {
       if (d.k === 0) drawTree(d.o);
       else if (d.k === 1) drawPillar(d.o);
+      else if (d.k === 5) drawBiomeTree(d.o);
+      else if (d.k === 6) drawBiomeFeature(d.o);
       else if (d.k === 2) drawEnemy(d.o);
       else if (d.k === 4) drawNpc(d.o);
       else { drawHero(); drawSwing(); }
@@ -2123,11 +2234,13 @@
     const mm = Math.floor(clockMinutes());
     setText('clock', el.clock, `${pad2(Math.floor(mm / 60))}:${pad2(mm % 60)}`);
 
-    const t = questTarget();
-    target.cur = t;
-    const dist = t ? Math.hypot(player.x - t.x, player.y - t.y) : 0;
-    setText('obj', el.objective, objectiveLabel(t, dist));
-    setText('dist', el.distance, t ? `${Math.round(dist / 30)} m` : '— m');
+    const t=campaignTarget();target.cur=t;
+    const total=DUNS.length, done=DUNS.filter(d=>cleared[d.id]).length;
+    const dist=t?Math.hypot(player.x-t.x,player.y-t.y):0;
+    const targetTitle=dun?(dun.boss?'Derrote o guardião do bioma':'Explore até o guardião'):(t?t.name:'TODAS CONCLUÍDAS!');
+    setText('obj',el.objective,`${done}/${total} MASMORRAS · ${targetTitle}`);
+    setText('dist',el.distance,t?`${Math.round(dist/30)} m`:'✓');
+    const progress=$('#campaignCount');if(progress)progress.textContent=`${done}/${total}`;
 
     el.skillButton.classList.toggle('cooling', player.skillCd > 0 || player.focus < CLASSES[cust.cls].cost);
     el.dodgeButton.classList.toggle('cooling', player.dashCd > 0 || player.stamina < 30);
@@ -2164,7 +2277,7 @@
      EXPANSÃO 2.0 — masmorras, novos inimigos e chefes, personalização
      ============================================================ */
   const EXP_KEY = 'abismo-open-world-v2';
-  const cust = { name: 'Aventureiro', armor: '#425f69', cape: '#8c3a3a', hair: '#3b2a20', skin: '#d9b99b', glow: '#9fe8ff', style: 1, race: 'humano', cls: 'guerreiro', armorType: 'cota', weapon: 'espada', element: 'fogo', hairStyle: 'curto', trim: '#c7a65c', emblem: 'sol', capeStyle: 'longa', scars: 'nenhuma', body: 'medio' };
+  const cust = { name: 'Aventureiro', armor: '#425f69', cape: '#8c3a3a', hair: '#3b2a20', skin: '#d9b99b', glow: '#9fe8ff', style: 1, race: 'humano', cls: 'guerreiro', armorType: 'cota', weapon: 'espada', element: 'fogo', hairStyle: 'curto', trim: '#c7a65c', emblem: 'sol', capeStyle: 'longa', scars: 'nenhuma', body: 'medio', boons: [] };
   const cleared = {};
   try { const s = JSON.parse(localStorage.getItem(EXP_KEY) || 'null'); if (s) { Object.assign(cust, s.cust); Object.assign(cleared, s.cleared); } } catch (e) { /* sem storage */ }
   const saveExp = () => { try { localStorage.setItem(EXP_KEY, JSON.stringify({ cust, cleared })); } catch (e) { /* sem storage */ } };
@@ -2182,16 +2295,71 @@
     arquimago: { name: 'ARQUIMAGO ASTRAL', hp: 1000, r: 28, speed: 80, dmg: 20, reach: 0, trigger: 300, windup: .8, recover: 1.1, lunge: 0, ranged: true, nova: true, aggro: 900, xp: 800, coin: [250, 250], hostile: true, boss: true, color: '#8fb8ff' },
     titan: { name: 'TITÃ DA FORJA', hp: 1800, r: 42, speed: 88, dmg: 34, reach: 160, trigger: 120, windup: 1.1, recover: 1.1, lunge: 0, nova: true, aggro: 900, xp: 1200, coin: [400, 400], hostile: true, boss: true, color: '#ff8a4a' }
   });
-  function typeForX(x, y = player.y) {
-    const r = Math.random(), biome = biomeForChunk(Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE));
-    let pool = biome === 'frost' ? ['wraith','wraith','wolf','mage','guardian'] :
-      biome === 'dunes' ? ['harpy','harpy','brute','cultist','mimic'] :
-      biome === 'marsh' ? ['spider','slime','spider','shaman','wolf'] :
-      biome === 'ash' ? ['cultist','guardian','skeleton','wraith','mage'] :
-      ['slime','wolf','spider','bat','skeleton','mage','brute'];
-    if (wave >= 4) pool = pool.concat(['guardian','cultist','shaman']);
-    if (wave >= 7) pool = pool.concat(['mimic','wraith','brute','harpy']);
-    return pool[Math.floor(r * pool.length)];
+  const BIOME_MOBS = {
+    forest:['wolf','spider','slime','stag','thornling','dryad','mossbeast'],
+    frost:['wraith','icegolem','frostling','snowstalker','mage','wolf'],
+    dunes:['harpy','sandscorpion','scarab','duneraider','brute','mimic'],
+    marsh:['spider','slime','boglurker','plagueshroom','shaman','mossbeast'],
+    ash:['skeleton','wraith','nightstalker','graveknight','guardian','bat'],
+    volcano:['cultist','brute','emberling','lavagolem','pyromancer','guardian'],
+    storm:['thunderhawk','stormwisp','shockhound','guardian','mage','harpy'],
+    crystal:['prismite','crystalguard','shardmage','guardian','mage','mimic'],
+    arcane:['mage','astraleye','voidwalker','shardmage','guardian','wraith']
+  };
+  const additionalMobs = {
+    stag:['CERVO CORROMPIDO',85,136,14,'natureza','flank'],
+    thornling:['ESPINHO ANDANTE',72,100,13,'natureza','guard'],
+    dryad:['DRÍADE SOMBRIA',108,90,17,'natureza','support'],
+    mossbeast:['GOLEM DE MUSGO',225,63,26,'natureza','guard'],
+    icegolem:['GOLEM DE GELO',245,67,27,'gelo','guard'],
+    frostling:['DUENDE DE GEADA',48,145,10,'gelo','flank'],
+    snowstalker:['PREDADOR ALBINO',118,155,20,'gelo','stalker'],
+    sandscorpion:['ESCORPIÃO DAS DUNAS',110,132,18,'fogo','flank'],
+    scarab:['ESCARAVELHO DE OURO',58,158,13,'fogo','stalker'],
+    duneraider:['SAQUEADOR DO DESERTO',155,102,19,'fogo','kite'],
+    boglurker:['DEVORADOR DO BREJO',175,82,22,'natureza','stalker'],
+    plagueshroom:['COGUMELO TÓXICO',75,62,15,'natureza','support'],
+    nightstalker:['CAÇADOR NOTURNO',98,153,18,'arcano','stalker'],
+    graveknight:['CAVALEIRO FUNERAL',260,84,25,'arcano','guard'],
+    emberling:['ELEMENTAL DE BRASA',64,148,13,'fogo','flank'],
+    lavagolem:['GOLEM MAGMÁTICO',300,69,29,'fogo','guard'],
+    pyromancer:['PIROMANTE EXILADO',94,91,16,'fogo','kite'],
+    thunderhawk:['FALCÃO ELÉTRICO',86,179,17,'raio','flank'],
+    stormwisp:['FÓTON DA TEMPESTADE',59,132,13,'raio','kite'],
+    shockhound:['CÃO DO TROVÃO',119,149,19,'raio','stalker'],
+    prismite:['PRISMÁTICO VIVO',86,126,15,'arcano','flank'],
+    crystalguard:['SENTINELA CRISTALINA',285,67,27,'arcano','guard'],
+    shardmage:['MAGISTA DOS FRAGMENTOS',104,87,16,'arcano','kite'],
+    astraleye:['OLHO DO VAZIO',98,117,20,'arcano','kite'],
+    voidwalker:['CAMINHANTE DO VAZIO',150,117,20,'arcano','stalker']
+  };
+  Object.assign(SPEECH,{
+    stag:['A mata está acordando!','Nenhum caçador passará!'],thornling:['Raízes!','A floresta nos protege!'],dryad:['O bosque é eterno!'],mossbeast:['GROOOOM!'],
+    icegolem:['SILÊNCIO GELADO!'],frostling:['Congele, forasteiro!'],snowstalker:['Sinto seu calor!'],
+    sandscorpion:['Tsssss!'],scarab:['O ouro é meu!'],duneraider:['Solte suas moedas!'],
+    boglurker:['Venha afundar comigo!'],plagueshroom:['Esporos para todos!'],
+    nightstalker:['A sombra chegou!'],graveknight:['Seu nome será esquecido!'],
+    emberling:['Arda! Arda!'],lavagolem:['CORAÇÃO DE MAGMA!'],pyromancer:['Cinzas ao vento!'],
+    thunderhawk:['O céu é minha caça!'],stormwisp:['⚡ CHOQUE!'],shockhound:['Grr... faíscas!'],
+    prismite:['Mil reflexos!'],crystalguard:['NÃO QUEBRE O SELO.'],shardmage:['Fragmentos cortantes!'],
+    astraleye:['Eu vejo o impossível.'],voidwalker:['O vazio chama...'],
+    tempestade:['O TROVÃO TE JULGARÁ!','CURVE-SE À TEMPESTADE!'],prisma:['DEZ MIL REFLEXOS DE PODER!'],rei_sombras:['O ABISMO É MEU TRONO!']
+  });
+  for(const [id,[name,hp,speed,dmg,element,ai]] of Object.entries(additionalMobs)) {
+    const ranged=['kite','support'].includes(ai);
+    const colors={fogo:'#f67c49',gelo:'#a7e9fc',natureza:'#83d486',raio:'#f8dd70',arcano:'#bb9af2'};
+    TYPES[id]={name,hp,r:Math.min(29,12+hp/21),speed,dmg,reach:ranged?0:55,trigger:ranged?255:90,windup:.5,recover:ranged?1.35:.86,lunge:ranged?0:(ai==='flank'?330:180),aggro:530,xp:Math.round(hp*.36),coin:[6,20],hostile:true,ai,ranged,element,color:colors[element]};
+  }
+  Object.assign(TYPES,{
+    tempestade:{name:'RAIJIN, SENHOR DA TEMPESTADE',hp:1900,r:36,speed:112,dmg:30,reach:0,trigger:290,windup:.6,recover:.85,aggro:900,ranged:true,nova:true,xp:1500,coin:[400,450],hostile:true,boss:true,element:'raio',color:'#ffe371'},
+    prisma:{name:'IMPERATRIZ DOS CRISTAIS',hp:2300,r:36,speed:94,dmg:33,reach:0,trigger:330,windup:.7,recover:1,aggro:900,ranged:true,nova:true,xp:1700,coin:[430,480],hostile:true,boss:true,element:'arcano',color:'#c2b7ff'},
+    rei_sombras:{name:'REI DAS SOMBRAS',hp:2200,r:35,speed:135,dmg:37,reach:143,trigger:155,windup:.8,recover:.95,lunge:600,aggro:900,xp:1650,coin:[450,500],hostile:true,boss:true,element:'arcano',color:'#a287cb'}
+  });
+  function typeForX(x,y=player.y){
+    const biome=biomeAt(x,y),pool=BIOME_MOBS[biome];
+    // Later waves unlock the rarer threats of THAT biome, not random mobs from elsewhere.
+    const access=wave<3?Math.min(3,pool.length):wave<7?Math.min(5,pool.length):pool.length;
+    return pool[Math.floor(Math.random()*access)];
   }
 
   /* ---------- projéteis ---------- */
@@ -2211,15 +2379,23 @@
   const WALL_H = 330, FLOOR_TOP = 350;
   const OW = { w: world.width, h: world.height };
   const DUNS = [
-    { id: 'cat', name: 'Catacumbas Esquecidas', sub: 'Os mortos não descansam', x: 420, y: 640, lv: 15, bg: ['360_F_589592494_xjem0JGmU7Sc1GKgQ2Fo9LlwjYY6WIZi.jpg', 'medieval-dungeon-corridor-stockcake.jpg'], floor: '#4a4338', wall: '#2b2620', acc: '#ffb45a', mix: ['skeleton', 'bat', 'skeleton', 'bat'], boss: 'lorde' },
-    { id: 'cis', name: 'Cisterna Esmeralda', sub: 'Algo se move sob a água', x: 780, y: 1580, lv: 17, bg: ['images (2).jpg'], floor: '#2f4a42', wall: '#16261f', acc: '#7dffb0', mix: ['slime', 'slime', 'bat', 'wolf'], boss: 'matriarca' },
-    { id: 'ast', name: 'Templo Astral', sub: 'O céu se partiu aqui', x: 1500, y: 330, lv: 19, bg: ['3311e8dcf9f658e9a595b633eed77671.jpg'], floor: '#3b3a66', wall: '#1a1838', acc: '#8fb8ff', mix: ['mage', 'bat', 'mage', 'skeleton'], boss: 'arquimago' },
-    { id: 'forja', name: 'Forja do Abismo', sub: 'O fogo guarda o último segredo', x: 2060, y: 1500, lv: 22, bg: ['boss arena.jpg'], floor: '#4d3640', wall: '#24121a', acc: '#ff8a4a', mix: ['brute', 'mage', 'brute', 'wolf'], boss: 'titan' },
-    { id: 'gelo', name: 'Observatório Glacial', sub: 'O frio preserva os segredos', x: 3490, y: 610, lv: 25, bg: ['dungeons-palace-background-260nw-181416236.webp'], floor: '#465b68', wall: '#1b2935', acc: '#9de8ff', mix: ['mage', 'bat', 'skeleton', 'wolf'], boss: 'arquimago' },
-    { id: 'dunas', name: 'Colosso das Dunas', sub: 'A areia se ergue contra você', x: 3700, y: 2110, lv: 27, bg: ['boss arena.jpg'], floor: '#765b3c', wall: '#38271d', acc: '#ffbd69', mix: ['brute', 'bat', 'wolf', 'brute'], boss: 'titan' },
-    { id: 'bosque', name: 'Bosque Profundo', sub: 'As raízes sentem sua presença', x: 1040, y: 2470, lv: 26, bg: ['images (1).jpg'], floor: '#354c3a', wall: '#17261b', acc: '#a5eb83', mix: ['slime', 'wolf', 'bat', 'mage'], boss: 'matriarca' }
+    { id: 'cat', name: 'Catacumbas Esquecidas', sub: 'Os mortos não descansam', x: 420, y: 640, lv: 15, bg: ['360_F_589592494_xjem0JGmU7Sc1GKgQ2Fo9LlwjYY6WIZi.jpg', 'medieval-dungeon-corridor-stockcake.jpg'], floor: '#4a4338', wall: '#2b2620', acc: '#ffb45a', mix: ['nightstalker','graveknight','skeleton','wraith'], boss: 'lorde' },
+    { id: 'cis', name: 'Cisterna Esmeralda', sub: 'Algo se move sob a água', x: 780, y: 1580, lv: 17, bg: ['images (2).jpg'], floor: '#2f4a42', wall: '#16261f', acc: '#7dffb0', mix: ['boglurker','plagueshroom','spider','shaman'], boss: 'matriarca' },
+    { id: 'ast', name: 'Templo Astral', sub: 'O céu se partiu aqui', x: 1500, y: 330, lv: 19, bg: ['3311e8dcf9f658e9a595b633eed77671.jpg'], floor: '#3b3a66', wall: '#1a1838', acc: '#8fb8ff', mix: ['astraleye','voidwalker','shardmage','mage'], boss: 'arquimago' },
+    { id: 'forja', name: 'Forja do Abismo', sub: 'O fogo guarda o último segredo', x: 2060, y: 1500, lv: 22, bg: ['boss arena.jpg'], floor: '#4d3640', wall: '#24121a', acc: '#ff8a4a', mix: ['emberling','lavagolem','pyromancer','cultist'], boss: 'titan' },
+    { id: 'gelo', name: 'Observatório Glacial', sub: 'O frio preserva os segredos', x: 3490, y: 610, lv: 25, bg: ['dungeons-palace-background-260nw-181416236.webp'], floor: '#465b68', wall: '#1b2935', acc: '#9de8ff', mix: ['frostling','icegolem','snowstalker','wraith'], boss: 'arquimago' },
+    { id: 'dunas', name: 'Colosso das Dunas', sub: 'A areia se ergue contra você', x: 3700, y: 2110, lv: 27, bg: ['boss arena.jpg'], floor: '#765b3c', wall: '#38271d', acc: '#ffbd69', mix: ['sandscorpion','scarab','duneraider','harpy'], boss: 'titan' },
+    { id: 'bosque', name: 'Bosque Profundo', sub: 'As raízes sentem sua presença', x: 1040, y: 2470, lv: 26, bg: ['images (1).jpg'], floor: '#354c3a', wall: '#17261b', acc: '#a5eb83', mix: ['thornling','dryad','mossbeast','stag'], boss: 'matriarca', biome:'forest' },
+    { id: 'temporal', name:'Pico do Trovão',sub:'O céu ruge sobre as pedras',x:2800,y:-2100,lv:28,bg:[],floor:'#3b5864',wall:'#182932',acc:'#f7df77',mix:['stormwisp','thunderhawk','shockhound','stormwisp'],boss:'tempestade',biome:'storm' },
+    { id: 'prismatico', name:'Palácio Prismático',sub:'Um coração de cristal desperta',x:-1600,y:-1510,lv:30,bg:[],floor:'#43567e',wall:'#202b51',acc:'#b6e7fd',mix:['prismite','crystalguard','shardmage','prismite'],boss:'prisma',biome:'crystal' },
+    { id: 'sombras', name:'Trono das Sombras',sub:'A noite esconde seu rei',x:-2300,y:830,lv:31,bg:[],floor:'#3e394f',wall:'#211d30',acc:'#bb9dff',mix:['nightstalker','graveknight','voidwalker','wraith'],boss:'rei_sombras',biome:'ash' }
   ];
-  DUNS.forEach(d => { d.imgs = d.bg.map(f => { const i = new Image(); i.src = 'assets/' + f; return i; }); });
+  const DUNGEON_BIOMES={cat:'ash',cis:'marsh',ast:'arcane',forja:'volcano',gelo:'frost',dunas:'dunes',bosque:'forest',temporal:'storm',prismatico:'crystal',sombras:'ash'};
+  DUNS.forEach(d=>{d.biome=d.biome||DUNGEON_BIOMES[d.id];d.imgs=d.bg.map(f=>{const i=new Image();i.src='assets/'+f;return i;});});
+  function campaignTarget(){
+    if(dun)return questTarget();
+    return DUNS.filter(d=>!cleared[d.id]).sort((a,b)=>Math.hypot(player.x-a.x,player.y-a.y)-Math.hypot(player.x-b.x,player.y-b.y))[0]||null;
+  }
   let dun = null, ow = null, owEnemies = [], owSolids = [], splash = null, fadeSt = null, portalCd = 0;
 
   function startFade(fn, instant) { if (instant) { fn(); return; } if (!fadeSt) fadeSt = { t: 0, fn, ran: false }; }
@@ -2239,7 +2415,7 @@
       dun = { def: d, pillars: [], boss: null, done: false, exit: { x: 90, y: 620 }, exit2: null };
       for (let i = 0; i < 6; i++) { const p = { x: 520 + (i % 3) * 400, y: i < 3 ? 480 : 760, h: 64, broken: i % 2 === 0 }; dun.pillars.push(p); solids.push({ x: p.x, y: p.y, cr: 13 }); }
       player.x = 170; player.y = 620; player.angle = 0; player.kx = player.ky = 0;
-      const n = 8 + ((Math.random() * 3) | 0);
+      const n = 10 + Math.min(12, Math.floor(wave * .55)) + ((Math.random() * 3) | 0);
       for (let i = 0; i < n; i++) spawnEnemy(d.mix[i % d.mix.length], rand(560, 1250), rand(400, 850));
       snapCamera(); splash = { d, t: 0 }; portalCd = 1.5;
     });
@@ -2261,7 +2437,8 @@
     dun.done = true; dun.exit2 = { x: e.x, y: e.y };
     for (let i = 0; i < 16; i++) dropLoot(e.x, e.y, 'coin', Math.round(rand(8, 16) * (first ? 2 : 1)));
     for (let i = 0; i < 3; i++) dropLoot(e.x, e.y, 'potion', 1);
-    cleared[d.id] = true; saveExp();
+    cleared[d.id] = true; saveExp(); updateCampaignBoard();
+    if(DUNS.every(door=>cleared[door.id]))setTimeout(()=>showRunEnd(true),1800);
     showBanner('MASMORRA CONCLUÍDA', first ? `${d.name} · recompensa dobrada` : d.name);
     const q = quests[quest.stage];
     if (q && q.dun === d.id) delayed.push({ t: .1, fn: completeQuest });
@@ -2329,6 +2506,29 @@
         g.fillRect(x + 1, y + 1, 78, 54);
       }
     }
+    // Distinct elemental dungeon architecture over the old stone floor.
+    let rx=1002748;
+    const rnd=()=>{rx=(Math.imul(rx,1664525)+1013904223)>>>0;return rx/4294967296;};
+    for(let i=0;i<105;i++){
+      const x=180+rnd()*(W-260),y=WALL_H+32+rnd()*(H-WALL_H-45),sz=5+rnd()*18;
+      if(d.biome==='volcano'){
+        g.strokeStyle=i%3?'#b25236':'#fc8944';g.lineWidth=1.3+rnd()*3;g.beginPath();g.moveTo(x-sz,y-8);g.lineTo(x,y);g.lineTo(x+sz*.5,y+5);g.stroke();
+      }else if(d.biome==='frost'){
+        g.fillStyle=i%3?'#8bbad5':'#e9f9fc';g.beginPath();g.moveTo(x,y-sz*1.6);g.lineTo(x+sz*.48,y+4);g.lineTo(x-sz*.42,y+4);g.fill();
+      }else if(d.biome==='storm'){
+        g.strokeStyle='#aadbe7';g.lineWidth=2;g.beginPath();g.moveTo(x,y-sz);g.lineTo(x-4,y);g.lineTo(x+3,y);g.lineTo(x-4,y+sz);g.stroke();
+      }else if(d.biome==='crystal'||d.biome==='arcane'){
+        g.fillStyle=i%2?'#9ce8f5':'#b393f9';g.globalAlpha=.38;g.beginPath();g.moveTo(x,y-sz*1.4);g.lineTo(x+sz*.5,y);g.lineTo(x,y+sz*.6);g.lineTo(x-sz*.5,y);g.fill();g.globalAlpha=1;
+      }else if(d.biome==='forest'||d.biome==='marsh'){
+        g.fillStyle=d.biome==='forest'?'#609969':'#558e70';g.globalAlpha=.3;g.beginPath();g.ellipse(x,y,sz*1.3,sz*.6,0,0,TAU);g.fill();g.globalAlpha=1;
+      }else if(d.biome==='dunes'){
+        g.strokeStyle='#d4b179';g.lineWidth=2;g.beginPath();g.arc(x,y,sz,.1,Math.PI);g.stroke();
+      }else{g.fillStyle='#9081b9';g.globalAlpha=.15;g.fillRect(x,y,sz*.7,sz*.7);g.globalAlpha=1;}
+    }
+    // A themed ceremonial insignia makes the boss end of the arena readable.
+    g.save();g.translate(1500,640);g.strokeStyle=d.acc+'b5';g.lineWidth=4;
+    for(let i=0;i<8;i++){g.save();g.rotate(i*Math.PI/4);g.beginPath();g.moveTo(0,100);g.lineTo(-15,126);g.lineTo(15,126);g.closePath();g.stroke();g.restore();}
+    g.restore();
     g.strokeStyle = d.acc + '55'; g.lineWidth = 3;
     for (const rr of [150, 105]) { g.beginPath(); g.ellipse(1500, 640, rr * 1.3, rr * .8, 0, 0, TAU); g.stroke(); }
     const sh = g.createLinearGradient(0, 0, 160, 0); sh.addColorStop(0, 'rgba(0,0,0,.6)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
@@ -2406,7 +2606,7 @@
     if (splash) {
       const t = splash.t, a = clamp(Math.min(t / .4, (2.5 - t) / .7), 0, 1), im = splash.d.imgs[0];
       ctx.globalAlpha = a; ctx.fillStyle = '#050308'; ctx.fillRect(0, 0, w, h);
-      if (im.complete && im.naturalWidth) { ctx.globalAlpha = a * .8; coverImg(im, w, h); }
+      if (im && im.complete && im.naturalWidth) { ctx.globalAlpha = a * .8; coverImg(im, w, h); }
       const g = ctx.createRadialGradient(w / 2, h / 2, h * .2, w / 2, h / 2, h * .95);
       g.addColorStop(0, 'rgba(0,0,0,.15)'); g.addColorStop(1, 'rgba(0,0,0,.85)');
       ctx.globalAlpha = a; ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
@@ -2424,7 +2624,7 @@
   }
 
   /* ---------- desenho dos novos inimigos ---------- */
-  const NEW_TYPES = ['bat', 'mage', 'brute', 'lorde', 'matriarca', 'arquimago', 'titan','spider','wraith','cultist','guardian','shaman','harpy','mimic'];
+  const NEW_TYPES = ['bat', 'mage', 'brute', 'lorde', 'matriarca', 'arquimago', 'titan','spider','wraith','cultist','guardian','shaman','harpy','mimic',...Object.keys(additionalMobs),'tempestade','prisma','rei_sombras'];
   function drawEnemy(e) {
     if (!NEW_TYPES.includes(e.type)) return drawEnemyOld(e);
     const t = e.t, r = t.r, bob = Math.sin(gameTime * 5 + e.bob), dx = Math.cos(e.face) >= 0 ? 1 : -1;
@@ -2606,10 +2806,20 @@
   if (!WEAPONS[cust.weapon] || WEAPONS[cust.weapon].cls !== cust.cls) cust.weapon = defaultWeapon(cust.cls);
   if (!ELEMENTS[cust.element]) cust.element = 'fogo';
   if (!ULTIMATES[cust.ultimate]) cust.ultimate = null;
-  const hpMul = () => RACES[cust.race].hp * CLASSES[cust.cls].hp * ARMORS[cust.armorType].hp;
-  const foMul = () => RACES[cust.race].fo * CLASSES[cust.cls].fo;
-  const dmMul = () => RACES[cust.race].dm * CLASSES[cust.cls].dm * WEAPONS[cust.weapon].damage;
-  const spMul = () => RACES[cust.race].sp * CLASSES[cust.cls].sp * ARMORS[cust.armorType].speed;
+  const STARTER_BLESSINGS = {
+    vitality:{icon:'♥',name:'Vigor Ancestral',detail:'+30% de vida máxima'},
+    fury:{icon:'⚔',name:'Fúria Solar',detail:'+15% de dano causado'},
+    stride:{icon:'➶',name:'Passos do Vento',detail:'+12% velocidade de corrida'},
+    shield:{icon:'⬡',name:'Proteção do Guardião',detail:'-15% dano e exposição elemental'},
+    focus:{icon:'✦',name:'Fonte dos Magos',detail:'+35% de mana máxima'}
+  };
+  if(!Array.isArray(cust.boons))cust.boons=[];
+  const starterBoon=id=>cust.boons.includes(id);
+
+  const hpMul = () => RACES[cust.race].hp * CLASSES[cust.cls].hp * ARMORS[cust.armorType].hp * (starterBoon('vitality') ? 1.30 : 1);
+  const foMul = () => RACES[cust.race].fo * CLASSES[cust.cls].fo * (starterBoon('focus') ? 1.35 : 1);
+  const dmMul = () => RACES[cust.race].dm * CLASSES[cust.cls].dm * WEAPONS[cust.weapon].damage * (starterBoon('fury') ? 1.15 : 1);
+  const spMul = () => RACES[cust.race].sp * CLASSES[cust.cls].sp * ARMORS[cust.armorType].speed * (starterBoon('stride') ? 1.12 : 1);
   const xpMul = () => RACES[cust.race].xp;
   const atkMul = () => CLASSES[cust.cls].atk * WEAPONS[cust.weapon].rate, rangeMul = () => CLASSES[cust.cls].rng * WEAPONS[cust.weapon].range, dmgClass = () => CLASSES[cust.cls].dc;
 
@@ -2709,7 +2919,7 @@
 
   /* ---------- herói: raça, classe e armas ---------- */
   function paintHero(c, x, y, ang, walk) {
-    const sw = Math.sin(walk) * (player.motion ?? 1), cs = cust, R = cs.race, K = cs.cls;
+    const sw = Math.sin(walk*.72) * (player.motion ?? 1), cs = cust, R = cs.race, K = cs.cls;
     const sc = { humano: [1, 1], elfo: [.93, 1.05], anao: [1.1, .9], orc: [1.15, 1.06], tiefling: [1.0, 1.07], minotauro: [1.28,1.15] }[R] || [1, 1];
     c.save(); c.translate(x, y); c.rotate(ang + Math.PI / 2); c.scale(sc[0] * (cs.body === 'robusto' ? 1.12 : cs.body === 'esguio' ? .91 : 1), sc[1]); c.lineCap = 'round';
     if (cs.capeStyle === 'sem') c.globalAlpha = 0;
@@ -2720,10 +2930,11 @@
     // Two-step gait with forward/back foot placement, separate from facing angle.
     c.fillStyle = '#181c23';
     for (const side of [-1,1]) {
-      c.save(); c.translate(side*5, 11 + sw*side*6);
-      c.rotate(-sw*side*.24);
-      c.beginPath();c.ellipse(0,0,3.5,7.5,0,0,TAU);c.fill();
-      c.fillStyle=shade(cs.armor,-25);c.fillRect(-3,-4,6,4);
+      c.save();c.translate(side*6,12+sw*side*3);
+      c.rotate(-sw*side*.11);
+      c.fillStyle=shade(cs.armor,-45);c.beginPath();c.ellipse(0,-3,4.6,8,0,0,TAU);c.fill();
+      c.fillStyle='#1e2229';c.beginPath();c.roundRect(-4,1,8,11,2);c.fill();
+      c.fillStyle=cs.trim;c.fillRect(-4,4,8,1.5);
       c.restore();
     }
     c.fillStyle = shade(cs.armor, -30); c.beginPath(); c.ellipse(0, 1, 12, 13, 0, 0, TAU); c.fill();
@@ -2797,6 +3008,13 @@
       c.strokeStyle = '#b9c1d0'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(12, -4); c.lineTo(18, -23); c.moveTo(-12, -4); c.lineTo(-18, -23); c.stroke();
       c.fillStyle = cs.glow; c.beginPath(); c.moveTo(18, -27); c.lineTo(14, -21); c.lineTo(20, -22); c.closePath(); c.moveTo(-18, -27); c.lineTo(-20, -22); c.lineTo(-14, -21); c.closePath(); c.fill();
     }
+    // Fivelas, cotoveleiras, luvas e sombras: silhueta humana mais legível.
+    for(const side of [-1,1]){
+      c.fillStyle=shade(cs.armor,-42);c.beginPath();c.ellipse(side*12,5+sw*side*1.2,4,6,side*.18,0,TAU);c.fill();
+      c.fillStyle=shade(cs.armor,42);c.beginPath();c.ellipse(side*12,-4,4.9,5.8,0,0,TAU);c.fill();
+      c.strokeStyle=cs.trim;c.lineWidth=1.3;c.beginPath();c.moveTo(side*10,3);c.lineTo(side*14,4);c.stroke();
+    }
+    c.fillStyle='#4a3525';c.fillRect(-9,8,18,4);c.fillStyle=cs.trim;c.fillRect(-2,7,4,5);
     // cabeça
     if (R === 'elfo' || R === 'orc' || R === 'tiefling') { c.fillStyle = cs.skin; for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 6, -14); c.lineTo(s * 14, -18); c.lineTo(s * 6, -9); c.fill(); } }
     const eye = () => { c.fillStyle = R === 'orc' ? '#ffd24a' : '#1c1814'; c.beginPath(); c.arc(-2.4, -14.5, 1, 0, TAU); c.arc(2.4, -14.5, 1, 0, TAU); c.fill(); };
@@ -2854,10 +3072,10 @@
     const aura = ctx.createRadialGradient(player.x, player.y, 3, player.x, player.y, 34);
     aura.addColorStop(0, ELEMENTS[cust.element].color + '20'); aura.addColorStop(1, ELEMENTS[cust.element].color + '00');
     ctx.fillStyle = aura; ctx.beginPath(); ctx.arc(player.x, player.y, 34, 0, TAU); ctx.fill(); ctx.restore();
-    paintHero(ctx, player.x, player.y, player.angle, player.walk);
+    ctx.save();ctx.translate(player.x,player.y);ctx.scale(1.28,1.28);paintHero(ctx,0,0,player.angle,player.walk);ctx.restore();
     if (player.flash > 0) { ctx.globalAlpha = Math.min(1, player.flash * 3); ctx.fillStyle = '#fff1b2'; ctx.beginPath(); ctx.arc(player.x, player.y, 22, 0, TAU); ctx.fill(); }
     ctx.globalAlpha = .85; ctx.textAlign = 'center'; ctx.font = '700 11px Rajdhani, sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,10,.8)';
-    ctx.strokeText(cust.name, player.x, player.y - 42); ctx.fillStyle = '#f4efe0'; ctx.fillText(cust.name, player.x, player.y - 42);
+    ctx.strokeText(cust.name, player.x, player.y - 50); ctx.fillStyle = '#f4efe0'; ctx.fillText(cust.name, player.x, player.y - 50);
     ctx.restore();
   }
 
@@ -2882,6 +3100,8 @@
     <label>Emblema<select id="cpEmblem"><option value="sol">Sol</option><option value="lua">Lua</option><option value="runa">Runa</option><option value="nenhum">Nenhum</option></select></label>
     <label>Cicatrizes<select id="cpScars"><option value="nenhuma">Nenhuma</option><option value="guerra">Batalha</option><option value="antiga">Antiga</option></select></label>
     </div>`);
+    panel.querySelector('.cp-opts').insertAdjacentHTML('beforeend',`<div class="cp-row cp-blessing"><span>✦ BÊNÇÃOS OPCIONAIS · escolha até 2</span><div class="blessing-list" id="cpBlessings">${Object.entries(STARTER_BLESSINGS).map(([id,b])=>`<button class="blessing-btn" type="button" data-blessing="${id}"><span>${b.icon}</span><strong>${b.name}</strong><small>${b.detail}</small></button>`).join('')}</div></div>`);
+
     const cpArmor = $('#cpArmor'), cpWeapon = $('#cpWeapon'), cpElement = $('#cpElement');
     cpArmor.innerHTML = Object.entries(ARMORS).map(([id, item]) => `<option value="${id}">${item.n}</option>`).join('');
     cpElement.innerHTML = Object.entries(ELEMENTS).map(([id, item]) => `<option value="${id}">${item.n}</option>`).join('');
@@ -2909,7 +3129,8 @@
     }
     cpElement.value = cust.element;
     cpWeapon.innerHTML = Object.entries(WEAPONS).filter(([, item]) => item.cls === cust.cls).map(([id, item]) => `<option value="${id}">${item.n}</option>`).join('');
-    cpWeapon.value = cust.weapon;
+    cpWeapon.value=cust.weapon;
+    panel.querySelectorAll('[data-blessing]').forEach(b=>{const active=starterBoon(b.dataset.blessing);b.classList.toggle('on',active);b.setAttribute('aria-pressed',String(active));});
     $('#cpStats').innerHTML = `<b>${RACES[cust.race].n} ${CLASSES[cust.cls].n}</b><span>${WEAPONS[cust.weapon].n} · ${ARMORS[cust.armorType].n}</span><span>Vida ${maxHpOf()} · Foco ${maxFocusOf()}</span><span>Dano ${damageOf()} · Vel. ${Math.round(235 * spMul())} · Defesa ${Math.round(ARMORS[cust.armorType].guard * 100)}%</span><span>${ELEMENTS[cust.element].n}: ${cust.element === 'fogo' ? 'queima' : cust.element === 'gelo' ? 'desacelera' : cust.element === 'raio' ? 'salta entre alvos' : cust.element === 'natureza' ? 'recupera vida' : 'recupera foco'}</span><span>Habilidade: ${CLASSES[cust.cls].icon} (${CLASSES[cust.cls].cost} foco)</span>`;
     syncHeroTag();
   }
@@ -2921,6 +3142,14 @@
   panel.addEventListener('click', ev => {
     const b = ev.target.closest('button'); if (!b) return;
     if (b.id === 'cpClose') { togglePanel(false); return; }
+    if(b.dataset.blessing){
+      if(cust.created){showToast('Bênçãos iniciais só podem ser trocadas entre jornadas');return;}
+      const id=b.dataset.blessing;
+      if(starterBoon(id))cust.boons=cust.boons.filter(x=>x!==id);
+      else if(cust.boons.length<2)cust.boons.push(id);
+      else{showToast('Máximo de duas bênçãos iniciais');return;}
+      player.hp=maxHpOf();player.focus=maxFocusOf();refreshPanel();saveExp();return;
+    }
     if (b.dataset.race) { cust.race = b.dataset.race; cust.skin = RACES[cust.race].skin[0]; }
     else if (b.dataset.cls) { cust.cls = b.dataset.cls; cust.weapon = defaultWeapon(cust.cls); }
     else if (b.classList.contains('sw')) cust[b.dataset.k] = b.dataset.c;
@@ -2948,7 +3177,10 @@
     merchant: { name:'Dorin, Mercador',col:'#ebce85',lines:['As estradas mudam, os preços não!','Poção por 55 moedas.'] },
     scout: { name:'Kael, Explorador',col:'#9cc4ee',lines:['Estas terras não têm fim.','Inimigos distantes possuem resistências elementais.','Cada nova onda traz elites mais perigosas.'] },
     blacksmith: { name:'Brakka, Ferreira',col:'#f6a781',lines:['Venha, afio sua arma por 80 moedas.','Um fio bom vale mais do que cem promessas.'] },
-    bard: { name:'Nim, Menestrel',col:'#c9b5f8',lines:['Que sua lenda atravesse estas dunas!','Por 30 moedas, lhe dou uma canção de poder.'] }
+    bard: { name:'Nim, Menestrel',col:'#c9b5f8',lines:['Que sua lenda atravesse estas dunas!','Por 30 moedas, lhe dou uma canção de poder.'] },
+    alchemist:{name:'Ivara, Alquimista',col:'#d2a3fa',lines:['As águas mudam entre os biomas.','Uma poção por 50 moedas.']},
+    ranger:{name:'Tarek, Batedor',col:'#aedf8e',lines:['Cada terreno tem os seus próprios monstros.','Confira no diário onde estão as masmorras.']},
+    sage:{name:'Orryn, Sábio',col:'#acd5f0',lines:['Existem nove biomas; cada um esconde perigos únicos.','Não subestime o poder de uma bênção inicial.']}
   };
   const homeNpcs = [
     {x:785,y:1194,role:'merchant',seed:1}, {x:707,y:1175,role:'bard',seed:2},
@@ -2978,11 +3210,11 @@
     const n=nearestNpc(); if (!n) return;
     const info=NPC_ROLES[n.role]; interactCooldown=.5;
     let line=npcMessage(n);
-    const costs={healer:40,merchant:55,blacksmith:80,bard:30};
+    const costs={healer:40,merchant:55,blacksmith:80,bard:30,alchemist:50};
     const price=costs[n.role];
     if (price && player.coins >= price) {
       if (n.role==='healer' && player.hp<maxHpOf()*.85) {player.coins-=price;player.hp=Math.min(maxHpOf(),player.hp+maxHpOf()*.7);line='Curado! As suas feridas estão fechadas.';sfx('potion');}
-      else if (n.role==='merchant' && player.potions<9) {player.coins-=price;player.potions++;line='Negócio feito! Uma poção para seu caminho.';sfx('coin');}
+      else if (['merchant','alchemist'].includes(n.role) && player.potions<9) {player.coins-=price;player.potions++;line='Negócio feito! Uma poção para seu caminho.';sfx('coin');}
       else if (n.role==='blacksmith') {player.coins-=price;player.buff=Math.max(player.buff,90);line='Sua arma causa +18% de dano por 90 segundos.';sfx('crit');}
       else if (n.role==='bard') {player.coins-=price;player.buff=Math.max(player.buff,60);line='Uma canção de coragem! +18% dano por 60 segundos.';sfx('level');}
     } else if (price && player.coins<price) line='Sem moedas suficientes. Precisa de '+price+' moedas.';
@@ -3030,6 +3262,45 @@
   const npcBtn=$('#interactButton');if(npcBtn) npcBtn.addEventListener('pointerdown',ev=>{ev.preventDefault();interactNpc();});
   const dialogClose=$('#dialogClose');if(dialogClose)dialogClose.addEventListener('click',()=>{$('#npcDialogue').hidden=true;});
 
+  /* ---------- campanha / diário dos nove biomas ---------- */
+  const journal=$('#biomeJournal'), resultOverlay=$('#runResult');
+  function updateCampaignBoard(){
+    const count=DUNS.filter(d=>cleared[d.id]).length;
+    const total=$('#campaignCount');if(total)total.textContent=`${count}/${DUNS.length}`;
+    const list=$('#biomeList');if(!list)return;
+    list.innerHTML=DUNS.map(d=>`<div class="biome-entry ${cleared[d.id]?'done':''}"><span class="biome-icon">${chunkPalettes[d.biome].icon}</span><div><strong>${d.name}</strong><small>${chunkPalettes[d.biome].name} · Nv ${d.lv}${cleared[d.id]?' · PURIFICADA':' · PENDENTE'}</small></div><button type="button" data-travel="${d.id}" ${cleared[d.id]?'disabled':''}>${cleared[d.id]?'✓':'Viajar ↗'}</button></div>`).join('');
+    const caption=$('#biomeSummary');if(caption)caption.textContent=`${count} de ${DUNS.length} masmorras purificadas · ${Object.keys(chunkPalettes).length} biomas`;
+  }
+  function showRunEnd(victory=false){
+    if(!resultOverlay)return;
+    paused=true;resultOverlay.hidden=false;
+    $('#runTitle').textContent=victory?'LENDÁRIO · O ABISMO CAIU':'SUA JORNADA TERMINOU';
+    $('#runDesc').textContent=victory?`Todos os ${DUNS.length} santuários purificados. Uma nova lenda nasceu!`:`Você chegou à onda ${wave} e purificou ${DUNS.filter(d=>cleared[d.id]).length} masmorras. Cada morte encerra a campanha.`;
+  }
+  function restartToCreation(){
+    if(dun){enemies.length=0;solids.length=0;solids.push(...owSolids);owSolids=[];owEnemies=[];world.width=OW.w;world.height=OW.h;dun=null;ow=null;}
+    for(const key of Object.keys(cleared))delete cleared[key];
+    Object.assign(player,{x:SPAWN.x,y:SPAWN.y,angle:-Math.PI/2,hp:100,focus:65,stamina:100,level:15,xp:0,coins:500,potions:3,kills:0,healthRanks:0,staminaRanks:0,manaRanks:0,ultimateCd:0,ultimateTime:0,attackCd:0,combo:0,comboTimer:0,charge:0,dashT:0,dashCd:0,skillCd:0,invuln:2,flash:0,hurt:0,walk:0,stepDist:0,aimLock:0,dead:false,deadT:0,burn:0,poison:0,chill:0,shock:0,curse:0,buff:0,kx:0,ky:0,relics:{},motion:0,swing:null,spin:null});
+    quest.stage=0;quest.progress=0;wave=1;waveTimer=0;spawnTimer=1;gameTime=0;biomeExposure=0;fadeSt=null;splash=null;portalCd=0;
+    enemies.length=0;loot.length=0;shots.length=0;pShots.length=0;particles.length=0;delayed.length=0;pendingLevelChoices.length=0;
+    targetEnemy=null;attackHeld=false;autoAttack=false;$('#autoAttackBtn').setAttribute('aria-pressed','false');$('#autoAttackBtn').textContent='AUTO ⚔';
+    cust.created=false;cust.ultimate=null;cust.boons=[];player.hp=maxHpOf();player.focus=maxFocusOf();player.stamina=maxStaminaOf();
+    try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(EXP_KEY);}catch(e){}
+    spawnEnemy('dummy',DUMMY_HOME.x,DUMMY_HOME.y);for(let i=0;i<10;i++)trySpawnRandom(440,850);
+    snapCamera();if(resultOverlay)resultOverlay.hidden=true;saveExp();saveGame();updateCampaignBoard();
+    togglePanel(true);showBanner('NOVA JORNADA','Escolha sua raça, classe, elemento e bênçãos.');
+  }
+  $('#campaignBtn')?.addEventListener('click',()=>{if(player.dead)return;journal.hidden=false;paused=true;updateCampaignBoard();});
+  $('#journalClose')?.addEventListener('click',()=>{journal.hidden=true;paused=false;});
+  $('#biomeList')?.addEventListener('click',ev=>{
+    const btn=ev.target.closest('[data-travel]');if(!btn||btn.disabled)return;
+    const d=DUNS.find(x=>x.id===btn.dataset.travel);if(!d||dun)return;
+    player.x=d.x-95;player.y=d.y+90;player.kx=player.ky=0;portalCd=1.2;
+    ensureWorldChunks(player.x,player.y);snapCamera();journal.hidden=true;paused=false;
+    showBanner(chunkPalettes[d.biome].icon+' '+chunkPalettes[d.biome].name,`Procure a masmorra: ${d.name}`);
+  });
+  $('#runRestart')?.addEventListener('click',restartToCreation);
+
   /* ---------- início ---------- */
   loadSave();
   player.hp = maxHpOf();
@@ -3049,7 +3320,8 @@
   if (quest.stage === 3) spawnBoss();
   if (rankOf() >= 5 && !cust.ultimate && !pendingLevelChoices.some(choice => choice.rank === 5)) pendingLevelChoices.unshift({ rank: 5, statChosen: true });
   if (pendingLevelChoices.length) renderLevelChoice();
-  el.worldMessage.textContent = quests[quest.stage].msg;
+  el.worldMessage.textContent = 'OBJETIVO: Purifique todas as masmorras de todos os biomas. A morte encerra a jornada.';
+  updateCampaignBoard();
   if (quest.stage === 0 && player.level === 15 && player.kills === 0) showToast('Bem-vindo às Terras Livres');
   else showToast('Progresso carregado');
   requestAnimationFrame(tick);
