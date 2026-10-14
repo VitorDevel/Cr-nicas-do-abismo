@@ -16,6 +16,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:
 .hidden{display:none!important}
 .card{background:linear-gradient(180deg,rgba(15,31,47,.97),rgba(7,17,27,.97));border:1px solid var(--line);border-radius:22px;box-shadow:0 20px 70px rgba(0,0,0,.38)}
 .hero-header{display:flex;justify-content:space-between;align-items:end;gap:16px;padding:20px 0 12px}
+.header-links{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.world-mode-link{display:inline-flex;align-items:center;gap:7px;padding:9px 12px;border:1px solid rgba(125,205,146,.34);border-radius:999px;background:rgba(48,113,68,.17);color:#d2f0d2;text-decoration:none;font-size:12px;font-weight:800;transition:background .16s ease,transform .16s ease}
+.world-mode-link:hover{background:rgba(73,152,93,.3);transform:translateY(-1px)}
+.world-mode-link:focus-visible{outline:3px solid #ffe19a;outline-offset:3px}
 .hero-header h1{margin:0;font-family:Georgia,serif;font-size:clamp(30px,4.4vw,52px);color:#fff0bd;text-shadow:0 2px 18px rgba(241,201,94,.18)}
 .hero-header p{margin:8px 0 0;max-width:850px;color:var(--muted);line-height:1.5}
 .badge{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;border:1px solid rgba(241,201,94,.33);color:#ffe8a0;background:rgba(241,201,94,.055);font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
@@ -246,3 +250,80 @@ dialog{border:none;padding:0;background:transparent;color:var(--text)}dialog::ba
 .editor-section-picker select{font-weight:800}
 .customizer-head{padding:11px 12px}.editor-actions button{padding:7px 9px}
 @media(max-width:680px){.customizer-group .custom-grid{grid-template-columns:1fr!important}.editor-section-picker{position:static}.customizer-head{align-items:flex-start;flex-direction:column}.editor-actions{width:100%}.editor-actions button{flex:1}}
+
+/* Chunky, color-coded controls inspired by Andrew Fisher's CodePen button system. */
+button{
+  --button-top:#3983ee;
+  --button-bottom:#2460c7;
+  --button-edge:#17458f;
+  --button-ink:#fff;
+  position:relative;
+  isolation:isolate;
+  color:var(--button-ink);
+  border:1px solid rgba(255,255,255,.28);
+  border-bottom:4px solid var(--button-edge);
+  border-radius:16px;
+  background:linear-gradient(180deg,var(--button-top),var(--button-bottom));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 4px 0 rgba(0,0,0,.24),0 8px 14px rgba(0,0,0,.20);
+  text-shadow:0 1px 1px rgba(0,0,0,.22);
+  transform:translateY(0);
+  transition:transform .14s ease,filter .14s ease,box-shadow .14s ease;
+}
+button:hover:not(:disabled){
+  background:linear-gradient(180deg,var(--button-top),var(--button-bottom));
+  border-color:rgba(255,255,255,.42);
+  filter:brightness(1.12);
+  transform:translateY(-2px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 5px 0 rgba(0,0,0,.24),0 11px 18px rgba(0,0,0,.25);
+}
+button:active:not(:disabled){
+  filter:brightness(.98);
+  transform:translateY(3px);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.2),0 1px 0 rgba(0,0,0,.22);
+}
+button:focus-visible{outline:3px solid rgba(255,231,158,.88);outline-offset:3px}
+button:disabled{
+  opacity:.48;
+  cursor:not-allowed;
+  transform:none;
+  filter:saturate(.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 2px 0 rgba(0,0,0,.2);
+}
+button.primary,#startBtn{
+  --button-top:#ffe17b;
+  --button-bottom:#e3a936;
+  --button-edge:#9d681e;
+  --button-ink:#281b08;
+  border-color:#fff0b1;
+  text-shadow:0 1px 0 rgba(255,255,255,.30);
+}
+button.danger{
+  --button-top:#ef5965;
+  --button-bottom:#b83245;
+  --button-edge:#762233;
+  border-color:#ff9ca4;
+}
+#skill1Btn,#skill2Btn{--button-top:#37a9df;--button-bottom:#2473b6;--button-edge:#174f80}
+#weaponSkillBtn,#ultBtn,#raceUltBtn{--button-top:#b071e2;--button-bottom:#7541b2;--button-edge:#4b2879}
+#basicAttackBtn{--button-top:#ef6870;--button-bottom:#bd3547;--button-edge:#762233}
+button[data-act="dodge"]{--button-top:#37cba4;--button-bottom:#198d78;--button-edge:#105c50}
+button[data-act="breathe"]{--button-top:#61a9f7;--button-bottom:#3973c6;--button-edge:#284b87}
+button[data-act="inventory"]{--button-top:#63c888;--button-bottom:#328b5a;--button-edge:#205c3a}
+.camp-option{--button-top:#284765;--button-bottom:#19334d;--button-edge:#102236}
+.camp-option strong,.camp-option span,.camp-option em,.action-sub{position:relative;z-index:1}
+.editor-tab,.editor-tab:hover,.editor-tab:active{
+  color:#9fb2c5;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  text-shadow:none;
+  transform:none;
+  filter:none;
+}
+.editor-tab.active{color:#ffe19a;background:rgba(241,201,94,.07);box-shadow:inset 0 -2px #e4ba50}
+.editor-tab:focus-visible{outline-offset:-3px}
+#startBtn{box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 4px 0 #9d681e,0 11px 30px rgba(220,165,58,.22)}
+#startBtn:hover:not(:disabled){box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 5px 0 #9d681e,0 14px 34px rgba(220,165,58,.28)}
+#startBtn:active:not(:disabled){box-shadow:inset 0 2px 5px rgba(110,64,10,.22),0 1px 0 #9d681e}
+@media(prefers-reduced-motion:reduce){button{transition:none}}

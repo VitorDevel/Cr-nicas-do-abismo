@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#183d2d">
+  <title>Crônicas do Abismo — Exploração</title>
+  <link rel="stylesheet" href="css/open-world.css">
+</head>
+<body>
+  <main class="explorer" id="explorer">
+    <header class="topbar">
+      <a class="back-link" href="index.html" aria-label="Voltar ao jogo principal">← <span>Crônicas do Abismo</span></a>
+      <div class="location"><span class="location-kicker">TERRAS LIVRES</span><strong>Ruínas da Floresta</strong></div>
+      <div class="control-switch" role="group" aria-label="Modo de controle">
+        <button id="keyboardMode" type="button" aria-pressed="false" aria-label="Usar teclado">⌨ <span>Teclado</span></button>
+        <button id="touchMode" type="button" aria-pressed="false" aria-label="Usar controles na tela">☝ <span>Na tela</span></button>
+      </div>
+      <div class="top-stats"><button class="sound-chip" id="customBtn" type="button" aria-label="Personalizar herói" title="Personalizar herói">☺</button><button class="sound-chip" id="soundToggle" type="button" aria-label="Ligar ou desligar o som" aria-pressed="true">♪</button><span class="level-chip">NV <b id="level">15</b></span><span class="coin-chip">◈ <b id="coins">500</b></span><time id="clock">10:24</time></div>
+    </header>
+
+    <section class="game-frame" aria-label="Mundo aberto">
+      <canvas id="world" aria-label="Mapa explorável. Use WASD ou as setas para se mover."></canvas>
+      <div class="scene-vignette" aria-hidden="true"></div>
+      <div class="objective"><span class="objective-dot"></span><div><small>OBJETIVO ATUAL</small><strong id="objectiveText">Encontre o boneco de treino</strong></div><span class="objective-distance" id="distance">— m</span></div>
+      <div class="minimap-wrap"><canvas id="minimap" aria-label="Minimapa"></canvas><span class="map-label">MAPA</span></div>
+      <div class="hero-status"><div class="hero-title"><span class="hero-avatar">⚔</span><span><strong id="heroName">Aventureiro</strong><small>Guardião errante</small></span><span class="status-level">NV <b id="statusLevel">15</b></span></div><div class="meter health"><span id="healthFill"></span></div><div class="meter mana"><span id="manaFill"></span></div><div class="meter-labels"><span>VIDA <b id="healthText">100 / 100</b></span><span>FOCO <b id="manaText">65 / 65</b></span></div><div class="meter xp"><span id="xpFill"></span></div><div class="meter-labels xp-labels"><span>XP <b id="xpText">0 / 95</b></span><span>POÇÕES <b id="potionText">3</b></span></div></div>
+      <div class="enemy-label" id="enemyLabel"><span id="enemyName">ALVO DE TREINO</span><div class="enemy-meter"><i id="enemyHealth"></i></div></div>
+      <div class="custom-panel" id="customPanel" hidden></div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      <div class="banner" id="banner" role="status" aria-live="polite"></div>
+      <div class="controls-hint">WASD / ↑←↓→ para mover <span>•</span> Espaço para atacar</div>
+
+      <div class="touch-controls" aria-label="Controles de toque">
+        <div class="joystick" id="joystick" aria-label="Direcional virtual" role="application"><div class="joy-ring"></div><div class="joy-knob" id="joyKnob"></div></div>
+        <div class="action-cluster">
+          <button class="small-action potion" id="healButton" aria-label="Usar poção" title="Usar poção">✚<b class="badge" id="potionBadge">3</b></button>
+          <button class="small-action dodge" id="dodgeButton" aria-label="Esquivar" title="Esquivar">➜</button>
+          <button class="skill-button" id="skillButton" aria-label="Habilidade especial: redemoinho"><span>✦</span><small>Q</small></button>
+          <button class="attack-button" id="attackButton" aria-label="Atacar"><span>⚔</span><small>ATACAR</small></button>
+        </div>
+      </div>
+    </section>
+    <footer class="bottom-bar"><span><i class="online-dot"></i>Explorando em segurança</span><span id="worldMessage">Siga a trilha. O abismo guarda mais do que ruínas.</span><span class="kill-counter">ALVOS <b id="kills">0</b></span></footer>
+  </main>
+  <script src="js/open-world.js"></script>
+</body>
+</html>

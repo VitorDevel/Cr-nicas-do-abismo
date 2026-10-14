@@ -51,7 +51,7 @@ const battleBackgroundQueues = Object.fromEntries(
 );
 
 const applyBackground = file => {
-  const encoded = encodeURI(file);
+  const encoded = new URL(file, document.baseURI).href;
   document.documentElement.style.setProperty('--page-bg', 'none');
   document.documentElement.style.setProperty('--scene-bg', `url("${encoded}")`);
 };
@@ -216,7 +216,7 @@ const weaponCatalog=[
 {id:'arch_bow',class:'Arqueiro',large:false,name:'Arco Longo',bonus:4,price:90,rarity:'Comum',desc:'Confiável e preciso.'},{id:'arch_sniper',class:'Arqueiro',large:false,name:'Arco de Precisão',bonus:8,price:170,rarity:'Raro',desc:'Alta força de disparo.'},{id:'arch_runic',class:'Arqueiro',large:false,name:'Arco Rúnico do Falcão',bonus:11,price:240,rarity:'Épico',desc:'Arco recurvo com estabilizadores arcanos.'},{id:'arch_wood_recurve',class:'Arqueiro',large:false,name:'Arco Recurvo Silvestre',bonus:7,price:145,rarity:'Raro',desc:'Arco recurvo leve de caça, com membros arqueados e empunhadura curta para disparos rápidos.'},{id:'arch_horizon',class:'Arqueiro',large:true,name:'Arco do Horizonte',bonus:10,price:205,rarity:'Épico',desc:'Arco de guerra alto e reforçado, construído para flechas pesadas e alcance extremo.'},
 {id:'arch_siege',class:'Arqueiro',large:true,name:'Arco de Cerco',bonus:7,price:115,rarity:'Comum',desc:'Arco enorme de guerra.'},{id:'arch_storm',class:'Arqueiro',large:true,name:'Arco da Tempestade',bonus:10,price:195,rarity:'Épico',desc:'Conduz flechas elementais.'},{id:'arch_dragon',class:'Arqueiro',large:true,name:'Arco Dracônico',bonus:13,price:275,rarity:'Lendário',desc:'Arco colossal com lâminas e runas dracônicas.'}
 ,
-{id:'fighter_blade',swordModel:7,class:'Fighter',large:false,name:'Espada de Vanguarda',bonus:5,price:95,rarity:'Comum',desc:'Espada longa simples e equilibrada, com guarda reta para avanço contínuo.'},{id:'fighter_spear',class:'Fighter',large:false,name:'Lança de Guerra',bonus:8,price:170,rarity:'Raro',desc:'Alcance, guarda cruzada e ponta perfurante.'},{id:'fighter_gladius',swordModel:15,class:'Fighter',large:false,name:'Gládio do Coliseu',bonus:11,price:245,rarity:'Épico',desc:'Espada curta de lâmina larga e pesada, apropriada para duelos de arena.'},{id:'fighter_arena_club',hammerModel:13,weaponType:'hammer',class:'Fighter',large:false,name:'Clava Espinhosa da Arena',bonus:8,price:170,rarity:'Raro',desc:'Clava longa com fileiras de espinhos metálicos, feita para dominar duelos através de impacto e alcance.'},{id:'fighter_titan_mace',hammerModel:14,weaponType:'hammer',class:'Fighter',large:true,name:'Maça Serrilhada do Titã',bonus:12,price:225,rarity:'Épico',desc:'Maça de duas mãos com lâminas serrilhadas ao longo da cabeça, criada para romper armaduras pesadas.'},
+{id:'fighter_blade',swordModel:20,class:'Fighter',large:false,name:'Espada da Guarda Dourada',bonus:5,price:95,rarity:'Comum',desc:'Espada de lâmina larga e reta, com guarda dourada reforçada para manter a linha de frente.'},{id:'fighter_spear',class:'Fighter',large:false,name:'Lança de Guerra',bonus:8,price:170,rarity:'Raro',desc:'Alcance, guarda cruzada e ponta perfurante.'},{id:'fighter_gladius',swordModel:15,class:'Fighter',large:false,name:'Gládio do Coliseu',bonus:11,price:245,rarity:'Épico',desc:'Espada curta de lâmina larga e pesada, apropriada para duelos de arena.'},{id:'fighter_arena_club',hammerModel:13,weaponType:'hammer',class:'Fighter',large:false,name:'Clava Espinhosa da Arena',bonus:8,price:170,rarity:'Raro',desc:'Clava longa com fileiras de espinhos metálicos, feita para dominar duelos através de impacto e alcance.'},{id:'fighter_titan_mace',hammerModel:14,weaponType:'hammer',class:'Fighter',large:true,name:'Maça Serrilhada do Titã',bonus:12,price:225,rarity:'Épico',desc:'Maça de duas mãos com lâminas serrilhadas ao longo da cabeça, criada para romper armaduras pesadas.'},
 {id:'fighter_greatblade',swordModel:17,class:'Fighter',large:true,name:'Montante de Vanguarda',bonus:8,price:120,rarity:'Comum',desc:'Montante de lâmina larga e reta, construído para combatentes grandes.'},{id:'fighter_war_spear',class:'Fighter',large:true,name:'Lança do Titã',bonus:11,price:200,rarity:'Épico',desc:'Uma lança colossal para quebrar linhas.'},{id:'fighter_arena',swordModel:22,class:'Fighter',large:true,name:'Lâmina da Arena',bonus:14,price:285,rarity:'Lendário',desc:'Montante de execução com runas de combate.'},
 {id:'race_human',swordModel:15,class:'Racial',race:'Humano',large:false,name:'Gládio da Alvorada',bonus:5,price:110,rarity:'Racial',desc:'Arma humana de legado, equilibrada e versátil.'},{id:'race_elf',class:'Racial',race:'Elfo',large:false,name:'Arco Lunar Élfico',bonus:5,price:110,rarity:'Racial',desc:'Arco de madeira branca com corda luminosa.'},{id:'race_dwarf',class:'Racial',race:'Anão',large:false,name:'Machado do Clã',bonus:6,price:115,rarity:'Racial',desc:'Machado anão com runas e contrapeso de ferro.'},{id:'race_orc',swordModel:20,class:'Racial',race:'Orc',large:true,name:'Cutelo de Guerra Orc',bonus:8,price:120,rarity:'Racial',desc:'Cutelo orc de perfil alto e agressivo, com lâmina pesada feita para mãos poderosas.'},{id:'race_minotaur',class:'Racial',race:'Minotauro',large:true,name:'Labrys do Minotauro',bonus:9,price:125,rarity:'Racial',desc:'Machado duplo ancestral de alcance intimidador.'},{id:'race_tiefling',swordModel:21,class:'Racial',race:'Tiefling',large:false,name:'Lâmina Infernal Tiefling',bonus:5,price:110,rarity:'Racial',desc:'Lâmina tiefling curva e sombria, aquecida por uma centelha infernal.'},{id:'race_dragonborn',swordModel:23,class:'Racial',race:'Draconato',large:true,name:'Espada Dracônica',bonus:8,price:120,rarity:'Racial',desc:'Espada dracônica grande de lâmina irregular e cristalina, gravada com escamas ancestrais.'},{id:'race_human_kingblade',swordModel:2,class:'Racial',race:'Humano',large:false,name:'Espada do Reino',bonus:6,price:125,rarity:'Racial',desc:'Espada humana clássica de lâmina reta, guarda cruzada e pomo pesado para combate versátil.'},{id:'race_elf_moonleaf',swordModel:14,class:'Racial',race:'Elfo',large:false,name:'Lâmina Folha-Lunar',bonus:6,price:125,rarity:'Racial',desc:'Espada élfica fina e alongada, com ponta aguda e guarda elegante inspirada em folhas.'},{id:'race_dwarf_runhammer',hammerModel:9,weaponType:'hammer',class:'Racial',race:'Anão',large:false,name:'Martelo Rúnico Anão',bonus:7,price:130,rarity:'Racial',desc:'Martelo anão de duas faces largas, cabo curto reforçado e construção própria para golpes compactos.'},{id:'race_orc_warmace',hammerModel:1,weaponType:'hammer',class:'Racial',race:'Orc',large:true,name:'Maça de Guerra Orc',bonus:9,price:135,rarity:'Racial',desc:'Maça orc de cabeça esférica coberta por grandes espinhos, feita para esmagamento brutal.'},{id:'race_minotaur_spikemace',hammerModel:15,weaponType:'hammer',class:'Racial',race:'Minotauro',large:true,name:'Maça de Ponta do Labirinto',bonus:10,price:140,rarity:'Racial',desc:'Maça alongada do Minotauro com ponta perfurante e corpo reforçado para cargas frontais.'},{id:'race_tiefling_infernal_saber',swordModel:21,class:'Racial',race:'Tiefling',large:false,name:'Sabre Infernal',bonus:6,price:125,rarity:'Racial',desc:'Sabre tiefling curvo e agressivo, com perfil irregular que lembra uma chama infernal.'},{id:'race_dragonborn_mace',hammerModel:20,weaponType:'hammer',class:'Racial',race:'Draconato',large:true,name:'Maça Dracônica',bonus:9,price:140,rarity:'Racial',desc:'Maça dracônica ornamentada com cabeça monstruosa e espinhos, forjada para mãos escamadas de grande porte.'},{id:'legend_dragonflare',class:'Relíquia',large:false,universal:true,name:'Fulgor do Dragão Primordial',bonus:34,elementalBonus:30,elementTheme:'fire',elementName:'FOGO PRIMORDIAL',price:9999,rarity:'Lendário Elemental',bossReward:true,legendFace:1,desc:'Espada colossal de cristal vulcânico, com núcleo dracônico pulsante. +30 de dano de Fogo Primordial em todo golpe.'},
 {id:'legend_frostlumen',class:'Relíquia',large:false,universal:true,name:'Lamento da Geada Eterna',bonus:33,elementalBonus:31,elementTheme:'ice',elementName:'GEADA ETERNA',price:9999,rarity:'Lendário Elemental',bossReward:true,legendFace:2,desc:'Lâmina de gelo negro cercada por névoa congelante. +31 de dano de Geada Eterna em todo golpe.'},
@@ -1714,7 +1714,7 @@ function addImportedSwordWeapon(hand,mats,{large=false,holy=false,dark=false,nam
  const {metalMat,accentMat,auraMat}=mats,key=resolveSwordModelKey(modelKey,weaponData),geo=embeddedSwordGeometry(key);
  if(!geo)return addSwordWeapon(hand,mats,{large,holy,dark,name});
  const g=joint(hand,[0,-.02,0],[0,0,large?-.24:-.30]);g.userData.baseRotZ=large?-.24:-.30;g.userData.weaponType='sword';g.userData.importedFBX=true;g.userData.fbxModelKey=key;
- const target=(large?1.72:1.34)*1.70;
+ const target=(large?1.72:1.34)*1.35;
  const mesh=new THREE.Mesh(geo,metalMat);mesh.scale.setScalar(target);mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);
  // Small game-colored accents keep the imported weapon tied to class palettes without covering the FBX silhouette.
  makePart(g,new THREE.TorusGeometry((large?.060:.050),.009,6,18),accentMat,[0,.025,.01],[1,1,1],[Math.PI/2,0,0]);
@@ -2293,21 +2293,22 @@ function buildAnimeHeroModel(c,meta,wname=''){
  if(['Mago','Clérigo','Paladino'].includes(cls))for(let i=0;i<3;i++){const a=i*Math.PI*2/3;makePart(chest,new THREE.OctahedronGeometry(.045,0),auraMat,[Math.cos(a)*.62,.20+Math.sin(a)*.08,Math.sin(a)*.62])}
  for(const item of [weapon,weapons.offhand])if(item){
   const t=item.userData.weaponType||'';
-  item.rotation.x=item.userData.forwardLean??({sword:.10,spear:.07,dagger:.11,axe:.08,hammer:.065,staff:.045,elemental_relic:.075,censer:.06,shield:0,bow:.02,orb:.05,codex:.05}[t]??.07);
+  const arm=item.userData.gripHand==='left'?leftArm:rightArm;
+  const gripPitchCorrection=item.userData.forearmMounted?0:-(arm.elbow.rotation.x+arm.hand.rotation.x);
+  item.rotation.x=gripPitchCorrection+(item.userData.forwardLean??({sword:.10,spear:.07,dagger:.11,axe:.08,hammer:.065,staff:.045,elemental_relic:.075,censer:.06,shield:0,bow:.02,orb:.05,codex:.05}[t]??.07));
   const downwardGrip=['sword','hammer','axe','staff','spear','dagger','elemental_relic','censer'];
   if(downwardGrip.includes(t)){
    // Weapon geometry extends along local +Y. To match the guide line, +Y must point UP and OUT
    // from the hand. Right-hand primary crosses up-left like the user's guide line; left-hand offhand mirrors it.
-   const cant=Number(item.userData.baseRotZ)||0;
    const isLeft=item.userData.gripHand==='left';
+   item.position.x+=isLeft?-.12:.12;
    const uprightAngleByType={
-    sword:.78, dagger:.74, axe:.82, hammer:.86,
-    staff:.52, spear:.48, elemental_relic:.78, censer:.68
+    sword:.035, dagger:.04, axe:.04, hammer:.035,
+    staff:.02, spear:.015, elemental_relic:.035, censer:.035
    };
-   const base=uprightAngleByType[t]??.78;
-   item.rotation.x=(t==='staff'||t==='spear')?.02:0;
+   const base=uprightAngleByType[t]??.035;
    item.rotation.y=isLeft?.08:-.08;
-   item.rotation.z=(isLeft?-base:base)+(cant*.02);
+   item.rotation.z=isLeft?base:-base;
   }else if(t==='shield'&&item.userData.forearmMounted){
    // Counter-rotate the elbow bend so the shield face stays visible and fully covers the hand.
    item.rotation.x=1.08;
@@ -2531,7 +2532,7 @@ function startGame(){
   state.turn=1;
   state.nextShopWin=rand(3,5);
   state.pendingEncounter=false;
-  nextBattleBackground(false);
+  nextBattleBackgroundForEnemy(state.enemy);
   $('#gameOverOverlay').classList.remove('active');
   $('#combatLog').innerHTML='';
   $('#createScreen').classList.add('hidden');
