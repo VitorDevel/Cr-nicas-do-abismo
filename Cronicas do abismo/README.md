@@ -1,32 +1,27 @@
-# Crônicas do Abismo — versão web organizada
+# Crônicas do Abismo — Mundo Infinito (expansão)
 
-## Estrutura
+## Como jogar
 
-```text
-cronicas_do_abismo_web_organized/
-├── index.html
-├── assets/
-│   └── README.txt
-├── css/
-│   └── style.css
-└── js/
-    ├── game.js
-    └── vendor/
-        └── three.min.js
-```
+**Mais simples:** abra `cronicas_abismo_jogar.html` em um navegador moderno.
 
-## Como testar
+**Para integrar ao seu projeto:** mantenha `open-world.html`, `css/open-world.css` e `js/open-world.js` com esta estrutura de pastas. O arquivo HTML preserva o link `index.html` para o jogo principal.
 
-1. Copie as imagens listadas em `assets/README.txt` para a pasta `assets`.
-2. Dê dois cliques em `index.html`.
-3. Para desenvolvimento, uma opção melhor é abrir a pasta no VS Code e usar a extensão **Live Server**; depois clique em **Go Live**.
+## Controles
+- WASD/setas: mover; Espaço/J: atacar; Q: habilidade; R: ultimate.
+- Shift: esquivar; H: usar poção; E: falar com NPC próximo; T: ligar/desligar ataque automático; P: pausa.
+- Botão ☺: personalizar personagem; botões e joystick para telas de toque.
 
-## Organização
+## Sistemas adicionados
+- Mundo procedural ilimitado por chunks determinísticos, com biomas, acampamentos, altares e viajantes.
+- Progressão de dificuldade a cada 38 segundos: inimigos têm mais vida, ataque, velocidade, frequência e elite.
+- Novos monstros: aranhas, espectros, cultistas, guardiões, xamãs, harpias e mímicos. IA local de flanqueamento, recuo, perseguição e cura. Falas contextuais aparecem no mapa.
+- Elementos: fogo queima, gelo reduz movimento/congela, raio atordoa e encadeia, natureza envenena, arcano torna vulnerável. Inimigos possuem resistências e fraquezas. Monstros podem aplicar debuffs ao herói.
+- Gemas azuis de experiência coletáveis, moedas, poções e aprimoramentos aleatórios por nível.
+- NPCs com funções de curandeiro, mercador, bardo, ferreiro e explorador; serviços custam moedas.
+- Novas raças Tiefling e Minotauro, mais cabelos, emblemas, formatos do corpo, cicatrizes e cores de acabamento. Movimento suavizado.
+- Save automático local preserva o progresso anterior e novas melhorias.
 
-- `index.html`: somente estrutura da interface.
-- `css/style.css`: aparência e layout responsivo.
-- `js/game.js`: regras, criação do personagem, combate, loja, inventário e renderização 3D do jogo.
-- `js/vendor/three.min.js`: biblioteca Three.js local para manter o projeto funcionando offline.
-- `assets/`: única pasta usada para imagens do jogo.
-
-Os modelos de armas que já estavam embutidos no JavaScript continuam embutidos, pois são geometria/dados 3D, não imagens externas.
+## Observações
+- As falas de inimigos e NPCs são IA comportamental local, com diálogos contextuais pré-escritos; **não** há integração com LLM/API externa.
+- As imagens opcionais de `assets/` mencionadas no projeto original não estavam entre os 3 arquivos enviados. As arenas já têm renderização alternativa em canvas; para recuperar imagens personalizadas antigas, adicione sua pasta `assets` original ao lado de `open-world.html`.
+- O mundo gera regiões sob demanda e descarta chunks distantes para controlar a memória; dungeons e missões originais continuam delimitadas.

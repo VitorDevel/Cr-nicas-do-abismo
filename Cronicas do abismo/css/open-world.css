@@ -104,3 +104,25 @@ button,a{-webkit-tap-highlight-color:transparent}
 .card{display:grid;gap:3px;text-align:left;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:#0b1714;color:var(--ink);cursor:pointer;font:inherit}
 .card b{font-size:12px}.card small{font-size:10px;color:var(--muted);line-height:1.35}
 .card.on{border-color:var(--gold);background:#1a2a1f;box-shadow:0 0 12px #f4cf7933}
+
+/* Abismo: combate, diálogos e customização 3.0 */
+.status-effects{font:700 10px Rajdhani,system-ui,sans-serif;letter-spacing:.07em;color:#e6ce99;margin-top:7px;min-height:14px}
+.auto-chip[aria-pressed="true"]{background:rgba(75,133,101,.38);border-color:#9bebbd;color:#c8ffe1;box-shadow:0 0 12px #4be29b25}
+.interact{left:7px;bottom:106px;background:radial-gradient(circle at 38% 28%,#f0d590,#b78e48 70%,#8c653c);color:#253526!important}
+.interact[hidden]{display:none!important}
+.npc-dialogue{position:absolute;left:50%;bottom:18%;transform:translateX(-50%);z-index:7;width:min(380px,90%);padding:13px 16px;border:1px solid #a6efca73;border-radius:12px;background:linear-gradient(155deg,#233e36f5,#101f1bf8);box-shadow:0 10px 40px #000a;backdrop-filter:blur(8px)}
+.npc-dialogue[hidden]{display:none}.npc-dialogue-head{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#bbf0d0;font-family:Rajdhani,system-ui,sans-serif;font-size:16px}
+.npc-dialogue-head button{border:1px solid #ffffff42;border-radius:6px;background:#112820;color:#ddd;padding:3px 7px;cursor:pointer}
+.npc-dialogue p{margin:10px 0;color:#fff;font-size:12px;line-height:1.55}.npc-dialogue small{color:#dcbf86;font-size:10px}
+.choice-epic{border-color:#b899ff88;background:linear-gradient(155deg,#352950,#17232b)}
+.choice-epic .choice-icon{color:#d9c0ff;border-color:#ae7dff}
+.detail-row{grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
+.detail-row label{font-size:11px}.detail-row select{width:100%}
+@media(max-width:640px){.auto-chip{font-size:10px!important;padding:6px 4px!important}.interact{left:0;bottom:126px}.npc-dialogue{bottom:26%;width:90%;padding:10px 12px}.status-effects{font-size:9px}.kill-counter span:first-child{display:none}}
+@media(max-width:425px){.top-stats time{display:none}.location{min-width:0}.location strong{max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.auto-chip{max-width:44px;overflow:hidden}}
+
+.cp-row>.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.cp-row>.cards .card{width:100%;min-width:0}
+.cp-left{position:sticky;top:4px;align-self:start}
+.cp-card::-webkit-scrollbar{width:8px}.cp-card::-webkit-scrollbar-thumb{background:#77947766;border-radius:12px}
+@media(max-width:650px){.cp-row>.cards{grid-template-columns:1fr}.cp-left{position:static}}
