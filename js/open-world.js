@@ -2624,7 +2624,7 @@
   }
 
   /* ---------- desenho dos novos inimigos ---------- */
-  const NEW_TYPES = ['bat', 'mage', 'brute', 'lorde', 'matriarca', 'arquimago', 'titan','spider','wraith','cultist','guardian','shaman','harpy','mimic',...Object.keys(additionalMobs),'tempestade','prisma','rei_sombras'];
+  const NEW_TYPES = ['bat', 'mage', 'brute', 'lorde', 'matriarca', 'arquimago', 'titan','spider','wraith','cultist','guardian','shaman','harpy','mimic'];
   function drawEnemy(e) {
     if (!NEW_TYPES.includes(e.type)) return drawEnemyOld(e);
     const t = e.t, r = t.r, bob = Math.sin(gameTime * 5 + e.bob), dx = Math.cos(e.face) >= 0 ? 1 : -1;
