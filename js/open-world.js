@@ -18,7 +18,7 @@
   const angDiff = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
   const pad2 = n => String(n).padStart(2, '0');
 
-  const world = { width: 2600, height: 1800 };
+  const world = { width: 4200, height: 2800 };
   const SHRINE = { x: 1630, y: 862 };
   const SPAWN = { x: 1300, y: 1070 };
   const DUMMY_HOME = { x: 1475, y: 1000 };
@@ -35,14 +35,15 @@
   const el = {
     explorer: $('#explorer'),
     level: $('#level'), statusLevel: $('#statusLevel'), coins: $('#coins'), clock: $('#clock'),
-    healthFill: $('#healthFill'), manaFill: $('#manaFill'), xpFill: $('#xpFill'),
-    healthText: $('#healthText'), manaText: $('#manaText'), xpText: $('#xpText'), potionText: $('#potionText'),
+    healthFill: $('#healthFill'), manaFill: $('#manaFill'), staminaFill: $('#staminaFill'), xpFill: $('#xpFill'),
+    healthText: $('#healthText'), manaText: $('#manaText'), staminaText: $('#staminaText'), xpText: $('#xpText'), potionText: $('#potionText'),
     potionBadge: $('#potionBadge'),
     enemyLabel: $('#enemyLabel'), enemyName: $('#enemyName'), enemyHealth: $('#enemyHealth'),
     distance: $('#distance'), objective: $('#objectiveText'), kills: $('#kills'),
     toast: $('#toast'), banner: $('#banner'), worldMessage: $('#worldMessage'), hint: $('.controls-hint'),
     keyboardMode: $('#keyboardMode'), touchMode: $('#touchMode'), soundToggle: $('#soundToggle'),
-    skillButton: $('#skillButton'), dodgeButton: $('#dodgeButton'), healButton: $('#healButton'), attackButton: $('#attackButton')
+    skillButton: $('#skillButton'), ultimateButton: $('#ultimateButton'), dodgeButton: $('#dodgeButton'), healButton: $('#healButton'), attackButton: $('#attackButton'),
+    levelPanel: $('#levelPanel'), levelPanelTitle: $('#levelPanelTitle'), levelChoices: $('#levelChoices'), wave: $('#wave'), locationName: $('#locationName')
   };
   const cache = new Map();
   function setText(key, node, value) {
@@ -63,14 +64,17 @@
 
   const player = {
     x: SPAWN.x, y: SPAWN.y, angle: -Math.PI / 2, kx: 0, ky: 0,
-    hp: 100, focus: 65, level: 15, xp: 0, coins: 500, potions: 3, kills: 0,
+    hp: 100, focus: 65, stamina: 100, level: 15, xp: 0, coins: 500, potions: 3, kills: 0,
+    healthRanks: 0, staminaRanks: 0, manaRanks: 0, ultimateCd: 0, ultimateTime: 0,
     attackCd: 0, combo: 0, comboTimer: 0, dashT: 0, dashCd: 0, dashX: 0, dashY: -1, skillCd: 0,
     invuln: 0, flash: 0, hurt: 0, walk: 0, stepDist: 0, aimLock: 0,
     swing: null, spin: null, dead: false, deadT: 0
   };
-  const maxHpOf = () => Math.round((100 + (player.level - 15) * 12) * hpMul());
-  const maxFocusOf = () => Math.round((65 + (player.level - 15) * 4) * foMul());
-  const damageOf = () => Math.round((24 + (player.level - 15) * 3) * dmMul());
+  const rankOf = () => Math.max(1, player.level - 14);
+  const maxHpOf = () => Math.round((100 + player.healthRanks * 24) * hpMul());
+  const maxFocusOf = () => Math.round((65 + player.manaRanks * 20) * foMul());
+  const maxStaminaOf = () => 100 + player.staminaRanks * 25;
+  const damageOf = () => Math.round(24 * dmMul() * (player.ultimateTime > 0 && cust.ultimate === 'tempestade' ? 1.5 : 1));
   const xpNeed = level => 60 + (level - 14) * 35;
 
   const enemies = [];
@@ -79,6 +83,7 @@
   const floaters = [];
   const delayed = [];
   const drawList = [];
+  const pendingLevelChoices = [];
 
   let gameTime = 0;
   let lastFrame = performance.now();
@@ -88,6 +93,7 @@
   let paused = false;
   let attackHeld = false;
   let spawnTimer = 1;
+  let wave = 1, waveTimer = 0;
   let saveTimer = 4;
   let targetEnemy = null;
   let muted = false;
@@ -103,6 +109,9 @@
     { text: 'Limpe a Cisterna Esmeralda', goal: 1, dun: 'cis', reward: { xp: 420, coins: 200, potions: 1 }, title: 'Águas envenenadas', msg: 'Ao sul, uma cisterna antiga pulsa em verde.' },
     { text: 'Limpe o Templo Astral', goal: 1, dun: 'ast', reward: { xp: 600, coins: 280, potions: 2 }, title: 'Fenda nas estrelas', msg: 'Ao norte, o céu sangra luz azul sobre um templo.' },
     { text: 'Limpe a Forja do Abismo', goal: 1, dun: 'forja', reward: { xp: 900, coins: 400, potions: 2 }, title: 'O coração em chamas', msg: 'A sudeste, a forja final aguarda. Leve todas as poções.' },
+    { text: 'Explore o Observatório Glacial', goal: 1, dun: 'gelo', reward: { xp: 1100, coins: 500, potions: 2 }, title: 'Sob o céu congelado', msg: 'Uma torre antiga desaparece na neve, muito ao nordeste.' },
+    { text: 'Desperte o Colosso das Dunas', goal: 1, dun: 'dunas', reward: { xp: 1400, coins: 650, potions: 2 }, title: 'Areia e cinzas', msg: 'Siga a estrada para o extremo sudeste.' },
+    { text: 'Purifique o Bosque Profundo', goal: 1, dun: 'bosque', reward: { xp: 1200, coins: 580, potions: 2 }, title: 'Raízes do abismo', msg: 'O bosque antigo esconde uma presença corrompida ao sul.' },
     { text: 'Terras livres: explore e cace', goal: 0, reward: null, title: 'Lenda das Terras Livres', msg: 'As terras são suas. A noite traz mais criaturas.' }
   ];
   const quest = { stage: 0, progress: 0 };
@@ -112,6 +121,8 @@
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         level: player.level, xp: Math.floor(player.xp), coins: player.coins, potions: player.potions, kills: player.kills,
+        healthRanks: player.healthRanks, staminaRanks: player.staminaRanks, manaRanks: player.manaRanks, stamina: player.stamina,
+        wave, waveTimer, pendingLevelChoices,
         stage: quest.stage, progress: quest.progress, x: Math.round(dun ? ow.x : player.x), y: Math.round(dun ? ow.y : player.y), time: clockMinutes()
       }));
     } catch (e) { /* sem storage */ }
@@ -123,13 +134,20 @@
       const num = (v, d) => (Number.isFinite(v) ? v : d);
       player.level = clamp(Math.floor(num(s.level, 15)), 15, 99);
       player.xp = Math.max(0, num(s.xp, 0));
+      player.healthRanks = clamp(Math.floor(num(s.healthRanks, Math.floor((player.level - 15) / 2))), 0, 99);
+      player.staminaRanks = clamp(Math.floor(num(s.staminaRanks, 0)), 0, 99);
+      player.manaRanks = clamp(Math.floor(num(s.manaRanks, Math.floor((player.level - 15) / 5))), 0, 99);
+      player.stamina = clamp(num(s.stamina, maxStaminaOf()), 0, maxStaminaOf());
+      wave = clamp(Math.floor(num(s.wave, 1)), 1, 999999);
+      waveTimer = Math.max(0, num(s.waveTimer, 0));
+      if (Array.isArray(s.pendingLevelChoices)) pendingLevelChoices.push(...s.pendingLevelChoices.filter(c => c && Number.isFinite(c.rank) && typeof c.statChosen === 'boolean'));
       player.coins = Math.max(0, Math.floor(num(s.coins, 500)));
       player.potions = clamp(Math.floor(num(s.potions, 3)), 0, 9);
       player.kills = Math.max(0, Math.floor(num(s.kills, 0)));
       quest.stage = clamp(Math.floor(num(s.stage, 0)), 0, quests.length - 1);
       quest.progress = Math.max(0, Math.floor(num(s.progress, 0)));
-      player.x = clamp(num(s.x, SPAWN.x), 40, world.width - 40);
-      player.y = clamp(num(s.y, SPAWN.y), 40, world.height - 40);
+      player.x = num(s.x, SPAWN.x);
+      player.y = num(s.y, SPAWN.y);
       gameTime = (num(s.time, START_MIN) - START_MIN) / MIN_PER_SEC;
     } catch (e) { /* save corrompido: ignora */ }
   }
@@ -147,7 +165,12 @@
   const roadSegs = [
     [{ x: 180, y: 1440 }, { x: 570, y: 1280 }, { x: 560, y: 990 }, { x: 910, y: 914 }],
     [{ x: 910, y: 914 }, { x: 1240, y: 840 }, { x: 1505, y: 1100 }, { x: 1880, y: 855 }],
-    [{ x: 1880, y: 855 }, { x: 2110, y: 705 }, { x: 2145, y: 490 }, { x: 2440, y: 390 }]
+    [{ x: 1880, y: 855 }, { x: 2110, y: 705 }, { x: 2145, y: 490 }, { x: 2440, y: 390 }],
+    [{ x: 2440, y: 390 }, { x: 2780, y: 330 }, { x: 3070, y: 560 }, { x: 3490, y: 610 }],
+    [{ x: 1880, y: 855 }, { x: 2200, y: 1120 }, { x: 2690, y: 1440 }, { x: 3210, y: 1710 }],
+    [{ x: 3210, y: 1710 }, { x: 3450, y: 1830 }, { x: 3570, y: 1950 }, { x: 3700, y: 2110 }],
+    [{ x: 910, y: 914 }, { x: 610, y: 1460 }, { x: 620, y: 2050 }, { x: 1040, y: 2470 }],
+    [{ x: 1040, y: 2470 }, { x: 1510, y: 2650 }, { x: 1900, y: 2510 }, { x: 2280, y: 2440 }]
   ];
   const roadPts = [];
   for (const [a, b, c, d] of roadSegs) {
@@ -170,7 +193,8 @@
     [SPAWN.x, SPAWN.y, 130], [DUMMY_HOME.x, DUMMY_HOME.y, 90],
     [SHRINE.x, SHRINE.y + 30, 260], [BOSS_HOME.x, BOSS_HOME.y, 230],
     [420, 640, 120], [780, 1580, 120], [1500, 330, 120], [2060, 1500, 120],
-    [760, 1190, 170], [1900, 1280, 140], [500, 820, 100], [2350, 1050, 100], [1650, 1495, 110]
+    [760, 1190, 170], [1900, 1280, 140], [500, 820, 100], [2350, 1050, 100], [1650, 1495, 110],
+    [3490, 610, 150], [3700, 2110, 170], [1040, 2470, 150]
   ];
   function clearSpot(x, y, padding) {
     if (Math.abs(riverX(y) - x) < 132 + padding) return false;
@@ -180,7 +204,7 @@
   }
   (function generate() {
     let attempts = 0;
-    while (trees.length + bushes.length < 270 && attempts++ < 5000) {
+    while (trees.length + bushes.length < 675 && attempts++ < 12000) {
       const x = random() * world.width, y = random() * world.height, radius = 9 + random() * 17;
       const isTree = random() > .23, shade = Math.floor(random() * 4);
       if (!clearSpot(x, y, radius)) continue;
@@ -188,18 +212,18 @@
       if (isTree) { trees.push(item); solids.push({ x, y: y + radius * .35, cr: radius * .38 }); } else bushes.push(item);
     }
     attempts = 0;
-    while (stones.length < 95 && attempts++ < 2000) {
+    while (stones.length < 240 && attempts++ < 5000) {
       const x = random() * world.width, y = random() * world.height, radius = 4 + random() * 11, shade = Math.floor(random() * 3);
       if (!clearSpot(x, y, 4)) continue;
       stones.push({ x, y, radius, shade });
       if (radius > 7) solids.push({ x, y, cr: radius * .85 });
     }
-    for (let i = 0; i < 420; i++) {
+    for (let i = 0; i < 1050; i++) {
       const x = random() * world.width, y = random() * world.height, c = Math.floor(random() * 4);
       if (Math.abs(riverX(y) - x) < 130 || roadDist(x, y) < 50) continue;
       flowers.push({ x, y, c });
     }
-    for (let i = 0; i < 700; i++) {
+    for (let i = 0; i < 1750; i++) {
       const x = random() * world.width, y = random() * world.height;
       if (Math.abs(riverX(y) - x) < 125) continue;
       tufts.push({ x, y, h: 3 + random() * 5, s: random() > .5 ? 1 : -1 });
@@ -217,6 +241,8 @@
     let s = 4242; const R = () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
     const E = (x, y, rx, ry, col, rot = 0) => { g.fillStyle = col; g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, TAU); g.fill(); };
     E(1950, 300, 560, 340, 'rgba(200,120,40,.15)'); E(700, 1560, 540, 300, 'rgba(30,80,90,.2)'); E(2150, 1550, 420, 260, 'rgba(70,40,60,.15)'); E(430, 280, 430, 260, 'rgba(210,235,250,.12)');
+    E(3470, 620, 620, 430, 'rgba(150,205,235,.25)'); E(3620, 1980, 650, 480, 'rgba(205,126,55,.2)'); E(1110, 2450, 620, 410, 'rgba(45,115,90,.24)');
+    E(3480, 620, 490, 300, 'rgba(236,246,245,.14)');
     const pond = (x, y, rx, ry) => {
       E(x, y, rx + 14, ry + 11, '#b7a574'); E(x, y, rx + 4, ry + 3, '#223c33'); E(x, y, rx, ry, '#2e7c88'); E(x - rx * .2, y - ry * .2, rx * .6, ry * .5, 'rgba(160,230,225,.25)');
       g.strokeStyle = 'rgba(220,255,250,.35)'; g.lineWidth = 1.5;
@@ -253,7 +279,7 @@
       g.fillStyle = 'rgba(15,25,18,.35)'; g.fillRect(x - 2, y + 2, 10, 3); g.fillStyle = '#5a4630'; g.fillRect(x - 1.5, y - 16, 3, 18); E(x, y - 19, 5, 5, 'rgba(255,214,120,.35)'); E(x, y - 19, 2.6, 2.6, '#ffd77f');
     }
     // detalhes espalhados
-    for (let i = 0; i < 160; i++) {
+    for (let i = 0; i < 400; i++) {
       const x = R() * world.width, y = R() * world.height; if (!clearSpot(x, y, 14)) continue; const k = R();
       if (k < .3) { g.save(); g.translate(x, y); g.rotate(R() * 3); g.fillStyle = 'rgba(20,30,20,.3)'; g.fillRect(-18, 2, 36, 7); g.fillStyle = '#6b4f33'; g.fillRect(-18, -4, 36, 9); g.fillStyle = '#a07c52'; g.beginPath(); g.ellipse(18, 0, 3, 4.5, 0, 0, TAU); g.fill(); g.fillStyle = '#4f7a3c'; g.fillRect(-10, -5, 12, 3); g.restore(); }
       else if (k < .58) { for (let j = 0; j < 4; j++) { const a = j * 1.6, mx = x + Math.cos(a) * 9, my = y + Math.sin(a) * 6; g.fillStyle = '#efe6d0'; g.fillRect(mx - 1, my, 2, 4); E(mx, my, 3.5, 2.6, j % 2 ? '#d84b4b' : '#e8b04a'); } }
@@ -314,6 +340,21 @@
     g.setTransform(GS, 0, 0, GS, 0, 0);
     g.fillStyle = '#527a42';
     g.fillRect(0, 0, world.width, world.height);
+    let textureSeed = 8231;
+    const textureRandom = () => { textureSeed = textureSeed * 16807 % 2147483647; return (textureSeed - 1) / 2147483646; };
+    const groundTones = ['rgba(190,209,122,.12)', 'rgba(24,54,37,.11)', 'rgba(218,196,128,.09)', 'rgba(70,113,67,.14)'];
+    for (let i = 0; i < 18000; i++) {
+      const x = textureRandom() * world.width, y = textureRandom() * world.height;
+      const snow = x > 3100 && y < 1100, dunes = x > 3100 && y > 1400, deepwood = x < 1500 && y > 2100;
+      g.globalAlpha = .45 + textureRandom() * .55;
+      g.fillStyle = snow ? (i % 2 ? 'rgba(220,239,234,.14)' : 'rgba(46,91,111,.1)')
+        : dunes ? (i % 2 ? 'rgba(243,201,130,.13)' : 'rgba(83,51,29,.1)')
+          : deepwood ? (i % 2 ? 'rgba(113,173,111,.12)' : 'rgba(15,53,43,.14)')
+            : groundTones[(textureRandom() * groundTones.length) | 0];
+      g.beginPath();
+      g.ellipse(x, y, 1 + textureRandom() * 4, .7 + textureRandom() * 2.2, textureRandom() * TAU, 0, TAU);
+      g.fill();
+    }
     g.fillStyle = '#668c4c';
     for (let x = 30; x < world.width; x += 185) {
       for (let y = 35; y < world.height; y += 166) {
@@ -364,6 +405,7 @@
     g.globalAlpha = 1;
     drawBridge(g, 925);
     drawBridge(g, 1470);
+    drawBridge(g, 2315);
     // detalhes
     for (const f of flowers) {
       g.fillStyle = flowerColors[f.c];
@@ -420,6 +462,86 @@
     m.fillStyle = '#d8c387';
     m.beginPath(); m.arc(mx(SHRINE.x), my(SHRINE.y), 6, 0, TAU); m.fill();
   }
+
+  const CHUNK_SIZE = 720;
+  const worldChunks = new Map();
+  const chunkPalettes = {
+    forest: { ground: '#527a42', light: '#759551', dark: '#355b37', path: '#b5a477' },
+    frost: { ground: '#718c8b', light: '#a7bcad', dark: '#49666d', path: '#becbbb' },
+    dunes: { ground: '#9b784b', light: '#c09b63', dark: '#725239', path: '#d3b780' },
+    marsh: { ground: '#496d59', light: '#6b8a5c', dark: '#2d4d46', path: '#9b9870' },
+    ash: { ground: '#625a57', light: '#88766b', dark: '#403b43', path: '#a18e7c' }
+  };
+  function biomeForChunk(cx, cy) {
+    return cy < -2 ? 'frost' : (cy > 2 && cx > 1 ? 'dunes' : (cy > 2 ? 'marsh' : (cx < -3 ? 'ash' : (cx > 4 ? 'dunes' : 'forest'))));
+  }
+  function worldRegionName(x, y) {
+    if (dun) return dun.def.name;
+    if (x >= 0 && y >= 0 && x <= world.width && y <= world.height) return 'Ruínas da Floresta';
+    const names = { forest: 'Bosque das Fronteiras', frost: 'Campos de Geada', dunes: 'Dunas de Cinza', marsh: 'Pântanos Verdes', ash: 'Terras Cinzentas' };
+    return names[biomeForChunk(Math.floor(x / CHUNK_SIZE), Math.floor(y / CHUNK_SIZE))];
+  }
+  function buildWorldChunk(cx, cy) {
+    let seed = (Math.imul(cx, 374761393) ^ Math.imul(cy, 668265263) ^ 0x5f356495) >>> 0;
+    const next = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+    const biome = biomeForChunk(cx, cy);
+    const colors = chunkPalettes[biome], tile = document.createElement('canvas');
+    tile.width = CHUNK_SIZE; tile.height = CHUNK_SIZE;
+    const g = tile.getContext('2d'), ox = cx * CHUNK_SIZE, oy = cy * CHUNK_SIZE;
+    g.fillStyle = colors.ground; g.fillRect(0, 0, CHUNK_SIZE, CHUNK_SIZE);
+    for (let i = 0; i < 1400; i++) {
+      g.globalAlpha = .12 + next() * .18;
+      g.fillStyle = next() > .52 ? colors.light : colors.dark;
+      g.beginPath(); g.ellipse(next() * CHUNK_SIZE, next() * CHUNK_SIZE, 1 + next() * 5, 1 + next() * 3, next() * TAU, 0, TAU); g.fill();
+    }
+    g.globalAlpha = 1;
+    g.strokeStyle = 'rgba(19,30,22,.32)'; g.lineWidth = 24; g.lineCap = 'round';
+    g.beginPath();
+    for (let x = -24; x <= CHUNK_SIZE + 24; x += 24) {
+      const y = CHUNK_SIZE * 1.35 + Math.sin((ox + x) / 680) * 250 - oy;
+      if (x === -24) g.moveTo(x, y); else g.lineTo(x, y);
+    }
+    g.stroke();
+    g.strokeStyle = colors.path; g.lineWidth = 16; g.stroke();
+    g.globalAlpha = .35; g.strokeStyle = '#e7d6aa'; g.lineWidth = 2; g.setLineDash([18, 22]);
+    g.beginPath();
+    for (let x = -24; x <= CHUNK_SIZE + 24; x += 24) {
+      const y = CHUNK_SIZE * 1.35 + Math.sin((ox + x) / 680) * 250 - oy;
+      if (x === -24) g.moveTo(x, y); else g.lineTo(x, y);
+    }
+    g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+    for (let i = 0; i < 36; i++) {
+      const x = next() * CHUNK_SIZE, y = next() * CHUNK_SIZE, r = 3 + next() * 12;
+      g.fillStyle = 'rgba(20,30,22,.24)'; g.beginPath(); g.ellipse(x + 2, y + 4, r * 1.2, r * .7, .3, 0, TAU); g.fill();
+      g.fillStyle = biome === 'frost' ? '#9aa9a1' : biome === 'dunes' ? '#a8916b' : '#777b67';
+      g.beginPath(); g.ellipse(x, y, r, r * .65, .3, 0, TAU); g.fill();
+    }
+    const chunkTrees = [];
+    if (biome !== 'dunes') for (let i = 0, count = 10 + Math.floor(next() * 9); i < count; i++) {
+      const x = ox + 35 + next() * (CHUNK_SIZE - 70), y = oy + 35 + next() * (CHUNK_SIZE - 70);
+      if (x >= 0 && x <= world.width && y >= 0 && y <= world.height) continue;
+      chunkTrees.push({ x, y, radius: 13 + next() * 16, shade: Math.floor(next() * 4), phase: next() * TAU });
+    }
+    return { x: ox, y: oy, tile, trees: chunkTrees };
+  }
+  function ensureWorldChunks(x, y) {
+    const cx = Math.floor(x / CHUNK_SIZE), cy = Math.floor(y / CHUNK_SIZE);
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const key = `${cx + dx},${cy + dy}`;
+      if (!worldChunks.has(key)) worldChunks.set(key, buildWorldChunk(cx + dx, cy + dy));
+    }
+    for (const key of worldChunks.keys()) {
+      const [chunkX, chunkY] = key.split(',').map(Number);
+      if (Math.abs(chunkX - cx) > 2 || Math.abs(chunkY - cy) > 2) worldChunks.delete(key);
+    }
+  }
+  function drawWorldChunks(viewX, viewY, viewW, viewH) {
+    ensureWorldChunks(player.x, player.y);
+    for (const chunk of worldChunks.values()) {
+      if (chunk.x > viewX + viewW || chunk.x + CHUNK_SIZE < viewX || chunk.y > viewY + viewH || chunk.y + CHUNK_SIZE < viewY) continue;
+      ctx.drawImage(chunk.tile, chunk.x, chunk.y);
+    }
+  }
   buildGround();
   buildMini();
   heroImage.addEventListener('load', () => { /* o santuário é desenhado em tempo real */ });
@@ -445,7 +567,7 @@
     el.keyboardMode.setAttribute('aria-pressed', String(selected === 'keyboard'));
     el.touchMode.setAttribute('aria-pressed', String(selected === 'touch'));
     el.hint.textContent = selected === 'keyboard'
-      ? 'WASD / setas mover · Espaço ou clique atacar · Q redemoinho · Shift esquivar · E poção · M som · P pausa'
+      ? 'WASD / setas mover · Espaço atacar · Q habilidade · R ultimate · Shift esquivar · E poção · P pausa'
       : 'Use o direcional e os botões na tela';
     try { localStorage.setItem(controlModeKey, selected); } catch (e) { /* sem storage */ }
   }
@@ -599,10 +721,10 @@
 
   function spawnEnemy(type, x, y) {
     const t = TYPES[type];
-    const m = (type === 'dummy' || type === 'boss') ? 1 : 1 + (player.level - 15) * .07;
+    const m = (type === 'dummy' || type === 'boss') ? 1 : 1.18 + (rankOf() - 1) * .035 + (wave - 1) * .18;
     const e = {
       type, t, x, y, hp: t.hp * m, maxHp: t.hp * m, dmgMul: m, kx: 0, ky: 0, lx: 0, ly: 0,
-      state: 'idle', timer: rand(.4, 2), hit: 0, face: rand(0, TAU), home: { x, y }, wander: { x, y },
+      state: 'idle', timer: rand(.4, 2), hit: 0, face: rand(0, TAU), home: { x, y }, wander: { x, y }, burn: 0, burnTick: 0, slow: 0,
       bob: rand(0, 6), atkDone: false, pattern: 0, charge: false, lastHit: -99, dead: false
     };
     enemies.push(e);
@@ -620,8 +742,9 @@
     return r < .15 ? 'slime' : (r < .45 ? 'wolf' : 'skeleton');
   }
   function validSpawn(x, y) {
-    if (x < 70 || y < 70 || x > world.width - 70 || y > world.height - 70) return false;
-    if (inRiver(x, y) || Math.abs(riverX(y) - x) < 130) return false;
+    const onHomeMap = x > -100 && y > -100 && x < world.width + 100 && y < world.height + 100;
+    if (onHomeMap && (x < 70 || y < 70 || x > world.width - 70 || y > world.height - 70)) return false;
+    if (onHomeMap && (inRiver(x, y) || Math.abs(riverX(y) - x) < 130)) return false;
     if (Math.hypot(x - SHRINE.x, y - SHRINE.y) < 310) return false;
     for (const o of solids) if (Math.hypot(x - o.x, y - o.y) < o.cr + 24) return false;
     return true;
@@ -646,7 +769,7 @@
 
   function hurtPlayer(amount, fromX, fromY, heavy = false) {
     if (player.dead || player.invuln > 0 || inSafeZone(player.x, player.y)) return;
-    const dmg = Math.max(1, Math.round(amount * rand(.9, 1.1)));
+    const dmg = Math.max(1, Math.round(amount * (1 - ARMORS[cust.armorType].guard) * rand(.9, 1.1)));
     player.hp -= dmg;
     player.invuln = .6;
     player.hurt = .35;
@@ -685,9 +808,18 @@
   function updateEnemy(e, dt) {
     const t = e.t;
     e.hit = Math.max(0, e.hit - dt);
+    e.slow = Math.max(0, e.slow - dt);
+    e.burn = Math.max(0, e.burn - dt);
+    if (e.burn > 0 && (e.burnTick -= dt) <= 0) {
+      e.burnTick = .45;
+      e.hp -= Math.max(1, Math.round(e.maxHp * .012));
+      burst(e.x, e.y, 3, { color: ELEMENTS.fogo.color, speed: 55, life: .25, size: 2, glow: true });
+      if (e.hp <= 0) { killEnemy(e); return; }
+    }
     e.x += e.kx * dt; e.y += e.ky * dt;
     const kd = Math.exp(-9 * dt); e.kx *= kd; e.ky *= kd;
     if (t.speed === 0) { collide(e, t.r); return; }
+    const moveSpeed = t.speed * (e.slow > 0 ? .55 : 1);
 
     const dx = player.x - e.x, dy = player.y - e.y;
     const dist = Math.hypot(dx, dy) || 1;
@@ -703,7 +835,7 @@
         }
         const wx = e.wander.x - e.x, wy = e.wander.y - e.y, wd = Math.hypot(wx, wy);
         if (wd > 10) {
-          e.x += wx / wd * t.speed * .35 * dt; e.y += wy / wd * t.speed * .35 * dt;
+          e.x += wx / wd * moveSpeed * .35 * dt; e.y += wy / wd * moveSpeed * .35 * dt;
           e.face = Math.atan2(wy, wx);
         }
         break;
@@ -714,7 +846,7 @@
         const trigger = t.boss && t.lunge && e.pattern % 2 === 1 ? 360 : (t.nova && e.pattern % 2 === 0 ? 330 : t.trigger);
         if (dist > trigger) {
           const hop = e.type === 'slime' ? .35 + .65 * Math.max(0, Math.sin(gameTime * 5 + e.bob)) : 1;
-          e.x += dx / dist * t.speed * hop * dt; e.y += dy / dist * t.speed * hop * dt;
+          e.x += dx / dist * moveSpeed * hop * dt; e.y += dy / dist * moveSpeed * hop * dt;
         } else {
           e.charge = !!t.boss && !!t.lunge && e.pattern % 2 === 1;
           e.state = 'windup';
@@ -754,8 +886,10 @@
       const minD = t.r + 11;
       if (dist < minD) { e.x -= dx / dist * (minD - dist) * .6; e.y -= dy / dist * (minD - dist) * .6; }
     }
-    e.x = clamp(e.x, 30, world.width - 30);
-    e.y = clamp(e.y, dun ? FLOOR_TOP : 30, world.height - 30);
+    if (dun) {
+      e.x = clamp(e.x, 30, world.width - 30);
+      e.y = clamp(e.y, FLOOR_TOP, world.height - 30);
+    }
     collide(e, t.r * .8);
   }
   function startAttack(e) {
@@ -813,17 +947,56 @@
     while (player.xp >= xpNeed(player.level)) {
       player.xp -= xpNeed(player.level);
       player.level++;
+      pendingLevelChoices.push({ rank: rankOf(), statChosen: false });
       leveled = true;
     }
     if (leveled) {
-      player.hp = maxHpOf(); player.focus = maxFocusOf();
+      player.hp = Math.min(player.hp, maxHpOf()); player.focus = Math.min(player.focus, maxFocusOf());
       ring(player.x, player.y, '#ffe28a', 40, 300);
       burst(player.x, player.y, 30, { color: ['#ffe28a', '#fff4c4'], speed: 260, life: .9, size: 3.4, glow: true });
-      showBanner(`NÍVEL ${player.level}`, 'Vida, foco e dano aumentaram');
+      showBanner(`NÍVEL ${rankOf()}`, 'Escolha como fortalecer seu herói');
       sfx('level');
+      renderLevelChoice();
       saveGame();
     }
   }
+  function renderLevelChoice() {
+    const pending = pendingLevelChoices[0];
+    if (!pending) {
+      el.levelPanel.hidden = true;
+      paused = false;
+      return;
+    }
+    paused = true;
+    el.levelPanel.hidden = false;
+    if (pending.rank === 5 && pending.statChosen && !cust.ultimate) {
+      el.levelPanelTitle.textContent = 'ESCOLHA SUA ULTIMATE';
+      el.levelChoices.innerHTML = Object.entries(ULTIMATES).map(([id, ult]) => `<button class="level-choice ultimate-choice" type="button" data-ultimate="${id}"><span class="choice-icon">${ult.icon}</span><strong>${ult.name}</strong><small>${ult.description}</small></button>`).join('');
+      return;
+    }
+    el.levelPanelTitle.textContent = `NÍVEL ${pending.rank} · ESCOLHA UM APRIMORAMENTO`;
+    el.levelChoices.innerHTML = '<button class="level-choice" type="button" data-stat="health"><span class="choice-icon">♥</span><strong>Vitalidade</strong><small>+24 vida máxima e recuperação completa.</small></button><button class="level-choice" type="button" data-stat="stamina"><span class="choice-icon">↯</span><strong>Vigor</strong><small>+25 vigor máximo e regeneração mais rápida.</small></button><button class="level-choice" type="button" data-stat="mana"><span class="choice-icon">✦</span><strong>Mana</strong><small>+20 mana máxima e recuperação completa.</small></button>';
+  }
+  el.levelPanel.addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    const pending = pendingLevelChoices[0];
+    if (!pending) return;
+    if (button.dataset.stat && !pending.statChosen) {
+      if (button.dataset.stat === 'health') { player.healthRanks++; player.hp = maxHpOf(); }
+      else if (button.dataset.stat === 'stamina') { player.staminaRanks++; player.stamina = maxStaminaOf(); }
+      else if (button.dataset.stat === 'mana') { player.manaRanks++; player.focus = maxFocusOf(); }
+      pending.statChosen = true;
+      if (pending.rank !== 5 || cust.ultimate) pendingLevelChoices.shift();
+    } else if (button.dataset.ultimate && pending.rank === 5 && pending.statChosen && !cust.ultimate) {
+      cust.ultimate = button.dataset.ultimate;
+      saveExp();
+      pendingLevelChoices.shift();
+      showToast(`Ultimate desbloqueada: ${ULTIMATES[cust.ultimate].name}`);
+    } else return;
+    saveGame();
+    renderLevelChoice();
+  });
   function completeQuest() {
     const q = quests[quest.stage];
     const r = q.reward;
@@ -899,15 +1072,33 @@
   function damageEnemy(e, base, o = {}) {
     if (e.dead) return;
     const crit = Math.random() < .14;
-    const dmg = Math.max(1, Math.round(base * rand(.9, 1.1) * (crit ? 1.8 : 1)));
+    const element = ELEMENTS[cust.element];
+    const empowered = element.strong.includes(e.type) || (cust.element === 'arcano' && e.t.boss);
+    const dmg = Math.max(1, Math.round(base * rand(.9, 1.1) * (crit ? 1.8 : 1) * (empowered ? 1.3 : 1)));
     e.hp -= dmg; e.hit = .16; e.lastHit = gameTime;
+    if (!o.elemental) {
+      if (cust.element === 'fogo') { e.burn = Math.max(e.burn, 1.8); e.burnTick = Math.min(e.burnTick || .35, .35); }
+      else if (cust.element === 'gelo') e.slow = Math.max(e.slow, 1.35);
+      else if (cust.element === 'natureza') player.hp = Math.min(maxHpOf(), player.hp + 1);
+      else if (cust.element === 'arcano') player.focus = Math.min(maxFocusOf(), player.focus + 1.5);
+      else if (cust.element === 'raio') {
+        const chained = enemies.find(other => other !== e && !other.dead && Math.hypot(other.x - e.x, other.y - e.y) < 105);
+        if (chained) {
+          const chainDamage = Math.max(1, Math.round(dmg * .24));
+          chained.hp -= chainDamage; chained.hit = .12; chained.lastHit = gameTime;
+          burst(chained.x, chained.y, 7, { color: element.color, speed: 130, life: .3, size: 2.5, glow: true });
+          floatText(chained.x, chained.y - chained.t.r - 8, chainDamage, element.color, 13);
+          if (chained.hp <= 0) killEnemy(chained);
+        }
+      }
+    }
     const a = Math.atan2(e.y - player.y, e.x - player.x);
     const resist = e.t.boss ? .25 : 1, kb = o.kb ?? 260;
     e.kx += Math.cos(a) * kb * resist; e.ky += Math.sin(a) * kb * resist;
     if (!e.t.boss && e.state === 'windup') { e.state = 'recover'; e.timer = .45; }
     if (e.t.speed > 0 && e.state === 'idle') e.state = 'chase';
-    burst(e.x, e.y, crit ? 14 : 8, { color: crit ? ['#ffe28a', '#fff4c4'] : ['#fff3c6', '#f0b86a'], speed: crit ? 270 : 190, life: .35, size: 2.6, glow: true });
-    floatText(e.x, e.y - e.t.r - 8, crit ? `${dmg}!` : dmg, crit ? '#ffd45e' : '#ffffff', crit ? 22 : 16);
+    burst(e.x, e.y, crit ? 14 : 8, { color: crit ? ['#ffe28a', '#fff4c4'] : [element.color, '#fff3c6'], speed: crit ? 270 : 190, life: .35, size: 2.6, glow: true });
+    floatText(e.x, e.y - e.t.r - 8, empowered ? `${dmg} · ${element.n}!` : (crit ? `${dmg}!` : dmg), empowered ? element.color : (crit ? '#ffd45e' : '#ffffff'), crit || empowered ? 18 : 16);
     if (!o.skill) player.focus = Math.min(maxFocusOf(), player.focus + 4);
     hitstop = Math.max(hitstop, crit || o.finisher ? .09 : .05);
     shake(crit || o.finisher ? 6 : 3);
@@ -953,14 +1144,39 @@
       if (Math.hypot(e.x - player.x, e.y - player.y) < 130 + e.t.r) damageEnemy(e, damageOf() * 1.9, { kb: 560, skill: true });
     }
   }
+  function useUltimate() {
+    if (player.dead || paused) return;
+    if (!cust.ultimate) { showToast('Desbloqueie uma ultimate no nível 5'); return; }
+    if (player.ultimateCd > 0) { showToast(`Ultimate: ${Math.ceil(player.ultimateCd)} s`); return; }
+    player.ultimateCd = 40;
+    if (cust.ultimate === 'tempestade') {
+      player.ultimateTime = 8;
+      ring(player.x, player.y, '#c4a2ff', 44, 400);
+      burst(player.x, player.y, 36, { color: ['#c4a2ff', '#fff'], speed: 320, life: .8, size: 4, glow: true });
+      showBanner('TEMPESTADE ASTRAL', 'Poder amplificado');
+    } else if (cust.ultimate === 'guardiao') {
+      player.hp = Math.min(maxHpOf(), player.hp + Math.round(maxHpOf() * .6));
+      player.invuln = Math.max(player.invuln, 3);
+      ring(player.x, player.y, '#9fe8b5', 48, 360);
+      burst(player.x, player.y, 30, { color: ['#9fe8b5', '#fff4c4'], speed: 250, life: .8, size: 3.5, glow: true });
+      showBanner('BASTIÃO IMORTAL', 'Vida restaurada · dano bloqueado');
+    } else {
+      ring(player.x, player.y, ELEMENTS[cust.element].color, 64, 520);
+      for (const e of enemies) if (!e.dead && Math.hypot(e.x - player.x, e.y - player.y) < 300 + e.t.r) damageEnemy(e, damageOf() * 4.5, { kb: 760, skill: true });
+      shake(18); showBanner('CATACLISMO', 'A terra treme sob sua força');
+    }
+    sfx('skill'); saveGame();
+  }
   function dash() {
     if (player.dead || player.dashCd > 0 || paused) return;
+    if (player.stamina < 30) { showToast('Vigor insuficiente'); return; }
     let dx = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0) + joystick.x;
     let dy = (keys.has('s') || keys.has('arrowdown') ? 1 : 0) - (keys.has('w') || keys.has('arrowup') ? 1 : 0) + joystick.y;
     let m = Math.hypot(dx, dy);
     if (m < .1) { dx = Math.cos(player.angle); dy = Math.sin(player.angle); m = 1; }
     player.dashX = dx / m; player.dashY = dy / m;
     player.dashT = .2; player.dashCd = .8;
+    player.stamina -= 30;
     player.invuln = Math.max(player.invuln, .32);
     player.flash = .2;
     sfx('dash');
@@ -983,12 +1199,13 @@
   document.addEventListener('keydown', event => {
     const key = event.key.toLowerCase();
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) event.preventDefault();
-    if (key === 'p' || key === 'escape') { if (!event.repeat) paused = !paused; return; }
+    if (key === 'p' || key === 'escape') { if (!event.repeat && el.levelPanel.hidden) paused = !paused; return; }
     if (key === 'm') { if (!event.repeat) toggleMute(); return; }
     keys.add(key);
     if (event.repeat) return;
     if (key === ' ' || key === 'j') playerAttack();
     if (key === 'q') useSkill();
+    if (key === 'r') useUltimate();
     if (key === 'shift') dash();
     if (key === 'e') heal();
   });
@@ -1016,6 +1233,7 @@
   };
   bindButton(el.attackButton, playerAttack, true);
   bindButton(el.skillButton, useSkill);
+  bindButton(el.ultimateButton, useUltimate);
   bindButton(el.dodgeButton, dash);
   bindButton(el.healButton, heal);
   const releaseAttack = () => { attackHeld = false; };
@@ -1068,6 +1286,8 @@
     player.comboTimer = Math.max(0, player.comboTimer - dt);
     player.dashCd = Math.max(0, player.dashCd - dt);
     player.skillCd = Math.max(0, player.skillCd - dt);
+    player.ultimateCd = Math.max(0, player.ultimateCd - dt);
+    player.ultimateTime = Math.max(0, player.ultimateTime - dt);
     player.invuln = Math.max(0, player.invuln - dt);
     player.flash = Math.max(0, player.flash - dt);
     player.hurt = Math.max(0, player.hurt - dt);
@@ -1085,7 +1305,7 @@
       const mag = Math.hypot(dx, dy);
       if (mag > 1) { dx /= mag; dy /= mag; }
       const moving = mag > .05;
-      const water = inRiver(player.x, player.y);
+      const water = !dun && player.x >= 0 && player.y >= 0 && player.x <= world.width && player.y <= world.height && inRiver(player.x, player.y);
       let vx = 0, vy = 0;
       if (player.dashT > 0) {
         player.dashT -= dt;
@@ -1093,7 +1313,7 @@
         if (Math.random() < .6) addParticle({ x: player.x, y: player.y + 6, vx: 0, vy: 0, life: .3, max: .3, size: 9, color: 'rgba(166,236,225,.35)', drag: 0, shrink: true });
       } else if (moving) {
         if (!player.swing || player.aimLock <= 0) player.angle = Math.atan2(dy, dx);
-        let speed = 235 * spMul();
+        let speed = 235 * spMul() * (player.ultimateTime > 0 && cust.ultimate === 'tempestade' ? 1.12 : 1);
         if (roadDist(player.x, player.y) < 44) speed *= 1.1;
         if (water) speed *= .62;
         if (player.swing) speed *= .55;
@@ -1104,8 +1324,10 @@
       player.x += (vx + player.kx) * dt;
       player.y += (vy + player.ky) * dt;
       player.kx *= kd; player.ky *= kd;
-      player.x = clamp(player.x, 24, world.width - 24);
-      player.y = clamp(player.y, dun ? FLOOR_TOP : 24, world.height - 24);
+      if (dun) {
+        player.x = clamp(player.x, 24, world.width - 24);
+        player.y = clamp(player.y, FLOOR_TOP, world.height - 24);
+      }
       collide(player, 11);
       if (moving || player.dashT > 0) {
         player.stepDist += Math.hypot(vx, vy) * dt;
@@ -1117,9 +1339,11 @@
       }
       // regeneração
       player.focus = Math.min(maxFocusOf(), player.focus + 3 * dt);
+      player.stamina = Math.min(maxStaminaOf(), player.stamina + (12 + player.staminaRanks * 3) * dt);
       if (inSafeZone(player.x, player.y)) {
         player.hp = Math.min(maxHpOf(), player.hp + 7 * dt);
         player.focus = Math.min(maxFocusOf(), player.focus + 9 * dt);
+        player.stamina = Math.min(maxStaminaOf(), player.stamina + 18 * dt);
         if (Math.random() < dt * 6) addParticle({ x: player.x + rand(-16, 16), y: player.y + rand(-4, 14), vx: 0, vy: -30, life: 1, max: 1, size: 2.6, color: '#9fe8b5', drag: 0, glow: true, shrink: true });
       }
       if (quest.stage === 2 && Math.hypot(player.x - SHRINE.x, player.y - SHRINE.y) < SAFE_RADIUS - 10) completeQuest();
@@ -1154,11 +1378,23 @@
       if (isRegular(e) && Math.hypot(e.x - player.x, e.y - player.y) > 1750) return false;
       return true;
     });
+    if (!dun) {
+      waveTimer += rawDt;
+      if (waveTimer >= 45) {
+        waveTimer -= 45;
+        wave++;
+        showBanner(`ONDA ${wave}`, 'Mais inimigos · mais fortes');
+        sfx('slam'); shake(9);
+        const pack = Math.min(10, 2 + Math.floor(wave / 2));
+        for (let i = 0; i < pack; i++) trySpawnRandom(430, 780);
+        saveGame();
+      }
+    }
     spawnTimer -= dt;
     if (spawnTimer <= 0 && !dun) {
-      spawnTimer = 1.6;
-      const max = 11 + (dark > .6 ? 4 : 0);
-      if (enemies.filter(isRegular).length < max) trySpawnRandom(520, 950);
+      spawnTimer = Math.max(.55, 1.7 - wave * .055);
+      const max = Math.min(60, 12 + wave * 3 + (dark > .6 ? 4 : 0));
+      if (enemies.filter(isRegular).length < max) trySpawnRandom(480, 900);
     }
     if (targetEnemy && (targetEnemy.dead || gameTime - targetEnemy.lastHit > 5)) targetEnemy = null;
 
@@ -1181,8 +1417,8 @@
 
     updateExt(dt);
     // câmera
-    const targetX = clamp(player.x - viewW / 2, 0, Math.max(0, world.width - viewW));
-    const targetY = clamp(player.y - viewH / 2, 0, Math.max(0, world.height - viewH));
+    const targetX = dun ? clamp(player.x - viewW / 2, 0, Math.max(0, world.width - viewW)) : player.x - viewW / 2;
+    const targetY = dun ? clamp(player.y - viewH / 2, FLOOR_TOP, Math.max(FLOOR_TOP, world.height - viewH)) : player.y - viewH / 2;
     const follow = 1 - Math.exp(-9 * rawDt);
     camera.x += (targetX - camera.x) * follow;
     camera.y += (targetY - camera.y) * follow;
@@ -1205,10 +1441,23 @@
     ctx.fillRect(t.x - t.radius * .13, t.y + t.radius * .1, t.radius * .26, t.radius * .62);
     ctx.fillStyle = treeColors[t.shade];
     ctx.beginPath(); ctx.arc(t.x + sway, t.y - 2, t.radius, 0, TAU); ctx.fill();
+    ctx.fillStyle = treeColors[Math.min(treeColors.length - 1, t.shade + 1)];
+    ctx.beginPath();
+    ctx.arc(t.x + sway - t.radius * .38, t.y - t.radius * .16, t.radius * .58, 0, TAU);
+    ctx.arc(t.x + sway + t.radius * .37, t.y - t.radius * .12, t.radius * .62, 0, TAU);
+    ctx.arc(t.x + sway, t.y - t.radius * .56, t.radius * .54, 0, TAU);
+    ctx.fill();
     ctx.fillStyle = 'rgba(0,0,0,.12)';
     ctx.beginPath(); ctx.arc(t.x + sway + t.radius * .25, t.y + t.radius * .2, t.radius * .62, 0, TAU); ctx.fill();
     ctx.fillStyle = 'rgba(183,204,112,.16)';
     ctx.beginPath(); ctx.arc(t.x + sway - t.radius * .28, t.y - t.radius * .38, t.radius * .5, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(222,239,163,.3)';
+    for (let i = 0; i < 4; i++) {
+      const a = t.phase + i * TAU / 4;
+      ctx.beginPath(); ctx.ellipse(t.x + sway + Math.cos(a) * t.radius * .52, t.y - t.radius * .3 + Math.sin(a) * t.radius * .42, t.radius * .1, t.radius * .06, a, 0, TAU); ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(19,48,31,.25)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(t.x + sway, t.y - 2, t.radius, -.15, Math.PI * .95); ctx.stroke();
     ctx.globalAlpha = 1;
   }
   function drawPillar(p) {
@@ -1466,8 +1715,13 @@
   /* ---------- desenho: minimapa ---------- */
   function drawMap(target) {
     const w = mini.width, h = mini.height;
-    const mx = x => x / world.width * w, my = y => y / world.height * h;
-    if (dun) { miniCtx.fillStyle = '#1a1620'; miniCtx.fillRect(0, 0, w, h); } else miniCtx.drawImage(miniBase, 0, 0);
+    const span = dun ? world.width : CHUNK_SIZE * 5;
+    const mx = x => w / 2 + (x - player.x) / span * w, my = y => h / 2 + (y - player.y) / span * h;
+    miniCtx.fillStyle = dun ? '#1a1620' : '#304b39'; miniCtx.fillRect(0, 0, w, h);
+    if (!dun) {
+      miniCtx.drawImage(miniBase, mx(0), my(0), world.width / span * w, world.height / span * h);
+      for (const chunk of worldChunks.values()) miniCtx.drawImage(chunk.tile, mx(chunk.x), my(chunk.y), CHUNK_SIZE / span * w, CHUNK_SIZE / span * h);
+    }
     for (const l of loot) { miniCtx.fillStyle = l.type === 'coin' ? '#ffd77f' : '#ff8a7a'; miniCtx.fillRect(mx(l.x) - 1.5, my(l.y) - 1.5, 3, 3); }
     for (const e of enemies) {
       if (e.dead) continue;
@@ -1486,7 +1740,7 @@
     miniCtx.beginPath(); miniCtx.moveTo(0, -8); miniCtx.lineTo(6, 6); miniCtx.lineTo(0, 3); miniCtx.lineTo(-6, 6); miniCtx.closePath(); miniCtx.fill();
     miniCtx.restore();
     miniCtx.strokeStyle = 'rgba(242,232,199,.47)'; miniCtx.lineWidth = 2;
-    miniCtx.strokeRect(mx(camera.x), my(camera.y), camera.width / camera.scale / world.width * w, camera.height / camera.scale / world.height * h);
+    miniCtx.strokeRect(mx(camera.x), my(camera.y), camera.width / camera.scale / span * w, camera.height / camera.scale / span * h);
   }
 
   /* ---------- desenho: cena ---------- */
@@ -1504,6 +1758,7 @@
     ctx.translate(-sx, -sy);
 
     if (dun) drawDungeonBg(); else {
+    drawWorldChunks(sx, sy, viewW, viewH);
     // chão pré-renderizado
     const x0 = Math.max(0, Math.floor(sx)), y0 = Math.max(0, Math.floor(sy));
     const x1 = Math.min(world.width, Math.ceil(sx + viewW)), y1 = Math.min(world.height, Math.ceil(sy + viewH));
@@ -1511,7 +1766,7 @@
 
     // brilho da água
     ctx.strokeStyle = 'rgba(200,255,248,.28)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-    for (let y = Math.floor(sy / 46) * 46; y < sy + viewH + 46; y += 46) {
+    for (let y = Math.max(0, Math.floor(sy / 46) * 46); y < Math.min(world.height, sy + viewH + 46); y += 46) {
       const off = Math.sin(gameTime * .9 + y * .05) * 46, rx = riverX(y) + off;
       const len = 14 + Math.sin(gameTime * 1.4 + y) * 6;
       ctx.beginPath(); ctx.moveTo(rx - len, y); ctx.lineTo(rx + len, y + 2); ctx.stroke();
@@ -1527,6 +1782,7 @@
     const m = 70;
     const vis = (x, y) => x > sx - m && x < sx + viewW + m && y > sy - m && y < sy + viewH + m;
     for (const t of trees) if (!dun && vis(t.x, t.y)) drawList.push({ y: t.y + t.radius * .45, k: 0, o: t });
+    if (!dun) for (const chunk of worldChunks.values()) for (const t of chunk.trees) if (vis(t.x, t.y)) drawList.push({ y: t.y + t.radius * .45, k: 0, o: t });
     for (const p of (dun ? dun.pillars : pillars)) if (vis(p.x, p.y)) drawList.push({ y: p.y + 8, k: 1, o: p });
     for (const e of enemies) if (!e.dead && vis(e.x, e.y)) drawList.push({ y: e.y, k: 2, o: e });
     drawList.push({ y: player.y, k: 3, o: player });
@@ -1633,19 +1889,23 @@
 
   /* ---------- HUD ---------- */
   function updateHud(sx, sy) {
-    const maxHp = maxHpOf(), maxF = maxFocusOf(), need = xpNeed(player.level);
+    const maxHp = maxHpOf(), maxF = maxFocusOf(), maxSt = maxStaminaOf(), need = xpNeed(player.level);
     setWidth('hp', el.healthFill, player.hp / maxHp * 100);
     setWidth('fo', el.manaFill, player.focus / maxF * 100);
+    setWidth('st', el.staminaFill, player.stamina / maxSt * 100);
     setWidth('xp', el.xpFill, player.xp / need * 100);
     setText('hpT', el.healthText, `${Math.ceil(player.hp)} / ${maxHp}`);
     setText('foT', el.manaText, `${Math.floor(player.focus)} / ${maxF}`);
+    setText('stT', el.staminaText, `${Math.floor(player.stamina)} / ${maxSt}`);
     setText('xpT', el.xpText, `${Math.floor(player.xp)} / ${need}`);
     setText('potT', el.potionText, player.potions);
     setText('potB', el.potionBadge, player.potions);
-    setText('lv', el.level, player.level);
-    setText('lv2', el.statusLevel, player.level);
+    setText('lv', el.level, rankOf());
+    setText('lv2', el.statusLevel, rankOf());
     setText('coins', el.coins, player.coins);
     setText('kills', el.kills, player.kills);
+    setText('wave', el.wave, wave);
+    setText('location', el.locationName, worldRegionName(player.x, player.y));
     const mm = Math.floor(clockMinutes());
     setText('clock', el.clock, `${pad2(Math.floor(mm / 60))}:${pad2(mm % 60)}`);
 
@@ -1656,8 +1916,11 @@
     setText('dist', el.distance, t ? `${Math.round(dist / 30)} m` : '— m');
 
     el.skillButton.classList.toggle('cooling', player.skillCd > 0 || player.focus < CLASSES[cust.cls].cost);
-    el.dodgeButton.classList.toggle('cooling', player.dashCd > 0);
+    el.dodgeButton.classList.toggle('cooling', player.dashCd > 0 || player.stamina < 30);
     el.healButton.classList.toggle('cooling', player.potions <= 0);
+    el.ultimateButton.hidden = !cust.ultimate;
+    el.ultimateButton.classList.toggle('cooling', player.ultimateCd > 0);
+    el.ultimateButton.setAttribute('aria-label', cust.ultimate ? `Usar ultimate: ${ULTIMATES[cust.ultimate].name}` : 'Ultimate bloqueada até o nível 5');
 
     // alvo
     const boss = enemies.find(e => e.t.boss && !e.dead && e.state !== 'idle');
@@ -1687,7 +1950,7 @@
      EXPANSÃO 2.0 — masmorras, novos inimigos e chefes, personalização
      ============================================================ */
   const EXP_KEY = 'abismo-open-world-v2';
-  const cust = { name: 'Aventureiro', armor: '#425f69', cape: '#8c3a3a', hair: '#3b2a20', skin: '#d9b99b', glow: '#9fe8ff', style: 1, race: 'humano', cls: 'guerreiro' };
+  const cust = { name: 'Aventureiro', armor: '#425f69', cape: '#8c3a3a', hair: '#3b2a20', skin: '#d9b99b', glow: '#9fe8ff', style: 1, race: 'humano', cls: 'guerreiro', armorType: 'cota', weapon: 'espada', element: 'fogo' };
   const cleared = {};
   try { const s = JSON.parse(localStorage.getItem(EXP_KEY) || 'null'); if (s) { Object.assign(cust, s.cust); Object.assign(cleared, s.cleared); } } catch (e) { /* sem storage */ }
   const saveExp = () => { try { localStorage.setItem(EXP_KEY, JSON.stringify({ cust, cleared })); } catch (e) { /* sem storage */ } };
@@ -1733,7 +1996,10 @@
     { id: 'cat', name: 'Catacumbas Esquecidas', sub: 'Os mortos não descansam', x: 420, y: 640, lv: 15, bg: ['360_F_589592494_xjem0JGmU7Sc1GKgQ2Fo9LlwjYY6WIZi.jpg', 'medieval-dungeon-corridor-stockcake.jpg'], floor: '#4a4338', wall: '#2b2620', acc: '#ffb45a', mix: ['skeleton', 'bat', 'skeleton', 'bat'], boss: 'lorde' },
     { id: 'cis', name: 'Cisterna Esmeralda', sub: 'Algo se move sob a água', x: 780, y: 1580, lv: 17, bg: ['images (2).jpg'], floor: '#2f4a42', wall: '#16261f', acc: '#7dffb0', mix: ['slime', 'slime', 'bat', 'wolf'], boss: 'matriarca' },
     { id: 'ast', name: 'Templo Astral', sub: 'O céu se partiu aqui', x: 1500, y: 330, lv: 19, bg: ['3311e8dcf9f658e9a595b633eed77671.jpg'], floor: '#3b3a66', wall: '#1a1838', acc: '#8fb8ff', mix: ['mage', 'bat', 'mage', 'skeleton'], boss: 'arquimago' },
-    { id: 'forja', name: 'Forja do Abismo', sub: 'O fogo guarda o último segredo', x: 2060, y: 1500, lv: 22, bg: ['boss arena.jpg'], floor: '#4d3640', wall: '#24121a', acc: '#ff8a4a', mix: ['brute', 'mage', 'brute', 'wolf'], boss: 'titan' }
+    { id: 'forja', name: 'Forja do Abismo', sub: 'O fogo guarda o último segredo', x: 2060, y: 1500, lv: 22, bg: ['boss arena.jpg'], floor: '#4d3640', wall: '#24121a', acc: '#ff8a4a', mix: ['brute', 'mage', 'brute', 'wolf'], boss: 'titan' },
+    { id: 'gelo', name: 'Observatório Glacial', sub: 'O frio preserva os segredos', x: 3490, y: 610, lv: 25, bg: ['dungeons-palace-background-260nw-181416236.webp'], floor: '#465b68', wall: '#1b2935', acc: '#9de8ff', mix: ['mage', 'bat', 'skeleton', 'wolf'], boss: 'arquimago' },
+    { id: 'dunas', name: 'Colosso das Dunas', sub: 'A areia se ergue contra você', x: 3700, y: 2110, lv: 27, bg: ['boss arena.jpg'], floor: '#765b3c', wall: '#38271d', acc: '#ffbd69', mix: ['brute', 'bat', 'wolf', 'brute'], boss: 'titan' },
+    { id: 'bosque', name: 'Bosque Profundo', sub: 'As raízes sentem sua presença', x: 1040, y: 2470, lv: 26, bg: ['images (1).jpg'], floor: '#354c3a', wall: '#17261b', acc: '#a5eb83', mix: ['slime', 'wolf', 'bat', 'mage'], boss: 'matriarca' }
   ];
   DUNS.forEach(d => { d.imgs = d.bg.map(f => { const i = new Image(); i.src = 'assets/' + f; return i; }); });
   let dun = null, ow = null, owEnemies = [], owSolids = [], splash = null, fadeSt = null, portalCd = 0;
@@ -1741,8 +2007,8 @@
   function startFade(fn, instant) { if (instant) { fn(); return; } if (!fadeSt) fadeSt = { t: 0, fn, ran: false }; }
   function snapCamera() {
     const vw = camera.width / camera.scale, vh = camera.height / camera.scale;
-    camera.x = clamp(player.x - vw / 2, 0, Math.max(0, world.width - vw));
-    camera.y = clamp(player.y - vh / 2, 0, Math.max(0, world.height - vh));
+    camera.x = dun ? clamp(player.x - vw / 2, 0, Math.max(0, world.width - vw)) : player.x - vw / 2;
+    camera.y = dun ? clamp(player.y - vh / 2, FLOOR_TOP, Math.max(FLOOR_TOP, world.height - vh)) : player.y - vh / 2;
   }
   function enterDungeon(d) {
     if (dun || fadeSt) return;
@@ -1807,7 +2073,7 @@
     }
     updateList(shots, s => {
       s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt;
-      if (s.life <= 0 || s.x < 0 || s.x > world.width || s.y > world.height || s.y < (dun ? FLOOR_TOP - 20 : 0)) return false;
+      if (s.life <= 0 || (dun && (s.x < 0 || s.x > world.width || s.y > world.height || s.y < FLOOR_TOP - 20))) return false;
       if (!player.dead && Math.hypot(player.x - s.x, player.y - s.y) < 18) {
         hurtPlayer(s.dmg, s.x - s.vx, s.y - s.vy, s.boss);
         burst(s.x, s.y, 8, { color: [s.col, '#fff'], speed: 150, life: .3, size: 2.6, glow: true });
@@ -2039,16 +2305,57 @@
     guerreiro: { n: 'Guerreiro', w: 'Espada Longa', d: 'Combo de 3 golpes em arco. Habilidade: Redemoinho de lâminas.', hp: 1.1, fo: 1, sp: 1, dm: 1, atk: 1, rng: 1, dc: 1, cost: 20, cd: 4, icon: '✦' },
     mago: { n: 'Mago', w: 'Cajado Arcano', d: 'Raios arcanos à distância. Habilidade: Nova Arcana (explosão em área).', hp: .8, fo: 1.4, sp: 1, dm: 1, atk: 1, rng: 1, dc: 1, cost: 22, cd: 4.5, icon: '✺' },
     arqueiro: { n: 'Arqueiro', w: 'Arco Curto', d: 'Flechas rápidas que perfuram. Habilidade: Leque de 7 flechas.', hp: .9, fo: 1.1, sp: 1.08, dm: 1, atk: 1, rng: 1, dc: 1, cost: 20, cd: 4, icon: '➶' },
-    paladino: { n: 'Paladino', w: 'Martelo Sagrado', d: 'Golpes lentos e devastadores. Habilidade: Julgamento (cura + explosão).', hp: 1.3, fo: 1, sp: .96, dm: 1, atk: 1.7, rng: 1.1, dc: 1.7, cost: 25, cd: 6, icon: '☀' }
+    paladino: { n: 'Paladino', w: 'Martelo Sagrado', d: 'Golpes lentos e devastadores. Habilidade: Julgamento (cura + explosão).', hp: 1.3, fo: 1, sp: .96, dm: 1, atk: 1.7, rng: 1.1, dc: 1.7, cost: 25, cd: 6, icon: '☀' },
+    druida: { n: 'Druida', w: 'Cajado das Raízes', d: 'Dispara espinhos vivos. Habilidade: Ciclo Vital, cura e fere ao redor.', hp: 1, fo: 1.25, sp: 1, dm: 1.05, atk: 1, rng: 1, dc: 1, cost: 24, cd: 5, icon: '❋' },
+    assassino: { n: 'Assassino', w: 'Lâminas Gêmeas', d: 'Golpes rápidos e críticos. Habilidade: Passo Sombrio, investida cortante.', hp: .88, fo: .95, sp: 1.18, dm: 1.12, atk: .72, rng: .82, dc: 1.1, cost: 18, cd: 3.2, icon: '✧' }
+  };
+  const ARMORS = {
+    couro: { n: 'Couro de Caçador', hp: .96, speed: 1.08, guard: .06 },
+    cota: { n: 'Cota do Viajante', hp: 1, speed: 1, guard: .12 },
+    placas: { n: 'Placas do Bastião', hp: 1.22, speed: .9, guard: .24 },
+    runica: { n: 'Manto Rúnico', hp: 1.04, speed: 1.02, guard: .1 }
+  };
+  const WEAPONS = {
+    espada: { n: 'Espada longa', cls: 'guerreiro', damage: 1, rate: 1, range: 1 },
+    machado: { n: 'Machado de guerra', cls: 'guerreiro', damage: 1.24, rate: .82, range: 1.08 },
+    lanca: { n: 'Lança do sentinela', cls: 'guerreiro', damage: .92, rate: 1.08, range: 1.32 },
+    cajado: { n: 'Cajado arcano', cls: 'mago', damage: 1.06, rate: .96, range: 1.18 },
+    grimorio: { n: 'Grimório astral', cls: 'mago', damage: 1.22, rate: .84, range: 1.08 },
+    varinha: { n: 'Varinha prismática', cls: 'mago', damage: .86, rate: 1.2, range: .94 },
+    arco: { n: 'Arco longo', cls: 'arqueiro', damage: 1.14, rate: .94, range: 1.24 },
+    besta: { n: 'Besta repetidora', cls: 'arqueiro', damage: 1.3, rate: .76, range: 1.12 },
+    martelo: { n: 'Martelo sagrado', cls: 'paladino', damage: 1.18, rate: .92, range: 1.12 },
+    maça: { n: 'Maça do juramento', cls: 'paladino', damage: 1.34, rate: .78, range: .98 },
+    totem: { n: 'Totem vivo', cls: 'druida', damage: 1.02, rate: 1, range: 1.2 },
+    lunaclara: { n: 'Cajado da lua', cls: 'druida', damage: 1.2, rate: .88, range: 1.1 },
+    adagas: { n: 'Adagas gêmeas', cls: 'assassino', damage: 1, rate: 1.08, range: .92 },
+    katars: { n: 'Katars sombrios', cls: 'assassino', damage: 1.18, rate: .92, range: 1.04 }
+  };
+  const ELEMENTS = {
+    fogo: { n: 'Fogo', color: '#ff815b', strong: ['skeleton', 'brute', 'lorde', 'titan'] },
+    gelo: { n: 'Gelo', color: '#9de8ff', strong: ['wolf', 'bat', 'brute'] },
+    raio: { n: 'Raio', color: '#ffe36d', strong: ['bat', 'mage', 'arquimago'] },
+    natureza: { n: 'Natureza', color: '#8ee28b', strong: ['slime', 'wolf', 'matriarca'] },
+    arcano: { n: 'Arcano', color: '#c4a2ff', strong: ['skeleton', 'mage', 'boss'] }
+  };
+  const ULTIMATES = {
+    tempestade: { name: 'Tempestade Astral', icon: '✧', description: 'Dobra o dano por 8 segundos. Recarga: 40 segundos.' },
+    guardiao: { name: 'Bastião Imortal', icon: '⬡', description: 'Recupera 60% da vida e bloqueia dano por 3 segundos.' },
+    cataclismo: { name: 'Cataclismo', icon: '✹', description: 'Desfere uma explosão elemental devastadora ao redor.' }
   };
   if (!RACES[cust.race]) cust.race = 'humano';
   if (!CLASSES[cust.cls]) cust.cls = 'guerreiro';
-  const hpMul = () => RACES[cust.race].hp * CLASSES[cust.cls].hp;
+  const defaultWeapon = cls => ({ guerreiro: 'espada', mago: 'cajado', arqueiro: 'arco', paladino: 'martelo', druida: 'totem', assassino: 'adagas' }[cls]);
+  if (!ARMORS[cust.armorType]) cust.armorType = 'cota';
+  if (!WEAPONS[cust.weapon] || WEAPONS[cust.weapon].cls !== cust.cls) cust.weapon = defaultWeapon(cust.cls);
+  if (!ELEMENTS[cust.element]) cust.element = 'fogo';
+  if (!ULTIMATES[cust.ultimate]) cust.ultimate = null;
+  const hpMul = () => RACES[cust.race].hp * CLASSES[cust.cls].hp * ARMORS[cust.armorType].hp;
   const foMul = () => RACES[cust.race].fo * CLASSES[cust.cls].fo;
-  const dmMul = () => RACES[cust.race].dm * CLASSES[cust.cls].dm;
-  const spMul = () => RACES[cust.race].sp * CLASSES[cust.cls].sp;
+  const dmMul = () => RACES[cust.race].dm * CLASSES[cust.cls].dm * WEAPONS[cust.weapon].damage;
+  const spMul = () => RACES[cust.race].sp * CLASSES[cust.cls].sp * ARMORS[cust.armorType].speed;
   const xpMul = () => RACES[cust.race].xp;
-  const atkMul = () => CLASSES[cust.cls].atk, rangeMul = () => CLASSES[cust.cls].rng, dmgClass = () => CLASSES[cust.cls].dc;
+  const atkMul = () => CLASSES[cust.cls].atk * WEAPONS[cust.weapon].rate, rangeMul = () => CLASSES[cust.cls].rng * WEAPONS[cust.weapon].range, dmgClass = () => CLASSES[cust.cls].dc;
 
   const pShots = [];
   function pShoot(a, spd, dmg, kind, pierce, life) {
@@ -2056,13 +2363,15 @@
   }
   function classAttack() {
     const c = cust.cls;
-    if (c !== 'mago' && c !== 'arqueiro') return false;
+    if (c !== 'mago' && c !== 'arqueiro' && c !== 'druida') return false;
     if (player.dead || player.attackCd > 0 || paused) return true;
     autoAim();
-    player.attackCd = c === 'mago' ? .42 : .27;
+    const weapon = WEAPONS[cust.weapon];
+    player.attackCd = (c === 'mago' ? .42 : (c === 'druida' ? .38 : .27)) / weapon.rate;
     player.kx -= Math.cos(player.angle) * 70; player.ky -= Math.sin(player.angle) * 70;
-    if (c === 'mago') pShoot(player.angle, 540, damageOf() * 1.1, 'mago', 0, 1.1);
-    else pShoot(player.angle, 740, damageOf() * .85, 'arqueiro', 1, .8);
+    if (c === 'mago') pShoot(player.angle, 540, damageOf() * 1.1, 'mago', 0, 1.1 * weapon.range);
+    else if (c === 'druida') pShoot(player.angle, 600, damageOf() * .96, 'druida', 0, 1.05 * weapon.range);
+    else pShoot(player.angle, 740, damageOf() * .85, 'arqueiro', 1, .8 * weapon.range);
     sfx('swing'); return true;
   }
   function classSkill() {
@@ -2074,16 +2383,33 @@
     const d = damageOf(), hitAll = (rad, mul, kb) => { for (const e of enemies) if (!e.dead && Math.hypot(e.x - player.x, e.y - player.y) < rad + e.t.r) damageEnemy(e, d * mul, { kb, skill: true }); };
     if (cust.cls === 'mago') { ring(player.x, player.y, '#b69cff', 44, 380); burst(player.x, player.y, 26, { color: ['#b69cff', '#fff'], speed: 300, life: .7, size: 3.4, glow: true }); shake(9); sfx('skill'); hitAll(190, 2.2, 640); }
     else if (cust.cls === 'arqueiro') { for (let k = -3; k <= 3; k++) pShoot(player.angle + k * .13, 760, d * .9, 'arqueiro', 3, .9); sfx('skill'); }
+    else if (cust.cls === 'druida') {
+      const healAmount = Math.round(maxHpOf() * .18);
+      player.hp = Math.min(maxHpOf(), player.hp + healAmount);
+      floatText(player.x, player.y - 34, `+${healAmount}`, '#9fe8b5', 18);
+      ring(player.x, player.y, '#8ee28b', 42, 330); burst(player.x, player.y, 24, { color: ['#8ee28b', '#d7ffc8'], speed: 240, life: .7, size: 3, glow: true });
+      sfx('skill'); hitAll(165, 1.55, 520);
+    }
+    else if (cust.cls === 'assassino') {
+      player.dashX = Math.cos(player.angle); player.dashY = Math.sin(player.angle); player.dashT = .16;
+      player.invuln = Math.max(player.invuln, .5); burst(player.x, player.y, 18, { color: ['#c4a2ff', '#fff'], speed: 210, life: .45, size: 3, glow: true });
+      for (const e of enemies) {
+        if (e.dead) continue;
+        const dx = e.x - player.x, dy = e.y - player.y, dist = Math.hypot(dx, dy);
+        if (dist < 205 + e.t.r && angDiff(Math.atan2(dy, dx), player.angle) < .62) damageEnemy(e, d * 2.05, { kb: 480, skill: true, finisher: true });
+      }
+      shake(8); sfx('skill');
+    }
     else { const h = Math.round(maxHpOf() * .28); player.hp = Math.min(maxHpOf(), player.hp + h); floatText(player.x, player.y - 34, `+${h}`, '#9fe8b5', 18); ring(player.x, player.y, '#ffe28a', 40, 330); burst(player.x, player.y, 24, { color: ['#ffe28a', '#fff4c4'], speed: 260, life: .8, size: 3.4, glow: true }); shake(10); sfx('level'); hitAll(150, 1.7, 620); }
   }
   function updatePShots(dt) {
     updateList(pShots, s => {
       s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt;
-      if (s.life <= 0 || s.x < 0 || s.x > world.width || s.y > world.height || s.y < (dun ? FLOOR_TOP - 20 : 0)) return false;
+      if (s.life <= 0 || (dun && (s.x < 0 || s.x > world.width || s.y > world.height || s.y < FLOOR_TOP - 20))) return false;
       for (const e of enemies) {
         if (e.dead || s.hit.has(e) || Math.hypot(e.x - s.x, e.y - s.y) > e.t.r + 8) continue;
         s.hit.add(e); damageEnemy(e, s.dmg, { kb: 220 });
-        if (s.kind === 'mago') { burst(s.x, s.y, 10, { color: ['#b69cff', '#fff'], speed: 160, life: .3, size: 3, glow: true }); return false; }
+        if (s.kind !== 'arqueiro') { burst(s.x, s.y, 10, { color: [ELEMENTS[cust.element].color, '#fff'], speed: 160, life: .3, size: 3, glow: true }); return false; }
         if (s.pierce-- <= 0) return false;
       }
       if (Math.random() < dt * 40) addParticle({ x: s.x, y: s.y, vx: 0, vy: 0, life: .25, max: .25, size: 3, color: s.kind === 'mago' ? '#b69cff' : '#e8e0c0', drag: 0, glow: s.kind === 'mago', shrink: true });
@@ -2093,9 +2419,9 @@
   function drawPShots() {
     for (const s of pShots) {
       ctx.save();
-      if (s.kind === 'mago') {
-        ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(182,156,255,.35)'; ctx.beginPath(); ctx.arc(s.x, s.y, 13, 0, TAU); ctx.fill();
-        ctx.fillStyle = cust.glow; ctx.beginPath(); ctx.arc(s.x, s.y, 6, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.x, s.y, 3, 0, TAU); ctx.fill();
+      if (s.kind !== 'arqueiro') {
+        ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = ELEMENTS[cust.element].color + '66'; ctx.beginPath(); ctx.arc(s.x, s.y, 13, 0, TAU); ctx.fill();
+        ctx.fillStyle = ELEMENTS[cust.element].color; ctx.beginPath(); ctx.arc(s.x, s.y, 6, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.x, s.y, 3, 0, TAU); ctx.fill();
       } else {
         ctx.translate(s.x, s.y); ctx.rotate(s.a); ctx.strokeStyle = '#d9cfa8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(8, 0); ctx.stroke();
         ctx.fillStyle = '#e8eef0'; ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(6, -3.5); ctx.lineTo(6, 3.5); ctx.fill();
@@ -2137,6 +2463,17 @@
     c.fillStyle = shade(cs.armor, -30); c.beginPath(); c.ellipse(0, 1, 12, 13, 0, 0, TAU); c.fill();
     c.fillStyle = cs.armor; c.beginPath(); c.ellipse(0, 0, 10.5, 11.5, 0, 0, TAU); c.fill();
     c.fillStyle = shade(cs.armor, 40); c.beginPath(); c.ellipse(-3, -3, 4.5, 5, -.3, 0, TAU); c.fill();
+    if (cs.armorType === 'couro') {
+      c.strokeStyle = '#d6b17b'; c.lineWidth = 2; c.beginPath(); c.moveTo(-8, -7); c.lineTo(7, 8); c.moveTo(8, -7); c.lineTo(-7, 8); c.stroke();
+      c.fillStyle = '#65452d'; c.fillRect(-13, -6, 5, 9); c.fillRect(8, -6, 5, 9);
+    } else if (cs.armorType === 'placas') {
+      c.fillStyle = shade(cs.armor, 30); c.beginPath(); c.ellipse(-10, -4, 6, 5, -.35, 0, TAU); c.ellipse(10, -4, 6, 5, .35, 0, TAU); c.fill();
+      c.strokeStyle = '#d8d8c8'; c.lineWidth = 1.3; c.beginPath(); c.moveTo(0, -10); c.lineTo(0, 8); c.moveTo(-7, 0); c.lineTo(7, 0); c.stroke();
+      c.fillStyle = cs.glow; c.beginPath(); c.arc(0, -2, 2.2, 0, TAU); c.fill();
+    } else if (cs.armorType === 'runica') {
+      c.strokeStyle = cs.glow; c.globalAlpha = .8; c.lineWidth = 1.4; c.beginPath(); c.moveTo(-6, -7); c.lineTo(-2, -3); c.lineTo(-6, 1); c.moveTo(6, -7); c.lineTo(2, -3); c.lineTo(6, 1); c.stroke(); c.globalAlpha = 1;
+      c.fillStyle = shade(cs.cape, 20); c.beginPath(); c.moveTo(-12, -5); c.lineTo(-16, 3); c.lineTo(-10, 8); c.closePath(); c.moveTo(12, -5); c.lineTo(16, 3); c.lineTo(10, 8); c.closePath(); c.fill();
+    }
     c.fillStyle = '#c9a458'; c.fillRect(-10, 3, 20, 3);
     if (K === 'paladino') { c.fillStyle = '#f4cf79'; c.fillRect(-1.6, -7, 3.2, 13); c.fillRect(-5, -3, 10, 3); }
     if (K === 'mago') { c.strokeStyle = cs.glow; c.lineWidth = 1.4; c.beginPath(); c.arc(0, -1, 5, 0, TAU); c.moveTo(-5, -1); c.lineTo(5, -1); c.stroke(); }
@@ -2146,19 +2483,48 @@
     if (K === 'guerreiro') { c.fillStyle = shade(cs.armor, 55); for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 10, -7); c.lineTo(s * 13, -13); c.lineTo(s * 15, -6); c.fill(); } }
     // armas
     if (K === 'guerreiro') {
-      c.globalAlpha = .35; c.strokeStyle = cs.glow; c.lineWidth = 8; c.beginPath(); c.moveTo(14, -2); c.lineTo(16, -29); c.stroke(); c.globalAlpha = 1;
-      c.strokeStyle = '#eef3f0'; c.lineWidth = 3; c.beginPath(); c.moveTo(14, -2); c.lineTo(16, -29); c.stroke();
-      c.strokeStyle = '#c9a458'; c.beginPath(); c.moveTo(10, -3); c.lineTo(19, -3); c.stroke();
+      c.strokeStyle = '#6a4a2c'; c.lineWidth = 4; c.beginPath(); c.moveTo(14, -2); c.lineTo(16, -29); c.stroke();
+      if (cs.weapon === 'machado') {
+        c.fillStyle = cs.glow; c.beginPath(); c.moveTo(12, -25); c.lineTo(22, -31); c.lineTo(25, -24); c.lineTo(21, -17); c.lineTo(14, -19); c.closePath(); c.fill();
+      } else if (cs.weapon === 'lanca') {
+        c.strokeStyle = '#eef3f0'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(16, -26); c.lineTo(18, -43); c.stroke();
+        c.fillStyle = cs.glow; c.beginPath(); c.moveTo(18, -49); c.lineTo(14, -41); c.lineTo(22, -42); c.closePath(); c.fill();
+      } else {
+        c.globalAlpha = .35; c.strokeStyle = cs.glow; c.lineWidth = 8; c.beginPath(); c.moveTo(14, -2); c.lineTo(16, -29); c.stroke(); c.globalAlpha = 1;
+        c.strokeStyle = '#eef3f0'; c.lineWidth = 3; c.beginPath(); c.moveTo(14, -2); c.lineTo(16, -29); c.stroke();
+      }
+      c.strokeStyle = '#c9a458'; c.lineWidth = 3; c.beginPath(); c.moveTo(10, -3); c.lineTo(19, -3); c.stroke();
     } else if (K === 'mago') {
-      c.strokeStyle = '#6a4a2c'; c.lineWidth = 3; c.beginPath(); c.moveTo(14, 8); c.lineTo(15, -30); c.stroke();
-      c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = cs.glow; c.globalAlpha = .4; c.beginPath(); c.arc(15, -33, 9, 0, TAU); c.fill(); c.globalAlpha = 1; c.beginPath(); c.arc(15, -33, 4.5, 0, TAU); c.fill(); c.restore();
+      if (cs.weapon === 'grimorio') {
+        c.fillStyle = '#4b2946'; c.fillRect(11, -22, 13, 17); c.fillStyle = '#d2b477'; c.fillRect(17, -22, 1.5, 17); c.strokeStyle = cs.glow; c.lineWidth = 1; c.strokeRect(13, -19, 8, 10);
+      } else if (cs.weapon === 'varinha') {
+        c.strokeStyle = '#6a4a2c'; c.lineWidth = 3; c.beginPath(); c.moveTo(14, 4); c.lineTo(20, -19); c.stroke();
+        c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = cs.glow; c.beginPath(); c.arc(21, -22, 6, 0, TAU); c.fill(); c.restore();
+      } else {
+        c.strokeStyle = '#6a4a2c'; c.lineWidth = 3; c.beginPath(); c.moveTo(14, 8); c.lineTo(15, -30); c.stroke();
+        c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = cs.glow; c.globalAlpha = .4; c.beginPath(); c.arc(15, -33, 9, 0, TAU); c.fill(); c.globalAlpha = 1; c.beginPath(); c.arc(15, -33, 4.5, 0, TAU); c.fill(); c.restore();
+      }
     } else if (K === 'arqueiro') {
-      c.strokeStyle = '#8a5a30'; c.lineWidth = 3; c.beginPath(); c.moveTo(15, -28); c.quadraticCurveTo(26, -13, 15, 2); c.stroke();
-      c.strokeStyle = '#e8e0c0'; c.lineWidth = 1; c.beginPath(); c.moveTo(15, -28); c.lineTo(15, 2); c.stroke();
-    } else {
+      if (cs.weapon === 'besta') {
+        c.strokeStyle = '#8a5a30'; c.lineWidth = 3; c.beginPath(); c.moveTo(8, -11); c.lineTo(25, -11); c.moveTo(16, -18); c.lineTo(16, -4); c.stroke();
+        c.strokeStyle = '#e8e0c0'; c.lineWidth = 1; c.beginPath(); c.moveTo(8, -11); c.lineTo(16, -18); c.lineTo(25, -11); c.lineTo(16, -4); c.stroke();
+      } else {
+        c.strokeStyle = '#8a5a30'; c.lineWidth = 3; c.beginPath(); c.moveTo(15, -28); c.quadraticCurveTo(26, -13, 15, 2); c.stroke();
+        c.strokeStyle = '#e8e0c0'; c.lineWidth = 1; c.beginPath(); c.moveTo(15, -28); c.lineTo(15, 2); c.stroke();
+      }
+    } else if (K === 'paladino') {
       c.strokeStyle = '#6a4a2c'; c.lineWidth = 3.4; c.beginPath(); c.moveTo(14, 6); c.lineTo(15, -24); c.stroke();
-      c.fillStyle = '#aab4bd'; c.fillRect(8, -34, 16, 11); c.fillStyle = '#d6dde2'; c.fillRect(8, -34, 16, 3);
+      if (cs.weapon === 'maça') {
+        c.fillStyle = '#aab4bd'; c.beginPath(); c.arc(16, -28, 8, 0, TAU); c.fill(); c.strokeStyle = '#d6dde2'; c.lineWidth = 2; c.beginPath(); c.moveTo(16, -39); c.lineTo(16, -17); c.moveTo(5, -28); c.lineTo(27, -28); c.stroke();
+      } else { c.fillStyle = '#aab4bd'; c.fillRect(8, -34, 16, 11); c.fillStyle = '#d6dde2'; c.fillRect(8, -34, 16, 3); }
       c.globalAlpha = .5; c.fillStyle = cs.glow; c.fillRect(10, -31, 12, 5); c.globalAlpha = 1;
+    } else if (K === 'druida') {
+      c.strokeStyle = '#765533'; c.lineWidth = 3.4; c.beginPath(); c.moveTo(14, 7); c.lineTo(16, -34); c.stroke();
+      c.fillStyle = cs.glow; for (let i = 0; i < 3; i++) { c.beginPath(); c.ellipse(16 + (i - 1) * 5, -36 - Math.abs(i - 1) * 3, 3, 6, (i - 1) * .4, 0, TAU); c.fill(); }
+      c.strokeStyle = '#5e8b52'; c.lineWidth = 2; c.beginPath(); c.moveTo(-14, -3); c.quadraticCurveTo(-20, -10, -14, -18); c.stroke();
+    } else {
+      c.strokeStyle = '#b9c1d0'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(12, -4); c.lineTo(18, -23); c.moveTo(-12, -4); c.lineTo(-18, -23); c.stroke();
+      c.fillStyle = cs.glow; c.beginPath(); c.moveTo(18, -27); c.lineTo(14, -21); c.lineTo(20, -22); c.closePath(); c.moveTo(-18, -27); c.lineTo(-20, -22); c.lineTo(-14, -21); c.closePath(); c.fill();
     }
     // cabeça
     if (R === 'elfo') { c.fillStyle = cs.skin; for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 6, -14); c.lineTo(s * 14, -18); c.lineTo(s * 6, -9); c.fill(); } }
@@ -2192,7 +2558,13 @@
     if (player.dead) return;
     ctx.save();
     if (player.hurt > 0 && Math.floor(gameTime * 24) % 2) ctx.globalAlpha = .55; else if (player.dashT > 0) ctx.globalAlpha = .75;
-    ctx.fillStyle = 'rgba(20,35,27,.6)'; ctx.beginPath(); ctx.ellipse(player.x + 2, player.y + 9, 17, 10, 0, 0, TAU); ctx.fill();
+    const shadow = ctx.createRadialGradient(player.x + 2, player.y + 8, 2, player.x + 2, player.y + 8, 23);
+    shadow.addColorStop(0, 'rgba(11,25,19,.58)'); shadow.addColorStop(1, 'rgba(11,25,19,0)');
+    ctx.fillStyle = shadow; ctx.beginPath(); ctx.ellipse(player.x + 2, player.y + 9, 23, 14, 0, 0, TAU); ctx.fill();
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const aura = ctx.createRadialGradient(player.x, player.y, 3, player.x, player.y, 34);
+    aura.addColorStop(0, ELEMENTS[cust.element].color + '20'); aura.addColorStop(1, ELEMENTS[cust.element].color + '00');
+    ctx.fillStyle = aura; ctx.beginPath(); ctx.arc(player.x, player.y, 34, 0, TAU); ctx.fill(); ctx.restore();
     paintHero(ctx, player.x, player.y, player.angle + Math.sin(player.walk) * .06, player.walk);
     if (player.flash > 0) { ctx.globalAlpha = Math.min(1, player.flash * 3); ctx.fillStyle = '#fff1b2'; ctx.beginPath(); ctx.arc(player.x, player.y, 22, 0, TAU); ctx.fill(); }
     ctx.globalAlpha = .85; ctx.textAlign = 'center'; ctx.font = '700 11px Rajdhani, sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,12,10,.8)';
@@ -2212,6 +2584,10 @@
   const panel = $('#customPanel');
   panel.innerHTML = `<div class="cp-card" role="dialog" aria-label="Criação de personagem"><div class="cp-head"><strong>CRIAÇÃO DE PERSONAGEM</strong><button type="button" id="cpClose">Confirmar ✓</button></div><div class="cp-body"><div class="cp-left"><canvas id="cpPreview" width="180" height="200"></canvas><div class="cp-stats" id="cpStats"></div></div><div class="cp-opts"><label>Nome<input id="cpName" maxlength="14" autocomplete="off"></label><div class="cp-row"><span>Raça</span><div class="cards">${Object.keys(RACES).map(k => `<button type="button" class="card" data-race="${k}"><b>${RACES[k].n}</b><small>${RACES[k].d}</small></button>`).join('')}</div></div><div class="cp-row"><span>Classe e arma</span><div class="cards">${Object.keys(CLASSES).map(k => `<button type="button" class="card" data-cls="${k}"><b>${CLASSES[k].n} · ${CLASSES[k].w}</b><small>${CLASSES[k].d}</small></button>`).join('')}</div></div><div class="cp-row"><span>Pele</span><div id="skinSw"></div></div>${Object.keys(PAL).map(k => `<div class="cp-row"><span>${PAL_LABEL[k]}</span><div>${sws(k, PAL[k])}</div></div>`).join('')}<div class="cp-row"><span>Visual da cabeça</span><div>${['Capuz', 'Elmo', 'Cabelo'].map((n, i) => `<button type="button" class="st" data-s="${i}">${n}</button>`).join('')}</div></div></div></div></div>`;
   const cpName = $('#cpName'), cpCtx = $('#cpPreview').getContext('2d');
+    panel.querySelector('.cp-opts').insertAdjacentHTML('beforeend', '<div class="cp-row gear-row"><label>Armadura<select id="cpArmor"></select></label><label>Arma<select id="cpWeapon"></select></label><label>Elemento<select id="cpElement"></select></label></div>');
+    const cpArmor = $('#cpArmor'), cpWeapon = $('#cpWeapon'), cpElement = $('#cpElement');
+    cpArmor.innerHTML = Object.entries(ARMORS).map(([id, item]) => `<option value="${id}">${item.n}</option>`).join('');
+    cpElement.innerHTML = Object.entries(ELEMENTS).map(([id, item]) => `<option value="${id}">${item.n}</option>`).join('');
   function drawPreview(now) {
     if (panel.hidden) return;
     const c = cpCtx; c.clearRect(0, 0, 180, 200);
@@ -2230,25 +2606,32 @@
     panel.querySelectorAll('.st').forEach(b => b.classList.toggle('on', cust.style === +b.dataset.s));
     panel.querySelectorAll('[data-race]').forEach(b => b.classList.toggle('on', cust.race === b.dataset.race));
     panel.querySelectorAll('[data-cls]').forEach(b => b.classList.toggle('on', cust.cls === b.dataset.cls));
-    $('#cpStats').innerHTML = `<b>${RACES[cust.race].n} ${CLASSES[cust.cls].n}</b><span>Vida ${maxHpOf()} · Foco ${maxFocusOf()}</span><span>Dano ${damageOf()} · Vel. ${Math.round(235 * spMul())}</span><span>Habilidade: ${CLASSES[cust.cls].icon} (${CLASSES[cust.cls].cost} foco)</span>`;
+    cpArmor.value = cust.armorType;
+    cpElement.value = cust.element;
+    cpWeapon.innerHTML = Object.entries(WEAPONS).filter(([, item]) => item.cls === cust.cls).map(([id, item]) => `<option value="${id}">${item.n}</option>`).join('');
+    cpWeapon.value = cust.weapon;
+    $('#cpStats').innerHTML = `<b>${RACES[cust.race].n} ${CLASSES[cust.cls].n}</b><span>${WEAPONS[cust.weapon].n} · ${ARMORS[cust.armorType].n}</span><span>Vida ${maxHpOf()} · Foco ${maxFocusOf()}</span><span>Dano ${damageOf()} · Vel. ${Math.round(235 * spMul())} · Defesa ${Math.round(ARMORS[cust.armorType].guard * 100)}%</span><span>${ELEMENTS[cust.element].n}: ${cust.element === 'fogo' ? 'queima' : cust.element === 'gelo' ? 'desacelera' : cust.element === 'raio' ? 'salta entre alvos' : cust.element === 'natureza' ? 'recupera vida' : 'recupera foco'}</span><span>Habilidade: ${CLASSES[cust.cls].icon} (${CLASSES[cust.cls].cost} foco)</span>`;
     syncHeroTag();
   }
   function togglePanel(open) {
     panel.hidden = !open;
     if (open) { paused = true; refreshPanel(); requestAnimationFrame(drawPreview); }
-    else { paused = false; cust.created = true; saveExp(); }
+    else { paused = pendingLevelChoices.length > 0; cust.created = true; saveExp(); }
   }
   panel.addEventListener('click', ev => {
     const b = ev.target.closest('button'); if (!b) return;
     if (b.id === 'cpClose') { togglePanel(false); return; }
     if (b.dataset.race) { cust.race = b.dataset.race; cust.skin = RACES[cust.race].skin[0]; }
-    else if (b.dataset.cls) cust.cls = b.dataset.cls;
+    else if (b.dataset.cls) { cust.cls = b.dataset.cls; cust.weapon = defaultWeapon(cust.cls); }
     else if (b.classList.contains('sw')) cust[b.dataset.k] = b.dataset.c;
     else if (b.classList.contains('st')) cust.style = +b.dataset.s;
     else return;
     player.hp = Math.min(player.hp, maxHpOf()); player.focus = Math.min(player.focus, maxFocusOf());
     refreshPanel(); saveExp();
   });
+  cpArmor.addEventListener('change', () => { cust.armorType = cpArmor.value; player.hp = Math.min(player.hp, maxHpOf()); refreshPanel(); saveExp(); });
+  cpWeapon.addEventListener('change', () => { cust.weapon = cpWeapon.value; refreshPanel(); saveExp(); });
+  cpElement.addEventListener('change', () => { cust.element = cpElement.value; refreshPanel(); saveExp(); });
   cpName.addEventListener('input', () => { cust.name = cpName.value.trim() || 'Aventureiro'; $('#heroName').textContent = cust.name; });
   panel.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.key === 'Escape' && cust.created) togglePanel(false); });
   $('#customBtn').addEventListener('click', () => togglePanel(panel.hidden));
@@ -2260,8 +2643,9 @@
   loadSave();
   player.hp = maxHpOf();
   player.focus = maxFocusOf();
-  camera.x = clamp(player.x - camera.width / camera.scale / 2, 0, Math.max(0, world.width - camera.width / camera.scale));
-  camera.y = clamp(player.y - camera.height / camera.scale / 2, 0, Math.max(0, world.height - camera.height / camera.scale));
+  player.stamina = maxStaminaOf();
+  camera.x = player.x - camera.width / camera.scale / 2;
+  camera.y = player.y - camera.height / camera.scale / 2;
   spawnEnemy('dummy', DUMMY_HOME.x, DUMMY_HOME.y);
   for (let i = 0; i < 9; i++) {
     for (let tries = 0; tries < 30; tries++) {
@@ -2272,6 +2656,8 @@
     }
   }
   if (quest.stage === 3) spawnBoss();
+  if (rankOf() >= 5 && !cust.ultimate && !pendingLevelChoices.some(choice => choice.rank === 5)) pendingLevelChoices.unshift({ rank: 5, statChosen: true });
+  if (pendingLevelChoices.length) renderLevelChoice();
   el.worldMessage.textContent = quests[quest.stage].msg;
   if (quest.stage === 0 && player.level === 15 && player.kills === 0) showToast('Bem-vindo às Terras Livres');
   else showToast('Progresso carregado');
