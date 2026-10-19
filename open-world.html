@@ -37,17 +37,17 @@
         </div>
       </div>
       <div class="run-result" id="runResult" hidden role="dialog" aria-modal="true"><section><small>CRÔNICAS DO ABISMO</small><h2 id="runTitle">SUA JORNADA TERMINOU</h2><p id="runDesc"></p><button id="runRestart" type="button">✦ CRIAR NOVO AVENTUREIRO</button></section></div>
-      <div class="npc-dialogue" id="npcDialogue" hidden><div class="npc-dialogue-head"><strong>Viajante</strong><button type="button" id="dialogClose" aria-label="Fechar diálogo">✕</button></div><p></p><small></small></div>
+      <div class="npc-dialogue" id="npcDialogue" hidden aria-live="polite"><div class="npc-dialogue-mark" aria-hidden="true">✦</div><div class="npc-dialogue-copy"><small class="dialogue-eyebrow">TERRAS LIVRES · ENCONTRO</small><div class="npc-dialogue-head"><strong>Viajante</strong><button type="button" id="dialogClose" aria-label="Fechar diálogo">✕</button></div><p></p><div class="npc-dialogue-foot"><small class="dialogue-caption"></small><span>E · CONTINUAR</span></div></div></div>
        <div class="toast" id="toast" role="status" aria-live="polite"></div>
       <div class="banner" id="banner" role="status" aria-live="polite"></div>
-      <div class="controls-hint">WASD · mover <span>•</span> Espaço · atacar <span>•</span> Q · habilidade <span>•</span> R · ultimate <span>•</span> E · falar <span>•</span> H · poção <span>•</span> B · bloquear (Tanke) <span>•</span> T · autoataque</div>
+      <div class="controls-hint">WASD · mover <span>•</span> Clique esquerdo / Espaço · atacar <span>•</span> Ninja: direito · katana <span>•</span> Tanke: direito / B · bloquear com mana <span>•</span> Q · habilidade</div>
 
       <div class="touch-controls" aria-label="Controles de toque">
         <div class="joystick" id="joystick" aria-label="Direcional virtual" role="application"><div class="joy-ring"></div><div class="joy-knob" id="joyKnob"></div></div>
         <div class="action-cluster"><button class="small-action interact" id="interactButton" aria-label="Interagir com NPC" title="Conversar" hidden>☏</button>
           <button class="small-action potion" id="healButton" aria-label="Usar poção" title="Usar poção">✚<b class="badge" id="potionBadge">3</b></button>
           <button class="small-action dodge" id="dodgeButton" aria-label="Esquivar" title="Esquivar">➜</button>
-          <button class="small-action tank-block" id="blockButton" aria-label="Bloquear com escudo (Tanke)" title="Segure para bloquear">⬡</button>
+          <button class="small-action tank-block" id="blockButton" aria-label="Bloquear com mana (Tanke)" title="Tanke: segure para bloquear; o dano consome mana" hidden>⬡</button>
           <button class="ultimate-button" id="ultimateButton" aria-label="Usar ultimate" title="Ultimate" hidden><span>✦</span><small>R</small></button>
           <button class="skill-button" id="skillButton" aria-label="Habilidade especial: redemoinho"><span>✦</span><small>Q</small></button>
           <button class="attack-button" id="attackButton" aria-label="Atacar"><span>⚔</span><small>ATACAR</small></button>
@@ -60,6 +60,7 @@
   <script src="js/partial-catalog.js"></script>
   <script src="js/reference-roster.js"></script>
   <script src="js/enemy-art.js"></script>
+  <script src="js/boss-rig.js"></script>
   <script src="js/open-world.js"></script>
 </body>
 </html>

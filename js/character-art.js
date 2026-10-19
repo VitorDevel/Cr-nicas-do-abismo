@@ -49,7 +49,8 @@ const WEAPONS = {
   adagas: { n: 'Adagas Gêmeas', cls: 'assassino', dmg: 1, rate: 1.08, range: .92, kind: 'daggers' },
   garras: { n: 'Garras da Sombra', cls: 'assassino', dmg: 1.12, rate: 1, range: 1.08, kind: 'katars' },
   katars: { n: 'Katars Sombrios', cls: 'assassino', dmg: 1.16, rate: .92, range: 1.04, kind: 'katars' },
-  kunai: { n: 'Kunais Venenosos', cls: 'assassino', dmg: .94, rate: 1.18, range: 1, kind: 'kunai' }
+  kunai: { n: 'Kunais Venenosos', cls: 'assassino', dmg: .94, rate: 1.18, range: 1, kind: 'kunai' },
+  hidden_blade: { n: 'Lâmina Oculta', cls: 'assassino', dmg: 1.08, rate: 1.14, range: .98, kind: 'hiddenblade' }
 };
 /* ============================================================
    RENDERIZADOR HUMANOIDE (herói, NPCs, inimigos humanos)
@@ -64,7 +65,7 @@ function hStyle(o) {
     bw: BODY_W[o.body] || 1, sw: R.scale[0], sh: R.scale[1], armor: o.armor || 'cota', hairStyle: o.hairStyle || 'curto', beard: o.beard || 'nenhuma', head: o.head || 'nenhum', capeKind: o.cape || 'longa', mark: o.mark || 'nenhuma', shoulder: o.shoulder || 'nenhum', aura: o.aura || 'nenhuma', weapon: o.weapon || 'espada', emblem: o.emblem || 'nenhum' };
   return o._st;
 }
-const HAND_REST = { sword: -1.15, katana: -1.1, axe: -1.2, spear: -1.45, staff: -1.5, tome: -.6, wand: -1.0, orb: -1.2, bow: -1.57, crossbow: -.4, hammer: -1.2, mace: -1.1, totem: -1.5, moon: -1.5, scythe: -1.35, daggers: -.9, katars: -.5, kunai: -.8 };
+const HAND_REST = { sword: -1.15, katana: -1.1, axe: -1.2, spear: -1.45, staff: -1.5, tome: -.6, wand: -1.0, orb: -1.2, bow: -1.57, crossbow: -.4, hammer: -1.2, mace: -1.1, totem: -1.5, moon: -1.5, scythe: -1.35, daggers: -.9, katars: -.5, kunai: -.8, hiddenblade: -.15 };
 function limb(g, x0, y0, x1, y1, w, col, colSh) {
   g.lineCap = 'round'; g.strokeStyle = colSh || shade(col, -.3); g.lineWidth = w + 1.3; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
   g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
@@ -342,6 +343,12 @@ function hWeapon(g, st, kind, A, hand) {
   const glowOrb = (x, y, r, col) => { glowDot(g, x, y, r * 2.6, alpha(col, .45)); g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,.75)'; g.beginPath(); g.arc(x - r * .3, y - r * .3, r * .35, 0, TAU); g.fill(); };
   const swing = A.atkP != null && A.atkP > 0 ? Math.sin(A.atkP * Math.PI) : 0;
   switch (kind) {
+    case 'hiddenblade':
+      g.fillStyle = '#272a33'; g.beginPath(); g.roundRect(-7, -3.2, 12, 6.4, 2); g.fill(); g.stroke();
+      g.fillStyle = tr; g.fillRect(-3, -3.8, 1.5, 7.6); g.fillRect(0, -3.8, 1.5, 7.6);
+      g.fillStyle = grad(g, 0, -1.5, 0, 1.5, ['#f4f8ff', steel, steelDk]);
+      g.beginPath(); g.moveTo(4, -1.6); g.lineTo(19 + swing * 2, -1.1); g.lineTo(24 + swing * 3, 0); g.lineTo(19 + swing * 2, 1.1); g.lineTo(4, 1.6); g.closePath(); g.fill(); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,.68)'; g.lineWidth = .65; g.beginPath(); g.moveTo(7, -.5); g.lineTo(20 + swing * 2, 0); g.stroke(); break;
     case 'sword': grip(-5, 3); g.fillStyle = tr; g.beginPath(); g.arc(-6, 0, 2.2, 0, TAU); g.fill(); g.stroke(); g.fillRect(2.6, -5.2, 2.4, 10.4); g.strokeRect(2.6, -5.2, 2.4, 10.4); blade(5, 23, 2.4, steel, 5); g.strokeStyle=alpha(gl.length===7?gl:'#9fe8ff',.55);g.lineWidth=.8;g.beginPath();g.moveTo(8,-1.1);g.lineTo(24,-.4);g.stroke();g.fillStyle=tr;g.beginPath();g.arc(4,0,1.2,0,TAU);g.fill(); if (swing) { g.shadowColor = gl; g.shadowBlur = 8; g.strokeStyle = alpha(gl.length === 7 ? gl : '#9fe8ff', .7); g.lineWidth = 1; g.beginPath(); g.moveTo(6, -2.4); g.lineTo(27, 0); g.stroke(); g.shadowBlur = 0; } break;
     case 'katana': { grip(-8, 3); g.fillStyle = '#c8302a'; for (let x = -8; x < 3; x += 3) g.fillRect(x, -1.6, 1.4, 3.2); g.fillStyle = '#d4a840'; g.beginPath(); g.ellipse(4, 0, 1.4, 4.6, 0, 0, TAU); g.fill(); g.stroke(); g.fillStyle = grad(g, 0, -3, 0, 3, ['#f4f8ff', steel, steelDk]); g.beginPath(); g.moveTo(5, -1.8); g.quadraticCurveTo(18, -4.4, 31, -2.8); g.lineTo(34, -1.6); g.quadraticCurveTo(20, 1.6, 5, 1.6); g.closePath(); g.fill(); g.stroke(); g.strokeStyle = 'rgba(255,255,255,.65)'; g.lineWidth = .7; g.beginPath(); g.moveTo(8, 0); g.quadraticCurveTo(20, -2, 31, -1.8); g.stroke(); break; }
     case 'axe': {
