@@ -6,11 +6,11 @@
   const ARCH = {
     slime:'blob', lodo:'blob', wolf:'quad', stag:'quad', snowstalker:'quad', shockhound:'quad', bear:'quad', boar:'quad', boglurker:'quad',
     bat:'flyer', harpy:'flyer', thunderhawk:'flyer', spider:'bug', sandscorpion:'bug', scarab:'bug', crab:'bug',
-    thornling:'plant', dryad:'plant', mossbeast:'plant', plagueshroom:'plant',
+    thornling:'plant', dryad:'plant', mossbeast:'plant', plagueshroom:'plant', flamewisp:'spirit',
     guardian:'golem', icegolem:'golem', lavagolem:'golem', crystalguard:'golem',
     skeleton:'human', cultist:'human', shaman:'human', mage:'human', brute:'human', miner:'human', duneraider:'human', graveknight:'human', pyromancer:'human',
     wraith:'spirit', stormwisp:'spirit', astraleye:'spirit', voidwalker:'spirit', frostling:'elemental', emberling:'elemental', prismite:'elemental', shardmage:'elemental',
-    mimic:'mimic', dummy:'dummy'
+    mimic:'mimic', dummy:'dummy', hyena:'quad', direboar:'quad', crystalspider:'bug', bonearcher:'human', mirewitch:'human', ironbeetle:'bug'
   };
   const palette = (id, type) => {
     const src = catalog()[id] || {}, colors = src.pal || [];
@@ -59,13 +59,17 @@
     // Shoulder fur, flank plates and back ridge give each beast a readable profile.
     g.fillStyle=shade(c.base,'#ffffff',.28);for(let i=0;i<5;i++){const x=-10+i*5;g.beginPath();g.moveTo(x,-8);g.lineTo(x+2,-13-(i%2)*2);g.lineTo(x+4,-7);g.closePath();g.fill();}
     for(let i=0;i<3;i++){g.fillStyle=i%2?shade(c.base,'#000000',.22):c.accent;g.beginPath();g.ellipse(-4+i*4,1,2.3,1.1,-.2,0,TAU);g.fill();}
-    const headY=-12+p.bob*.25;
+    // Seat the head into the shoulders so quadrupeds no longer look disconnected.
+    // The head belongs on the leading shoulder, not in the torso center.
+    const headY=-8+p.bob*.25;
+    g.save();g.translate(7,0);
     g.beginPath();g.moveTo(-8,headY+1);g.lineTo(-9,headY-7);g.lineTo(-4,headY-12);g.lineTo(3,headY-11);g.lineTo(8,headY-5);g.lineTo(12,headY-2);g.lineTo(7,headY+2);g.closePath();outline(g,shade(c.base,'#ffffff',.08),c.shadow,1.35);
     g.fillStyle=shade(c.base,'#17151a',.42);g.beginPath();g.moveTo(5,headY-2);g.lineTo(14,headY+1);g.lineTo(7,headY+4);g.closePath();g.fill();
     if(id==='stag'){for(const s of [-1,1]){stroke(g,c.accent,1.8);g.beginPath();g.moveTo(s*4,headY-9);g.lineTo(s*6,headY-16);g.lineTo(s*10,headY-20);g.moveTo(s*6,headY-16);g.lineTo(s*2,headY-20);g.moveTo(s*8,headY-18);g.lineTo(s*12,headY-22);g.stroke();}}
     else {g.fillStyle=c.shadow;for(const s of [-1,1]){g.beginPath();g.moveTo(s*5,headY-8);g.lineTo(s*7,headY-15);g.lineTo(s*10,headY-7);g.closePath();g.fill();}}
     eye(g,3,headY-5,1.3,id==='snowstalker'?'#9de8ff':id==='shockhound'?'#ffe36d':'#ffdf88');
     g.fillStyle='#f6e8c8';g.beginPath();g.moveTo(7,headY+1);g.lineTo(6,headY+5);g.lineTo(9,headY+2);g.fill();
+    g.restore();
     stroke(g,shade(c.base,'#000000',.25),2);g.beginPath();g.moveTo(-12,1);g.quadraticCurveTo(-20,4+Math.sin(p.frame*1.57)*3,-18,10+gait*2);g.stroke();
   }
   function drawHumanoid(g,e,p,c,id) {
@@ -333,9 +337,40 @@
     }
     // Moving attack pose changes the boss silhouette and weapon angle before impact.
     if(p.wind>.05){g.save();g.globalAlpha=.22+.28*Math.sin(now*12);g.fillStyle=c.base;g.beginPath();g.arc(0,-4,35+p.wind*10,0,TAU);g.fill();g.restore();}
+    g.save();g.globalCompositeOperation='lighter';g.globalAlpha=.75+.2*Math.sin(now*3.5);
+    g.strokeStyle=c.accent;g.lineWidth=1.2;g.beginPath();g.arc(0,-20,Math.max(16,r*.62),phase,phase+Math.PI*1.35);g.stroke();
+    for(const s of [-1,1]){g.fillStyle=c.accent;g.beginPath();g.moveTo(s*7,-28);g.lineTo(s*11,-35);g.lineTo(s*14,-27);g.closePath();g.fill();}
+    for(let i=0;i<3;i++){const a=now*(.8+i*.12)+i*TAU/3;g.fillStyle=i%2?'#fff2b0':c.accent;g.beginPath();g.arc(Math.cos(a)*24,-8+Math.sin(a)*10,1.3,0,TAU);g.fill();}
+    g.restore();
+    // Extra boss silhouette details: layered armor, a central insignia and animated rank marks.
+    g.save();
+    g.strokeStyle=c.shadow; g.lineWidth=1.4; g.fillStyle=shade(c.base,'#ffffff',.16);
+    for(const s of [-1,1]){g.beginPath();g.moveTo(s*8,-8);g.lineTo(s*15,-11);g.lineTo(s*18,-2);g.lineTo(s*11,2);g.closePath();g.fill();g.stroke();}
+    g.strokeStyle=c.accent; g.lineWidth=1; g.beginPath();g.moveTo(-5,6);g.lineTo(0,10);g.lineTo(5,6);g.moveTo(0,10);g.lineTo(0,15);g.stroke();
+    for(let i=0;i<4;i++){const a=now*1.4+i*TAU/4;const x=Math.cos(a)*(r*.9),y=-18+Math.sin(a)*(r*.42);g.fillStyle=i%2?c.accent:'#fff1b0';g.beginPath();g.moveTo(x,y-2.2);g.lineTo(x+1.8,y);g.lineTo(x,y+2.2);g.lineTo(x-1.8,y);g.closePath();g.fill();}
+    g.restore();
     g.restore();
   }
-  function inferArch(id,t){return t.arch||catalog()[id]?.arch||ARCH[id]||(/slime|blob|gosma/.test(id)?'blob':/bat|harpy|hawk/.test(id)?'flyer':/spider|scorpion|scarab|crab/.test(id)?'bug':/golem|guardian|titan|coloss/.test(id)?'golem':/wraith|spirit|ghost|void/.test(id)?'spirit':/serpent|snake|hydra|hidra|verme|kraken/.test(id)?'serpent':/tree|ent|thorn|dryad|plant|shroom/.test(id)?'plant':/wolf|stag|hound|bear|boar|beast/.test(id)?'quad':'human');}
+  function inferArch(id,t){return t.arch||catalog()[id]?.arch||ARCH[id]||(/slime|blob|gosma/.test(id)?'blob':/bat|harpy|hawk/.test(id)?'flyer':/spider|scorpion|scarab|crab|beetle/.test(id)?'bug':/golem|guardian|titan|coloss/.test(id)?'golem':/wraith|spirit|ghost|void|wisp/.test(id)?'spirit':/serpent|snake|hydra|hidra|verme|kraken/.test(id)?'serpent':/tree|ent|thorn|dryad|plant|shroom/.test(id)?'plant':/wolf|stag|hound|bear|boar|beast|hyena/.test(id)?'quad':'human');}
+  function detailPass(g,e,p,c,id,arch,now){
+    const pulse=.5+.5*Math.sin(now*3.4+(e.bob||0));
+    g.save();
+    if(arch==='human'||arch==='golem'){
+      stroke(g,shade(c.base,'#000000',.35),.8);g.beginPath();g.moveTo(-9,-5);g.lineTo(-6,5);g.moveTo(9,-5);g.lineTo(6,5);g.moveTo(-6,-3);g.lineTo(6,-3);g.stroke();
+      for(const s of [-1,1]){g.fillStyle=c.accent;g.beginPath();g.arc(s*8,-1,1.05,0,TAU);g.fill();}
+    } else if(arch==='quad'){
+      stroke(g,c.accent,.9);g.beginPath();g.moveTo(-8,-4);g.quadraticCurveTo(0,-1,9,-5);g.stroke();
+      if(id==='hyena'){g.fillStyle=c.accent;for(let i=0;i<4;i++){g.beginPath();g.moveTo(-5+i*3,-9);g.lineTo(-4+i*3,-14-(i%2)*2);g.lineTo(-2+i*3,-9);g.fill();}}
+    } else if(arch==='bug'){
+      stroke(c.accent,1);for(const s of [-1,1]){g.beginPath();g.moveTo(s*5,-5);g.lineTo(s*12,-9);g.moveTo(s*5,0);g.lineTo(s*13,1);g.moveTo(s*4,5);g.lineTo(s*11,8);g.stroke();}
+      if(id==='ironbeetle'){g.strokeStyle='#e7f4ff';g.lineWidth=1.2;g.beginPath();g.moveTo(0,-10);g.lineTo(0,8);g.stroke();}
+    } else if(arch==='spirit'||arch==='elemental'){
+      g.globalCompositeOperation='lighter';g.globalAlpha=.35+.3*pulse;g.strokeStyle=c.accent;g.lineWidth=1;g.beginPath();g.arc(0,-8,12+pulse*2,p.frame*.8,p.frame*.8+2.4);g.stroke();g.globalAlpha=1;g.globalCompositeOperation='source-over';
+    }
+    if(e.elite){g.strokeStyle='#ffe39a';g.lineWidth=1.3;g.beginPath();g.moveTo(-8,-16);g.lineTo(0,-20);g.lineTo(8,-16);g.stroke();}
+    g.restore();
+  }
+  function inferArchOld(id,t){return t.arch||catalog()[id]?.arch||ARCH[id]||(/slime|blob|gosma/.test(id)?'blob':/bat|harpy|hawk/.test(id)?'flyer':/spider|scorpion|scarab|crab/.test(id)?'bug':/golem|guardian|titan|coloss/.test(id)?'golem':/wraith|spirit|ghost|void/.test(id)?'spirit':/serpent|snake|hydra|hidra|verme|kraken/.test(id)?'serpent':/tree|ent|thorn|dryad|plant|shroom/.test(id)?'plant':/wolf|stag|hound|bear|boar|beast/.test(id)?'quad':'human');}
   function drawEnemy(ctx,e,now){
     if(!ctx||!e||!e.t)return;
     const t=e.t,id=e.type,p=pose(e,now),c=palette(id,t),r=t.r||14,arch=inferArch(id,t),boss=t.boss;
@@ -368,6 +403,7 @@
     else if(arch==='spirit')drawSpirit(ctx,e,p,c,id);
     else if(arch==='mimic')drawMimic(ctx,e,p,c);
     else if(arch==='dummy')drawDummy(ctx,e,p,c);
+    detailPass(ctx,e,p,c,id,arch,now);
     if(p.hit>0){ctx.globalCompositeOperation='lighter';ctx.fillStyle=`rgba(255,246,208,${Math.min(.6,p.hit*3)})`;ctx.beginPath();ctx.arc(0,-3,19,0,TAU);ctx.fill();}
     ctx.restore();
     if(e.elite){ctx.strokeStyle='#ffdc89';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(e.x,e.y-3,r*1.5,r*1.18,0,0,TAU);ctx.stroke();}

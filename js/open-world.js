@@ -125,6 +125,7 @@
         level: player.level, xp: Math.floor(player.xp), coins: player.coins, potions: player.potions, kills: player.kills,
         healthRanks: player.healthRanks, staminaRanks: player.staminaRanks, manaRanks: player.manaRanks, stamina: player.stamina,
         wave, waveTimer, pendingLevelChoices, relics: player.relics,
+        companions: companions.map(n => ({ role: n.role, seed: n.seed })),
         stage: quest.stage, progress: quest.progress, x: Math.round(dun ? ow.x : player.x), y: Math.round(dun ? ow.y : player.y), time: clockMinutes()
       }));
     } catch (e) { /* sem storage */ }
@@ -140,10 +141,14 @@
       player.staminaRanks = clamp(Math.floor(num(s.staminaRanks, 0)), 0, 99);
       player.manaRanks = clamp(Math.floor(num(s.manaRanks, Math.floor((player.level - 15) / 5))), 0, 99);
        player.stamina = clamp(num(s.stamina, maxStaminaOf()), 0, maxStaminaOf());
-       if (s.relics && typeof s.relics === 'object') for (const [id, value] of Object.entries(s.relics)) if (['fury','haste','arcana','vampire','cryo','storm','venom','magnet','ward'].includes(id)) player.relics[id] = clamp(Math.floor(num(value, 0)), 0, 15);
+       if (s.relics && typeof s.relics === 'object') for (const [id, value] of Object.entries(s.relics)) if (['fury','haste','arcana','vampire','cryo','storm','venom','magnet','ward','boneVolley','crystalShards','firebrand'].includes(id)) player.relics[id] = clamp(Math.floor(num(value, 0)), 0, 15);
       wave = clamp(Math.floor(num(s.wave, 1)), 1, 999999);
       waveTimer = Math.max(0, num(s.waveTimer, 0));
-      if (Array.isArray(s.pendingLevelChoices)) pendingLevelChoices.push(...s.pendingLevelChoices.filter(c => c && Number.isFinite(c.rank) && typeof c.statChosen === 'boolean'));
+       if (Array.isArray(s.pendingLevelChoices)) pendingLevelChoices.push(...s.pendingLevelChoices.filter(c => c && Number.isFinite(c.rank) && typeof c.statChosen === 'boolean'));
+       if (Array.isArray(s.companions)) for (const saved of s.companions) {
+         const n = homeNpcs.find(candidate => candidate.role === saved.role && candidate.seed === saved.seed);
+         if (n && companions.length < 2) { n.hired = true; companions.push(n); }
+       }
       player.coins = Math.max(0, Math.floor(num(s.coins, 500)));
       player.potions = clamp(Math.floor(num(s.potions, 3)), 0, 9);
       player.kills = Math.max(0, Math.floor(num(s.kills, 0)));
@@ -292,8 +297,26 @@
   }
 
   /* ---------- pré-renderização do cenário ---------- */
-  const GS = 1.25;
   const ground = document.createElement('canvas');
+  // Pixel-atlas inspired landmark accents: compact props keep the overworld readable at gameplay scale.
+  function addAtlasProps() {
+    let seed = 7319; const R = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+    const props = [];
+    for (let i = 0; i < 42; i++) { const x = 90 + R() * (world.width - 180), y = 90 + R() * (world.height - 180); if (clearSpot(x, y, 18)) props.push({ x, y, k: 'mushroom', c: i % 3 }); }
+    for (let i = 0; i < 30; i++) { const x = 120 + R() * (world.width - 240), y = 120 + R() * (world.height - 240); if (clearSpot(x, y, 20)) props.push({ x, y, k: 'crystal', c: i % 4 }); }
+    for (let i = 0; i < 24; i++) { const x = 100 + R() * (world.width - 200), y = 100 + R() * (world.height - 200); if (clearSpot(x, y, 22)) props.push({ x, y, k: i % 2 ? 'crate' : 'banner', c: i % 4 }); }
+    const g = ground.getContext('2d'); g.setTransform(1.25, 0, 0, 1.25, 0, 0);
+    for (const p of props) {
+      g.save(); g.translate(p.x, p.y);
+      g.fillStyle = 'rgba(14,22,16,.3)'; g.beginPath(); g.ellipse(0, 7, 15, 5, 0, 0, TAU); g.fill();
+      if (p.k === 'mushroom') { const col = ['#d84b4b', '#e8b04a', '#b69cff'][p.c % 3]; g.strokeStyle = '#e7dfc0'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, 7); g.lineTo(0, -2); g.stroke(); g.fillStyle = col; g.beginPath(); g.arc(0, -4, 6, Math.PI, 0); g.fill(); g.fillStyle = '#fff0c8'; for (const x of [-3, 0, 3]) g.fillRect(x - .8, -5, 1.6, 1.6); }
+      else if (p.k === 'crystal') { const col = ['#7bd7e8', '#b69cff', '#9fe8b5', '#ffbd69'][p.c]; g.fillStyle = col; g.beginPath(); g.moveTo(-8, 7); g.lineTo(-4, -9); g.lineTo(0, -15); g.lineTo(4, -6); g.lineTo(8, 7); g.closePath(); g.fill(); g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.moveTo(-3, -8); g.lineTo(0, -13); g.lineTo(0, 4); g.lineTo(-3, 5); g.closePath(); g.fill(); }
+      else if (p.k === 'crate') { g.fillStyle = '#8b633e'; g.fillRect(-9, -8, 18, 16); g.strokeStyle = '#4f3424'; g.lineWidth = 1.5; g.strokeRect(-9, -8, 18, 16); g.beginPath(); g.moveTo(-8, -7); g.lineTo(8, 7); g.moveTo(8, -7); g.lineTo(-8, 7); g.stroke(); }
+      else { g.fillStyle = '#6a4935'; g.fillRect(-1, -15, 2, 22); g.fillStyle = ['#d85b54', '#5c9ed6', '#c9a13b', '#8f6cc4'][p.c]; g.beginPath(); g.moveTo(1, -14); g.lineTo(13, -11); g.lineTo(1, -5); g.closePath(); g.fill(); }
+      g.restore();
+    }
+  }
+  const GS = 1.25;
   ground.width = Math.round(world.width * GS);
   ground.height = Math.round(world.height * GS);
   const miniBase = document.createElement('canvas');
@@ -641,6 +664,7 @@
   }
 
   buildGround();
+  addAtlasProps();
   buildMini();
   heroImage.addEventListener('load', () => { /* o santuário é desenhado em tempo real */ });
 
@@ -1229,7 +1253,10 @@
     {id:'storm',n:'Arco Voltaico',icon:'⚡',d:'Relâmpagos saltam a mais alvos e têm maior alcance.',rar:'ÉPICO'},
     {id:'venom',n:'Esporos Nocivos',icon:'❋',d:'Seus golpes podem aplicar veneno além do elemento.',rar:'RARO'},
     {id:'magnet',n:'Ímã de Tesouros',icon:'◈',d:'Maior distância de coleta de moedas.',rar:'COMUM'},
-    {id:'ward',n:'Pele Endurecida',icon:'⬡',d:'Reduz todo o dano recebido em 5,5%.',rar:'RARO'}
+    {id:'ward',n:'Pele Endurecida',icon:'⬡',d:'Reduz todo o dano recebido em 5,5%.',rar:'RARO'},
+    {id:'boneVolley',n:'Aljava Ossária',icon:'☠',d:'Cada ataque dispara um osso perfurante adicional.',rar:'RARO'},
+    {id:'crystalShards',n:'Fragmentos Orbitais',icon:'✦',d:'Cada ataque lança três estilhaços em leque.',rar:'ÉPICO'},
+    {id:'firebrand',n:'Marca Ígnea',icon:'✹',d:'Cada ataque dispara uma bola de fogo explosiva.',rar:'ÉPICO'}
   ];
   function rollOffers(pending) {
     if (Array.isArray(pending.offers) && pending.offers.length === 3) return pending.offers;
@@ -1408,6 +1435,7 @@
     player.swing = { t: 0, dur: finisher ? .26 : .2, angle: player.angle, range, arc, finisher, dir: player.combo % 2 ? 1 : -1 };
     player.kx += Math.cos(player.angle) * (finisher ? 260 : 170);
     player.ky += Math.sin(player.angle) * (finisher ? 260 : 170);
+    relicProjectiles();
     sfx('swing');
     const base = damageOf() * (finisher ? 1.5 : 1) * dmgClass();
     for (const e of enemies) {
@@ -1708,6 +1736,9 @@
       }
       return l.age < 60;
     });
+
+    // aliados contratados
+    updateCompanions(dt);
 
     // inimigos
     for (const e of enemies) if (!e.dead) updateEnemy(e, dt);
@@ -2172,9 +2203,10 @@
     for (const p of (dun ? dun.pillars : pillars)) if (vis(p.x, p.y)) drawList.push({ y: p.y + 8, k: 1, o: p });
     for (const e of enemies) if (!e.dead && vis(e.x, e.y)) drawList.push({ y: e.y, k: 2, o: e });
     if (!dun) {
-      for (const npc of homeNpcs) if(vis(npc.x,npc.y)) drawList.push({y:npc.y,k:4,o:npc});
-      for (const chunk of worldChunks.values()) for (const npc of chunk.npcs) if (vis(npc.x,npc.y)) drawList.push({y:npc.y,k:4,o:npc});
+      for (const npc of homeNpcs) if(!npc.companion&&vis(npc.x,npc.y)) drawList.push({y:npc.y,k:4,o:npc});
+      for (const chunk of worldChunks.values()) for (const npc of chunk.npcs) if (!npc.companion&&vis(npc.x,npc.y)) drawList.push({y:npc.y,k:4,o:npc});
     }
+    for (const companion of companions) if (vis(companion.x, companion.y)) drawList.push({y:companion.y,k:4,o:companion});
     drawList.push({ y: player.y, k: 3, o: player });
     drawList.sort((a, b) => a.y - b.y);
     for (const d of drawList) {
@@ -2351,7 +2383,7 @@
      EXPANSÃO 2.0 — masmorras, novos inimigos e chefes, personalização
      ============================================================ */
   const EXP_KEY = 'abismo-open-world-v2';
-  const cust = { name: 'Aventureiro', armor: '#425f69', cape: '#8c3a3a', hair: '#3b2a20', skin: '#d9b99b', glow: '#9fe8ff', style: 1, race: 'humano', cls: 'guerreiro', armorType: 'cota', weapon: 'espada', element: 'fogo', hairStyle: 'curto', trim: '#c7a65c', emblem: 'sol', capeStyle: 'longa', scars: 'nenhuma', body: 'medio', boons: [] };
+  const cust = { name: 'Aventureiro', armor: '#425f69', cape: '#8c3a3a', hair: '#3b2a20', skin: '#d9b99b', eye: '#3a2a1c', glow: '#9fe8ff', style: 1, race: 'humano', cls: 'guerreiro', armorType: 'cota', weapon: 'espada', element: 'fogo', hairStyle: 'curto', beard: 'nenhuma', trim: '#c7a65c', emblem: 'sol', capeStyle: 'longa', scars: 'nenhuma', body: 'medio', boons: [] };
   const cleared = {};
   try { const s = JSON.parse(localStorage.getItem(EXP_KEY) || 'null'); if (s) { Object.assign(cust, s.cust); Object.assign(cleared, s.cleared); } } catch (e) { /* sem storage */ }
   const saveExp = () => { try { localStorage.setItem(EXP_KEY, JSON.stringify({ cust, cleared })); } catch (e) { /* sem storage */ } };
@@ -2370,15 +2402,15 @@
     titan: { name: 'TITÃ DA FORJA', hp: 1800, r: 42, speed: 88, dmg: 34, reach: 160, trigger: 120, windup: 1.1, recover: 1.1, lunge: 0, nova: true, aggro: 900, xp: 1200, coin: [400, 400], hostile: true, boss: true, color: '#ff8a4a' }
   });
   const BIOME_MOBS = {
-    forest:['wolf','spider','slime','stag','thornling','dryad','mossbeast'],
+    forest:['wolf','spider','slime','stag','thornling','dryad','mossbeast','direboar'],
     frost:['wraith','icegolem','frostling','snowstalker','mage','wolf'],
-    dunes:['harpy','sandscorpion','scarab','duneraider','brute','mimic'],
-    marsh:['spider','slime','boglurker','plagueshroom','shaman','mossbeast'],
-    ash:['skeleton','wraith','nightstalker','graveknight','guardian','bat'],
-    volcano:['cultist','brute','emberling','lavagolem','pyromancer','guardian'],
+    dunes:['harpy','sandscorpion','scarab','duneraider','brute','mimic','hyena'],
+    marsh:['spider','slime','boglurker','plagueshroom','shaman','mossbeast','mirewitch'],
+    ash:['skeleton','wraith','nightstalker','graveknight','guardian','bat','bonearcher'],
+    volcano:['cultist','brute','emberling','lavagolem','pyromancer','guardian','flamewisp'],
     storm:['thunderhawk','stormwisp','shockhound','guardian','mage','harpy'],
-    crystal:['prismite','crystalguard','shardmage','guardian','mage','mimic'],
-    arcane:['mage','astraleye','voidwalker','shardmage','guardian','wraith']
+    crystal:['prismite','crystalguard','shardmage','guardian','mage','mimic','crystalspider','ironbeetle'],
+    arcane:['mage','astraleye','voidwalker','shardmage','guardian','wraith','mirewitch']
   };
   const PLAYABLE_BIOME = { meadow: 'forest', jungle: 'forest', canyon: 'dunes', mountain: 'frost', coast: 'marsh', abyss: 'ash' };
   for (const [id, source] of Object.entries(window.ABISMO_PARTIAL_CATALOG || {})) {
@@ -2412,7 +2444,14 @@
     crystalguard:['SENTINELA CRISTALINA',285,67,27,'arcano','guard'],
     shardmage:['MAGISTA DOS FRAGMENTOS',104,87,16,'arcano','kite'],
     astraleye:['OLHO DO VAZIO',98,117,20,'arcano','kite'],
-    voidwalker:['CAMINHANTE DO VAZIO',150,117,20,'arcano','stalker']
+    voidwalker:['CAMINHANTE DO VAZIO',150,117,20,'arcano','stalker'],
+    hyena:['HIENA DA FOME',92,164,17,'fogo','stalker'],
+    direboar:['JAVALI DE PRESAS NEGRAS',146,112,22,'natureza','flank'],
+    crystalspider:['ARANHA PRISMATICA',126,138,20,'arcano','flank'],
+    bonearcher:['ARQUEIRO OSSUDO',92,96,18,'arcano','kite'],
+    flamewisp:['FANTASMA DE BRASA',78,128,16,'fogo','kite'],
+    mirewitch:['BRUXA DO BREJO',132,76,15,'natureza','support'],
+    ironbeetle:['BESOURO DE FERRO',188,92,24,'raio','guard']
   };
   Object.assign(SPEECH,{
     stag:['A mata está acordando!','Nenhum caçador passará!'],thornling:['Raízes!','A floresta nos protege!'],dryad:['O bosque é eterno!'],mossbeast:['GROOOOM!'],
@@ -2960,18 +2999,26 @@
   const WEAPONS = {
     espada: { n: 'Espada longa', cls: 'guerreiro', damage: 1, rate: 1, range: 1 },
     machado: { n: 'Machado de guerra', cls: 'guerreiro', damage: 1.24, rate: .82, range: 1.08 },
+    machado_duplo: { n: 'Machado duplo', cls: 'guerreiro', damage: 1.3, rate: .74, range: 1.14 },
+    machado_gancho: { n: 'Machado gancho', cls: 'guerreiro', damage: 1.16, rate: .9, range: 1.18 },
+    montante: { n: 'Montante runico', cls: 'guerreiro', damage: 1.28, rate: .78, range: 1.2 },
     lanca: { n: 'Lança do sentinela', cls: 'guerreiro', damage: .92, rate: 1.08, range: 1.32 },
     cajado: { n: 'Cajado arcano', cls: 'mago', damage: 1.06, rate: .96, range: 1.18 },
     grimorio: { n: 'Grimório astral', cls: 'mago', damage: 1.22, rate: .84, range: 1.08 },
     varinha: { n: 'Varinha prismática', cls: 'mago', damage: .86, rate: 1.2, range: .94 },
     arco: { n: 'Arco longo', cls: 'arqueiro', damage: 1.14, rate: .94, range: 1.24 },
     besta: { n: 'Besta repetidora', cls: 'arqueiro', damage: 1.3, rate: .76, range: 1.12 },
+    arco_runico: { n: 'Arco runico', cls: 'arqueiro', damage: 1.18, rate: .88, range: 1.3 },
+    besta_pesada: { n: 'Besta pesada', cls: 'arqueiro', damage: 1.42, rate: .64, range: 1.16 },
     martelo: { n: 'Martelo sagrado', cls: 'paladino', damage: 1.18, rate: .92, range: 1.12 },
+    mangual: { n: 'Mangual sagrado', cls: 'paladino', damage: 1.28, rate: .8, range: 1.16 },
     maça: { n: 'Maça do juramento', cls: 'paladino', damage: 1.34, rate: .78, range: .98 },
     totem: { n: 'Totem vivo', cls: 'druida', damage: 1.02, rate: 1, range: 1.2 },
+    ramo_ancestral: { n: 'Ramo ancestral', cls: 'druida', damage: 1.08, rate: .98, range: 1.28 },
     lunaclara: { n: 'Cajado da lua', cls: 'druida', damage: 1.2, rate: .88, range: 1.1 },
     adagas: { n: 'Adagas gêmeas', cls: 'assassino', damage: 1, rate: 1.08, range: .92 },
     katars: { n: 'Katars sombrios', cls: 'assassino', damage: 1.18, rate: .92, range: 1.04 },
+    garras: { n: 'Garras da sombra', cls: 'assassino', damage: 1.12, rate: 1, range: 1.08 },
     tank_escudotorre: { n: 'Escudo-Torre do Sentinela', cls: 'tanke', damage: 1.05, rate: .9, range: 1.12, weaponType: 'shield', shieldModel: 17, large: true },
     tank_bulwark: { n: 'Escudo Colossal do Baluarte', cls: 'tanke', damage: 1.08, rate: .86, range: 1.08, weaponType: 'shield', shieldModel: 18, large: true },
     tank_citadel: { n: 'Escudo da Cidadela', cls: 'tanke', damage: 1.13, rate: .8, range: 1.14, weaponType: 'shield', shieldModel: 20, large: true },
@@ -3018,6 +3065,12 @@
   function pShoot(a, spd, dmg, kind, pierce, life) {
     pShots.push({ x: player.x + Math.cos(a) * 14, y: player.y + Math.sin(a) * 14, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, a, dmg, kind, pierce, life, hit: new Set() });
   }
+  function relicProjectiles() {
+    const a = player.angle, level = player.relics;
+    if (level.boneVolley) pShoot(a, 680, damageOf() * (.34 + level.boneVolley * .08), 'bone', 2 + level.boneVolley, .95);
+    if (level.crystalShards) for (const offset of [-.16, 0, .16]) pShoot(a + offset, 620, damageOf() * (.24 + level.crystalShards * .05), 'shard', 0, .85);
+    if (level.firebrand) pShoot(a, 430, damageOf() * (.55 + level.firebrand * .1), 'fireball', 0, 1.45);
+  }
   function classAttack() {
     const c = cust.cls;
     if (c !== 'mago' && c !== 'arqueiro' && c !== 'druida') return false;
@@ -3029,6 +3082,7 @@
     if (c === 'mago') pShoot(player.angle, 540, damageOf() * 1.1, 'mago', 0, 1.1 * weapon.range);
     else if (c === 'druida') pShoot(player.angle, 600, damageOf() * .96, 'druida', 0, 1.05 * weapon.range);
     else pShoot(player.angle, 740, damageOf() * .85, 'arqueiro', 1, .8 * weapon.range);
+    relicProjectiles();
     sfx('swing'); return true;
   }
   function classSkill() {
@@ -3076,7 +3130,17 @@
   function drawPShots() {
     for (const s of pShots) {
       ctx.save();
-      if (s.kind !== 'arqueiro') {
+      if (s.kind === 'bone') {
+        ctx.translate(s.x, s.y); ctx.rotate(s.a); ctx.strokeStyle = '#e8dfc8'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(-13, 0); ctx.quadraticCurveTo(-5, -3, 4, 0); ctx.quadraticCurveTo(10, 3, 14, 0); ctx.stroke();
+        ctx.fillStyle = '#fff6df'; ctx.beginPath(); ctx.arc(-11, 0, 3.2, 0, TAU); ctx.arc(13, 0, 2.5, 0, TAU); ctx.fill();
+      } else if (s.kind === 'shard') {
+        ctx.translate(s.x, s.y); ctx.rotate(s.a); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = '#b6e7fd'; ctx.shadowColor = '#8edaff'; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(-5, -4); ctx.lineTo(-10, 0); ctx.lineTo(-5, 4); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(-2, -1, 8, 2);
+      } else if (s.kind === 'fireball') {
+        ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = '#ff7546aa'; ctx.beginPath(); ctx.arc(s.x, s.y, 16, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#ff8a3d'; ctx.beginPath(); ctx.arc(s.x, s.y, 7, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff2a0'; ctx.beginPath(); ctx.arc(s.x - 2, s.y - 2, 3, 0, TAU); ctx.fill();
+      } else if (s.kind !== 'arqueiro') {
         ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = ELEMENTS[cust.element].color + '66'; ctx.beginPath(); ctx.arc(s.x, s.y, 13, 0, TAU); ctx.fill();
         ctx.fillStyle = ELEMENTS[cust.element].color; ctx.beginPath(); ctx.arc(s.x, s.y, 6, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.x, s.y, 3, 0, TAU); ctx.fill();
       } else {
@@ -3117,12 +3181,16 @@
     let cached=worldArtCache.get(cs);
     if(!cached||cached.sig!==sig){
       const weapon=WEAPONS[cs.weapon]||{};
-      const look={race:cs.race,cls:cs.cls,skin:cs.skin,hairColor:cs.hair,hairStyle:cs.hairStyle||'curto',beard:cs.beard||'nenhuma',head:cs.style===1?'elmo':cs.style===0?'capuz':'nenhum',capeStyle:cs.capeStyle,capeColor:cs.cape,armorType:cs.armorType,armorColor:cs.armor,trim:cs.trim,glow:cs.glow,weapon:cs.weapon,body:cs.body,emblem:cs.emblem,mark:cs.scars,shoulders:cs.cls==='paladino'||cs.cls==='tanke'?'aco':'nenhum'};
+      const headMap={0:'capuz',1:'elmo',2:'nenhum',3:'coroa',4:'bandana',5:'chapeu'};
+      const look={race:cs.race,cls:cs.cls,skin:cs.skin,hairColor:cs.hair,hairStyle:cs.hairStyle||'curto',beard:cs.beard||'nenhuma',head:headMap[cs.style]||'nenhum',capeStyle:cs.capeStyle,capeColor:cs.cape,armorType:cs.armorType,armorColor:cs.armor,trim:cs.trim,glow:cs.glow,eye:cs.eye,weapon:cs.weapon,body:cs.body,emblem:cs.emblem,mark:cs.scars,shoulders:cs.cls==='paladino'||cs.cls==='tanke'?'aco':'nenhum'};
       cached={sig,model:CharacterArt.makeModel(look,{race:cs.race,class:cs.cls,weaponKey:cs.weapon,weaponName:weapon.n,weaponType:weapon.weaponType,shieldModel:weapon.shieldModel,hammerModel:weapon.hammerModel,swordModel:weapon.swordModel,large:weapon.large})};worldArtCache.set(cs,cached);
     }
     const dir=CharacterArt.viewAngle(ang);
     c.save();c.translate(x,y+20);c.scale(.78,.78);
-    CharacterArt.draw(c,cached.model,{t:gameTime,ph:walk,mv:Math.min(1,Math.abs(player.motion??1)),view:dir.view,flip:dir.flip,seed:player.level||1,blocking:cs.cls==='tanke'&&player.blocking,atkP:player.swing?Math.max(0,1-player.swing.t/Math.max(.01,player.swing.duration||.3)):0});
+    const swing=player.swing;
+    const swingProgress=swing?Math.max(0,Math.min(1,swing.t/Math.max(.01,swing.dur||.3))):0;
+    const swingWave=swing?Math.sin(swingProgress*Math.PI):0;
+    CharacterArt.draw(c,cached.model,{t:gameTime,ph:walk,mv:Math.min(1,Math.abs(player.motion??1)),view:dir.view,flip:dir.flip,seed:player.level||1,blocking:cs.cls==='tanke'&&player.blocking,atkP:swing?1-swingProgress:0,wa:swing?-1.35+swingWave*(swing.dir||1)*2.05:null,reach:swing?11+swingWave*4:null});
     c.restore();
   }
 
@@ -3149,9 +3217,11 @@
     armor: ['#425f69', '#6b4a8f', '#8a3b3b', '#3f6b45', '#7a6a3a', '#555b66', '#2c3e6b'],
     cape: ['#8c3a3a', '#785c38', '#3a5f8c', '#5a3a8c', '#2f6b4a', '#c9a13b', '#1d1d26'],
     hair: ['#3b2a20', '#d9b66a', '#a8402a', '#e8e8e8', '#1b1b1b', '#6a4fa8', '#2e7d8c'],
+    eye: ['#3a2a1c', '#273b7a', '#5a1b24', '#7a4a1d', '#91e6d0', '#e8e8e8'],
     glow: ['#9fe8ff', '#ffd27a', '#ff8a7a', '#b69cff', '#9fffa8', '#ffffff']
   };
   const PAL_LABEL = { armor: 'Armadura', cape: 'Capa', hair: 'Cabelo / barba', glow: 'Brilho da arma', trim: 'Acabamento / metal' };
+  PAL_LABEL.eye = 'Olhos';
   PAL.trim=['#c7a65c','#e0e2e5','#bd7955','#62bbaf','#a97bdb','#444951'];
   const sws = (k, list) => list.map(c => `<button type="button" class="sw" data-k="${k}" data-c="${c}" style="background:${c}" aria-label="${k} ${c}"></button>`).join('');
   const panel = $('#customPanel');
@@ -3160,10 +3230,11 @@
     panel.querySelector('.cp-opts').insertAdjacentHTML('beforeend', '<div class="cp-row gear-row"><label>Armadura<select id="cpArmor"></select></label><label>Arma<select id="cpWeapon"></select></label><label>Elemento<select id="cpElement"></select></label></div>');
     panel.querySelector('.cp-opts').insertAdjacentHTML('beforeend', `<div class="gear-row detail-row">
     <label>Penteado<select id="cpHairStyle"><option value="curto">Curto</option><option value="longo">Longo</option><option value="moicano">Moicano</option><option value="tranca">Trança</option></select></label>
-    <label>Capa<select id="cpCapeStyle"><option value="longa">Longa</option><option value="sem">Sem capa</option></select></label>
+    <label>Barba<select id="cpBeard"><option value="nenhuma">Nenhuma</option><option value="bigode">Bigode</option><option value="cavanhaque">Cavanhaque</option><option value="cheia">Cheia</option><option value="longa">Longa</option></select></label>
+    <label>Capa<select id="cpCapeStyle"><option value="longa">Longa</option><option value="curta">Curta</option><option value="esfarrapada">Esfarrapada</option><option value="sem">Sem capa</option></select></label>
     <label>Constituição<select id="cpBody"><option value="medio">Média</option><option value="robusto">Robusta</option><option value="esguio">Esbelta</option></select></label>
-    <label>Emblema<select id="cpEmblem"><option value="sol">Sol</option><option value="lua">Lua</option><option value="runa">Runa</option><option value="nenhum">Nenhum</option></select></label>
-    <label>Cicatrizes<select id="cpScars"><option value="nenhuma">Nenhuma</option><option value="guerra">Batalha</option><option value="antiga">Antiga</option></select></label>
+    <label>Emblema<select id="cpEmblem"><option value="sol">Sol</option><option value="lua">Lua</option><option value="runa">Runa</option><option value="dragao">Dragao</option><option value="nenhum">Nenhum</option></select></label>
+    <label>Cicatrizes<select id="cpScars"><option value="nenhuma">Nenhuma</option><option value="guerra">Batalha</option><option value="antiga">Antiga</option><option value="runas">Runas</option><option value="tribal">Tribal</option><option value="sardas">Sardas</option></select></label>
     </div>`);
     panel.querySelector('.cp-opts').insertAdjacentHTML('beforeend',`<div class="cp-row cp-blessing"><span>✦ BÊNÇÃOS OPCIONAIS · escolha até 2</span><div class="blessing-list" id="cpBlessings">${Object.entries(STARTER_BLESSINGS).map(([id,b])=>`<button class="blessing-btn" type="button" data-blessing="${id}"><span>${b.icon}</span><strong>${b.name}</strong><small>${b.detail}</small></button>`).join('')}</div></div>`);
 
@@ -3177,7 +3248,8 @@
     c.fillStyle = g; c.fillRect(0, 0, 180, 200);
     c.save(); c.translate(90, 128); c.scale(2.6, 2.6);
     c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(1, 9, 16, 8, 0, 0, TAU); c.fill();
-    paintHero(c, 0, 0, -Math.PI / 2 + Math.sin(now / 900) * .8, now / 140);
+     // The preview should face the player; keep the angle inside the front-view band.
+     paintHero(c, 0, 0, Math.PI / 2 + Math.sin(now / 900) * .22, now / 140);
     c.restore();
     if (!panel.hidden) requestAnimationFrame(drawPreview);
   }
@@ -3189,7 +3261,7 @@
     panel.querySelectorAll('[data-race]').forEach(b => b.classList.toggle('on', cust.race === b.dataset.race));
     panel.querySelectorAll('[data-cls]').forEach(b => b.classList.toggle('on', cust.cls === b.dataset.cls));
     cpArmor.value = cust.armorType;
-    for (const [id,key] of [['cpHairStyle','hairStyle'],['cpCapeStyle','capeStyle'],['cpBody','body'],['cpEmblem','emblem'],['cpScars','scars']]) {
+    for (const [id,key] of [['cpHairStyle','hairStyle'],['cpBeard','beard'],['cpCapeStyle','capeStyle'],['cpBody','body'],['cpEmblem','emblem'],['cpScars','scars']]) {
       const field=$('#'+id); if (field) field.value=cust[key] || field.options[0].value;
     }
     cpElement.value = cust.element;
@@ -3226,7 +3298,7 @@
   cpArmor.addEventListener('change', () => { cust.armorType = cpArmor.value; player.hp = Math.min(player.hp, maxHpOf()); refreshPanel(); saveExp(); });
   cpWeapon.addEventListener('change', () => { cust.weapon = cpWeapon.value; refreshPanel(); saveExp(); });
   cpElement.addEventListener('change', () => { cust.element = cpElement.value; refreshPanel(); saveExp(); });
-  for (const [id,key] of [['cpHairStyle','hairStyle'],['cpCapeStyle','capeStyle'],['cpBody','body'],['cpEmblem','emblem'],['cpScars','scars']]) {
+  for (const [id,key] of [['cpHairStyle','hairStyle'],['cpBeard','beard'],['cpCapeStyle','capeStyle'],['cpBody','body'],['cpEmblem','emblem'],['cpScars','scars']]) {
     $('#'+id).addEventListener('change', ev => {cust[key]=ev.target.value;refreshPanel();saveExp();});
   }
   cpName.addEventListener('input', () => { cust.name = cpName.value.trim() || 'Aventureiro'; $('#heroName').textContent = cust.name; });
@@ -3253,6 +3325,9 @@
     {x:1702,y:1464,role:'blacksmith',seed:5}, {x:995,y:2052,role:'scout',seed:6},
     {x:2675,y:1550,role:'merchant',seed:7}, {x:3070,y:567,role:'healer',seed:8}
   ];
+  const companions = [];
+  const recruitableRoles = new Set(['scout','ranger','blacksmith']);
+  const companionCost = 120;
   let npcSpeakUntil=0, npcSpeakText='', npcSpeakNpc=null, interactCooldown=0;
   function nearestNpc() {
     if (dun) return null;
@@ -3270,22 +3345,68 @@
     if (wave>8) return 'Onda '+wave+'! Os monstros estão ficando mais ferozes.';
     return info.lines[Math.floor((Math.sin(gameTime/4+n.seed)+1)/2*info.lines.length)]?.replace('#LIGHT','A fogueira ilumina até as noites mais escuras.') || info.lines[0];
   }
+  function updateCompanions(dt) {
+    if (player.dead) return;
+    for (let i = 0; i < companions.length; i++) {
+      const n = companions[i], role = NPC_ROLES[n.role];
+      n.attackCd = Math.max(0, (n.attackCd || 0) - dt);
+      if (n.swing) { n.swing.t += dt; if (n.swing.t >= n.swing.dur) n.swing = null; }
+      const orbit = gameTime * .7 + i * Math.PI;
+      const anchorX = player.x + Math.cos(orbit) * 34, anchorY = player.y + Math.sin(orbit) * 25;
+      const dx = anchorX - n.x, dy = anchorY - n.y, distance = Math.hypot(dx, dy) || 1;
+      if (distance > 8) {
+        const speed = distance > 150 ? 260 : 125;
+        const step = Math.min(distance, speed * dt);
+        n.x += dx / distance * step; n.y += dy / distance * step;
+        n.angle = Math.atan2(dy, dx); n.walk = (n.walk || 0) + dt * (distance > 150 ? 11 : 7.5);
+        n.motion = Math.min(1, speed / 235);
+      } else { n.motion = 0; n.walk = (n.walk || 0) + dt * 1.5; }
+      let target = null, targetDistance = n.role === 'ranger' ? 300 : 115;
+      for (const enemy of enemies) {
+        if (enemy.dead || enemy.type === 'dummy') continue;
+        const d = Math.hypot(enemy.x - n.x, enemy.y - n.y);
+        if (d < targetDistance) { targetDistance = d; target = enemy; }
+      }
+      if (target && n.attackCd <= 0) {
+        n.attackCd = n.role === 'ranger' ? 1.05 : 1.25;
+        n.angle = Math.atan2(target.y - n.y, target.x - n.x);
+        n.swing = { t: 0, dur: n.role === 'ranger' ? .28 : .22, dir: i % 2 ? 1 : -1 };
+        const companionDamage = damageOf() * (n.role === 'ranger' ? .42 : .38);
+        if (n.role === 'ranger') {
+          const a = Math.atan2(target.y - n.y, target.x - n.x);
+          pShots.push({ x: n.x + Math.cos(a) * 12, y: n.y + Math.sin(a) * 12 - 13, vx: Math.cos(a) * 760, vy: Math.sin(a) * 760, a, dmg: companionDamage, kind: 'arqueiro', pierce: 1, life: 1.2, hit: new Set(), companion: true });
+        } else damageEnemy(target, companionDamage, { kb: 150, skill: true });
+        burst(target.x, target.y, 6, { color: [role.col, '#fff3c6'], speed: 130, life: .3, size: 2.4, glow: true });
+        if (n.role === 'ranger') { const a = Math.atan2(target.y - n.y, target.x - n.x); for (let k = -1; k <= 1; k++) addParticle({ x: n.x, y: n.y - 13, vx: Math.cos(a + k * .12) * 140, vy: Math.sin(a + k * .12) * 140, life: .35, max: .35, size: 2.2, color: role.col, drag: 3, glow: true, shrink: true }); }
+      }
+    }
+  }
   function interactNpc() {
     if (paused || player.dead || interactCooldown>0) return;
     const n=nearestNpc(); if (!n) return;
     const info=NPC_ROLES[n.role]; interactCooldown=.5;
     let line=npcMessage(n);
+    if (n.hired) {
+      line = `${info.name.split(',')[0]} já está ao seu lado. Limite: ${companions.length}/2 aliados.`;
+    } else if (recruitableRoles.has(n.role) && companions.length < 2 && player.coins >= companionCost) {
+      player.coins -= companionCost; n.hired = true; n.companion = true; n.attackCd = 1.2; companions.push(n);
+      line = `${info.name.split(',')[0]} entrou para sua companhia! ${companions.length}/2 aliados.`; sfx('level'); saveGame();
+    } else if (recruitableRoles.has(n.role) && companions.length >= 2) {
+      line = 'Sua companhia já tem dois aliados. Eles lutarão ao seu lado.';
+    } else if (recruitableRoles.has(n.role) && player.coins < companionCost) {
+      line = `Para contratar ${info.name.split(',')[0]}, você precisa de ${companionCost} moedas.`;
+    }
     const costs={healer:40,merchant:55,blacksmith:80,bard:30,alchemist:50};
     const price=costs[n.role];
-    if (price && player.coins >= price) {
+    if (!n.hired && !recruitableRoles.has(n.role) && price && player.coins >= price) {
       if (n.role==='healer' && player.hp<maxHpOf()*.85) {player.coins-=price;player.hp=Math.min(maxHpOf(),player.hp+maxHpOf()*.7);line='Curado! As suas feridas estão fechadas.';sfx('potion');}
       else if (['merchant','alchemist'].includes(n.role) && player.potions<9) {player.coins-=price;player.potions++;line='Negócio feito! Uma poção para seu caminho.';sfx('coin');}
       else if (n.role==='blacksmith') {player.coins-=price;player.buff=Math.max(player.buff,90);line='Sua arma causa +18% de dano por 90 segundos.';sfx('crit');}
       else if (n.role==='bard') {player.coins-=price;player.buff=Math.max(player.buff,60);line='Uma canção de coragem! +18% dano por 60 segundos.';sfx('level');}
-    } else if (price && player.coins<price) line='Sem moedas suficientes. Precisa de '+price+' moedas.';
+    } else if (!recruitableRoles.has(n.role) && price && player.coins<price) line='Sem moedas suficientes. Precisa de '+price+' moedas.';
     npcSpeakNpc=n;npcSpeakText=line;npcSpeakUntil=gameTime+4.5;
     const dialog=$('#npcDialogue');
-    if(dialog){dialog.hidden=false;dialog.querySelector('strong').textContent=info.name;dialog.querySelector('p').textContent=line;dialog.querySelector('small').textContent=price?`Interaja novamente · Serviço: ${price} ◈`:'Explore e siga as trilhas'};
+    if(dialog){dialog.hidden=false;dialog.querySelector('strong').textContent=info.name;dialog.querySelector('p').textContent=line;dialog.querySelector('small').textContent=n.hired?'ALIADO · acompanha e combate':recruitableRoles.has(n.role)?`Contratar: ${companionCost} ◈ · limite 2`:(price?`Interaja novamente · Serviço: ${price} ◈`:'Explore e siga as trilhas')};
   }
   const npcArtCache = new WeakMap();
   function drawNpc(n) {
@@ -3303,9 +3424,13 @@
       sage:{race:'elfo',class:'Mago',armor:'runica',armorColor:'#71879c',capeColor:'#41536f',hairColor:'#d5d9de',head:'capuz',weapon:'cajado',glow:'#acd5f0'}
     };
     let look=npcArtCache.get(n);if(!look){const profile=profiles[n.role]||profiles.scout;look=CharacterArt.makeModel(profile,{race:profile.race||'humano',class:profile.class||'arqueiro',seed:n.seed||1});npcArtCache.set(n,look)}
-    ctx.save();ctx.scale(.82,.82);CharacterArt.draw(ctx,look,{t:gameTime,ph:gameTime*2,mv:.08,view:'f',seed:n.seed||1});ctx.restore();
-    ctx.textAlign='center';ctx.font='bold 10px system-ui';ctx.fillStyle='#d9ffe1';ctx.fillText('◆ '+role.name,0,-53);
-    if (Math.hypot(player.x-n.x,player.y-n.y)<75) {ctx.font='bold 11px system-ui';ctx.fillStyle='#ffe29a';ctx.fillText('[E] CONVERSAR',0,-64);}
+    const dir=CharacterArt.viewAngle(n.angle == null ? Math.PI / 2 : n.angle);
+    const swing=n.swing;
+    const swingProgress=swing?Math.max(0,Math.min(1,swing.t/Math.max(.01,swing.dur||.25))):0;
+    const swingWave=swing?Math.sin(swingProgress*Math.PI):0;
+    ctx.save();ctx.translate(0,20);ctx.scale(.82,.82);CharacterArt.draw(ctx,look,{t:gameTime,ph:n.walk||0,mv:n.motion||0,view:dir.view,flip:dir.flip,seed:n.seed||1,atkP:swing?1-swingProgress:0,wa:swing?-1.35+swingWave*(swing.dir||1)*2.05:null});ctx.restore();
+    ctx.textAlign='center';ctx.font='bold 10px system-ui';ctx.fillStyle=n.companion?'#ffe29a':'#d9ffe1';ctx.fillText(n.companion?'⚔ ALIADO · '+role.name:'◆ '+role.name,0,-53);
+    if (!n.companion && Math.hypot(player.x-n.x,player.y-n.y)<75) {ctx.font='bold 11px system-ui';ctx.fillStyle='#ffe29a';ctx.fillText('[E] CONVERSAR',0,-64);}
     ctx.restore();
   }
   function drawBubble(x,y,text,color) {
@@ -3352,7 +3477,8 @@
     if(dun){enemies.length=0;solids.length=0;solids.push(...owSolids);owSolids=[];owEnemies=[];world.width=OW.w;world.height=OW.h;dun=null;ow=null;}
     for(const key of Object.keys(cleared))delete cleared[key];
     Object.assign(player,{x:SPAWN.x,y:SPAWN.y,angle:-Math.PI/2,hp:100,focus:65,stamina:100,level:15,xp:0,coins:500,potions:3,kills:0,healthRanks:0,staminaRanks:0,manaRanks:0,ultimateCd:0,ultimateTime:0,attackCd:0,combo:0,comboTimer:0,charge:0,dashT:0,dashCd:0,skillCd:0,invuln:2,flash:0,hurt:0,walk:0,stepDist:0,aimLock:0,dead:false,deadT:0,burn:0,poison:0,chill:0,shock:0,curse:0,buff:0,kx:0,ky:0,relics:{},motion:0,swing:null,spin:null});
-    quest.stage=0;quest.progress=0;wave=1;waveTimer=0;spawnTimer=1;finalBossActive=false;mimicBossTimer=rand(105,185);delete player.legendaryWeapon;gameTime=0;biomeExposure=0;fadeSt=null;splash=null;portalCd=0;
+     companions.length=0;for(const n of homeNpcs){n.hired=false;n.companion=false;}
+     quest.stage=0;quest.progress=0;wave=1;waveTimer=0;spawnTimer=1;finalBossActive=false;mimicBossTimer=rand(105,185);delete player.legendaryWeapon;gameTime=0;biomeExposure=0;fadeSt=null;splash=null;portalCd=0;
     enemies.length=0;loot.length=0;shots.length=0;pShots.length=0;particles.length=0;delayed.length=0;pendingLevelChoices.length=0;
     targetEnemy=null;attackHeld=false;autoAttack=false;$('#autoAttackBtn').setAttribute('aria-pressed','false');$('#autoAttackBtn').textContent='AUTO ⚔';
     cust.created=false;cust.ultimate=null;cust.boons=[];player.hp=maxHpOf();player.focus=maxFocusOf();player.stamina=maxStaminaOf();
