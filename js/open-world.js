@@ -42,7 +42,7 @@
     distance: $('#distance'), objective: $('#objectiveText'), kills: $('#kills'),
     toast: $('#toast'), banner: $('#banner'), worldMessage: $('#worldMessage'), hint: $('.controls-hint'),
     keyboardMode: $('#keyboardMode'), touchMode: $('#touchMode'), soundToggle: $('#soundToggle'),
-    skillButton: $('#skillButton'), ultimateButton: $('#ultimateButton'), dodgeButton: $('#dodgeButton'), healButton: $('#healButton'), attackButton: $('#attackButton'),
+    skillButton: $('#skillButton'), ultimateButton: $('#ultimateButton'), dodgeButton: $('#dodgeButton'), blockButton: $('#blockButton'), healButton: $('#healButton'), attackButton: $('#attackButton'),
     levelPanel: $('#levelPanel'), levelPanelTitle: $('#levelPanelTitle'), levelChoices: $('#levelChoices'), wave: $('#wave'), locationName: $('#locationName')
   };
   const cache = new Map();
@@ -68,7 +68,7 @@
     healthRanks: 0, staminaRanks: 0, manaRanks: 0, ultimateCd: 0, ultimateTime: 0,
     attackCd: 0, combo: 0, comboTimer: 0, dashT: 0, dashCd: 0, dashX: 0, dashY: -1, skillCd: 0,
     invuln: 0, flash: 0, hurt: 0, walk: 0, stepDist: 0, aimLock: 0,
-    swing: null, spin: null, dead: false, deadT: 0, motion: 0, facing: -Math.PI / 2,
+    swing: null, spin: null, blocking: false, dead: false, deadT: 0, motion: 0, facing: -Math.PI / 2,
     burn: 0, poison: 0, chill: 0, shock: 0, curse: 0, effectTick: 0, relics: {}, buff: 0
   };
   const rankOf = () => Math.max(1, player.level - 14);
@@ -95,7 +95,7 @@
   let paused = false;
   let attackHeld = false;
   let spawnTimer = 1;
-  let wave = 1, waveTimer = 0;
+  let wave = 1, waveTimer = 0, finalBossActive = false, mimicBossTimer = rand(105, 185);
   let saveTimer = 4;
   let targetEnemy = null;
   let muted = false;
@@ -878,6 +878,7 @@
     return e;
   }
   function spawnBoss() {
+    if (finalBossActive) return;
     if (enemies.some(e => e.type === 'boss' && !e.dead)) return;
     spawnEnemy('boss', BOSS_HOME.x, BOSS_HOME.y);
     ring(BOSS_HOME.x, BOSS_HOME.y, '#b27cf0', 40, 320);
@@ -897,12 +898,23 @@
     return true;
   }
   function trySpawnRandom(minDist, maxDist) {
+    if (finalBossActive) return false;
     for (let i = 0; i < 14; i++) {
       const a = rand(0, TAU), d = rand(minDist, maxDist);
       const x = player.x + Math.cos(a) * d, y = player.y + Math.sin(a) * d;
       if (!validSpawn(x, y)) continue;
       spawnEnemy(typeForX(x, y), x, y);
       return true;
+    }
+    return false;
+  }
+  function trySpawnMimicBoss() {
+    if(finalBossActive||dun||enemies.some(e=>!e.dead&&e.type==='mimic_boss'))return false;
+    for(let i=0;i<18;i++){
+      const a=rand(0,TAU),d=rand(340,500),x=player.x+Math.cos(a)*d,y=player.y+Math.sin(a)*d;
+      if(!validSpawn(x,y))continue;
+      const e=spawnEnemy('mimic_boss',x,y);e.bossRewardDrop=true;e.state='idle';e.speech='Um tesouro lendário...';e.speechT=3;
+      targetEnemy=e;ring(x,y,'#f3c960',36,260);showBanner('CHEFE ERRANTE','Um Mímico lendário apareceu em algum lugar próximo.');sfx('slam');return true;
     }
     return false;
   }
@@ -945,11 +957,18 @@
   }
   function hurtPlayer(amount, fromX, fromY, heavy = false, element = null) {
     if (player.dead || player.invuln > 0 || inSafeZone(player.x, player.y)) return;
-    const dmg = Math.max(1, Math.round(amount * (1 - ARMORS[cust.armorType].guard) * (starterBoon('shield') ? .85 : 1) * (1 - (player.relics.ward || 0) * .055) * (player.curse > 0 ? 1.25 : 1) * rand(.9, 1.1)));
-    player.hp -= dmg;
-    if (element && Math.random() < .48) statusToPlayer(element, 2.8);
+    let dmg = Math.max(1, Math.round(amount * (1 - ARMORS[cust.armorType].guard) * (starterBoon('shield') ? .85 : 1) * (1 - (player.relics.ward || 0) * .055) * (player.curse > 0 ? 1.25 : 1) * rand(.9, 1.1)));
+    if (cust.cls === 'tanke' && player.blocking && player.focus > 0) {
+      const absorbed = Math.min(player.focus, dmg);
+      player.focus -= absorbed;
+      dmg -= absorbed;
+      if (absorbed) floatText(player.x, player.y - 43, `-${absorbed} MANA`, '#8fe8ff', 15);
+    }
     player.invuln = .6;
     player.hurt = .35;
+    if (dmg <= 0) { sfx('skill'); burst(player.x, player.y, 8, { color: ['#d9f5ff', '#7cdcff'], speed: 140, life: .36, size: 3, glow: true }); return; }
+    player.hp -= dmg;
+    if (element && Math.random() < .48) statusToPlayer(element, 2.8);
     const a = Math.atan2(player.y - fromY, player.x - fromX);
     const kb = heavy ? 520 : 300;
     player.kx += Math.cos(a) * kb; player.ky += Math.sin(a) * kb;
@@ -995,6 +1014,23 @@
     if (e.aiTimer <= 0) { e.aiTimer = rand(1.2, 2.2); e.strafe *= -1; }
     e.slow = Math.max(0, e.slow - dt);
     e.burn = Math.max(0, e.burn - dt);
+    if (e.finalBoss && e.emerging > 0) {
+      e.emerging = Math.max(0, e.emerging - dt);
+      e.state = 'idle';
+      e.kx = e.ky = 0;
+      return;
+    }
+    if (e.finalBoss && (e.summonTimer -= dt) <= 0) {
+      e.summonTimer = 10;
+      const minions = ['oniguard','voidspawn','abyssbat'];
+      for (let i=0;i<3;i++) {
+        const a=i/3*TAU+gameTime*.22,x=e.x+Math.cos(a)*105,y=e.y+Math.sin(a)*105;
+        const minion=spawnEnemy(minions[i],x,y);
+        minion.home={x,y};minion.wander={x,y};minion.state='chase';minion.face=Math.atan2(player.y-y,player.x-x);
+      }
+      showBanner('O ONI CONVOCA O ABISMO','Três criaturas foram chamadas para a arena.');
+      ring(e.x,e.y,'#ba65ff',38,270);sfx('slam');
+    }
     if (e.burn > 0 && (e.burnTick -= dt) <= 0) {
       e.burnTick = .45;
       e.hp -= Math.max(2, Math.round((3 + (player.relics.fury || 0) * .8) * (1 + wave * .09)));
@@ -1104,7 +1140,7 @@
   function startAttack(e) {
     const t = e.t;
     e.atkDone = false;
-    if (t.ranged || (t.nova && e.pattern % 2 === 0)) { fireFor(e); e.state = 'recover'; e.timer = t.recover; e.pattern++; return; }
+    if (t.ranged || (t.boss && e.pattern % 2 === 0) || (t.nova && e.pattern % 2 === 0)) { fireFor(e); e.state = 'recover'; e.timer = t.recover; e.pattern++; return; }
     if (t.lunge) {
       const speed = e.charge ? 560 : t.lunge;
       e.state = 'attack';
@@ -1131,10 +1167,22 @@
     if (isRegular(e) && Math.random() < .14) dropLoot(e.x, e.y, 'potion', 1);
     if (t.boss) { dropLoot(e.x, e.y, 'potion', 1); dropLoot(e.x, e.y, 'potion', 1); }
     if (t.xp) dropLoot(e.x, e.y, 'xp', Math.round(t.xp * (1 + (e.dmgMul - 1) * .5)));
+    if(e.bossRewardDrop){
+      const names={guerreiro:'Lâmina Dente-de-Ouro',mago:'Códice do Cofre Faminto',arqueiro:'Arco da Fortuna Voraz',paladino:'Martelo da Cidadela Perdida',druida:'Totem do Tesouro Vivo',assassino:'Presas da Moeda Negra',tanke:'Quebra-Muralha do Mímico'};
+      dropLoot(e.x,e.y,'legendary',names[cust.cls]||'Arma do Cofre Faminto');
+      showBanner('O MÍMICO CAIU','Ele deixou uma arma lendária.');
+    }
     hitstop = Math.max(hitstop, t.boss ? .2 : .1);
     shake(t.boss ? 18 : 6);
     sfx(t.boss ? 'slam' : 'crit');
     if (targetEnemy === e) targetEnemy = null;
+
+    if (e.finalBoss) {
+      finalBossActive = false;
+      showBanner('O ONI DO ABISMO FOI DERROTADO','As fendas se fecharam.');
+      delayed.push({t:1.8,fn:()=>showRunEnd(true)});
+      return;
+    }
 
     if (quest.stage === 0 && e.type === 'dummy') completeQuest();
     else if (quest.stage === 1 && t.hostile && !t.boss) {
@@ -1279,13 +1327,19 @@
     } else if (l.type === 'xp') {
       addXp(l.value);
       sfx('coin');
+    } else if (l.type === 'legendary') {
+      player.relics.mimicWeapon = 1;
+      player.legendaryWeapon = String(l.value || 'Arma do Cofre Faminto');
+      cust.glow = '#ffd27a';
+      showBanner('ARMA LENDÁRIA', `${player.legendaryWeapon} · +28% de dano`);
+      sfx('level');
     } else {
       if (player.potions >= 9) { showToast('Mochila de poções cheia'); player.coins += 15; return; }
       player.potions++;
       showToast('Poção encontrada');
       sfx('potion');
     }
-    burst(l.x, l.y, 5, { color: l.type === 'coin' ? '#ffd77f' : l.type === 'xp' ? '#88cdff' : '#ff8a7a', speed: 90, life: .3, size: 2.4, glow: true });
+    burst(l.x, l.y, 5, { color: l.type === 'coin' ? '#ffd77f' : l.type === 'xp' ? '#88cdff' : l.type === 'legendary' ? '#ffd27a' : '#ff8a7a', speed: 90, life: .3, size: 2.4, glow: true });
   }
 
   /* ---------- ações do herói ---------- */
@@ -1302,7 +1356,7 @@
     if (best) player.angle = Math.atan2(best.y - player.y, best.x - player.x);
   }
   function damageEnemy(e, base, o = {}) {
-    if (e.dead) return;
+    if (e.dead || (e.finalBoss && e.emerging > 0)) return;
     const element = ELEMENTS[cust.element];
     const resistance = ELEMENT_RESIST[enemyElement(e)]?.[cust.element] ?? 1;
     const empowered = element.strong.includes(e.type) || resistance > 1.05;
@@ -1435,7 +1489,7 @@
   document.addEventListener('keydown', event => {
     const key = event.key.toLowerCase();
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) event.preventDefault();
-    if (key === 'p' || key === 'escape') { if (!event.repeat && el.levelPanel.hidden) paused = !paused; return; }
+    if (key === 'p' || key === 'escape') { if (!event.repeat && el.levelPanel.hidden) paused = !paused; setBlocking(false); return; }
     if (key === 'm') { if (!event.repeat) toggleMute(); return; }
     keys.add(key);
     if (event.repeat) return;
@@ -1443,10 +1497,11 @@
     if (key === 'q') useSkill();
     if (key === 'r') useUltimate();
     if (key === 'shift') dash();
+    if (key === 'b') setBlocking(true);
     if (key === 'h') heal();
   });
-  document.addEventListener('keyup', event => keys.delete(event.key.toLowerCase()));
-  window.addEventListener('blur', () => { keys.clear(); attackHeld = false; });
+  document.addEventListener('keyup', event => { keys.delete(event.key.toLowerCase()); if (event.key.toLowerCase() === 'b') setBlocking(false); });
+  window.addEventListener('blur', () => { keys.clear(); attackHeld = false; setBlocking(false); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { paused = true; saveGame(); } });
   window.addEventListener('pagehide', saveGame);
 
@@ -1472,6 +1527,18 @@
   bindButton(el.ultimateButton, useUltimate);
   bindButton(el.dodgeButton, dash);
   bindButton(el.healButton, heal);
+  const setBlocking = active => {
+    player.blocking = !!active && cust.cls === 'tanke' && !paused && !player.dead;
+    if (el.blockButton) el.blockButton.classList.toggle('active', player.blocking);
+  };
+  if (el.blockButton) {
+    el.blockButton.hidden = true;
+    el.blockButton.addEventListener('pointerdown', event => { event.preventDefault(); el.blockButton.setPointerCapture?.(event.pointerId); setBlocking(true); });
+    const releaseBlock = () => setBlocking(false);
+    el.blockButton.addEventListener('pointerup', releaseBlock);
+    el.blockButton.addEventListener('pointercancel', releaseBlock);
+    el.blockButton.addEventListener('lostpointercapture', releaseBlock);
+  }
   const releaseAttack = () => { attackHeld = false; };
   window.addEventListener('pointerup', releaseAttack);
   window.addEventListener('pointercancel', releaseAttack);
@@ -1658,7 +1725,11 @@
       if (isRegular(e) && Math.hypot(e.x - player.x, e.y - player.y) > 1750) return false;
       return true;
     });
-    if (!dun) {
+    if(!dun&&!finalBossActive&&gameTime>55){
+      mimicBossTimer-=rawDt;
+      if(mimicBossTimer<=0){mimicBossTimer=rand(145,245);trySpawnMimicBoss();}
+    }
+    if (!dun && !finalBossActive) {
       waveTimer += rawDt;
       if (waveTimer >= 38) {
         waveTimer -= 38;
@@ -1671,7 +1742,7 @@
       }
     }
     spawnTimer -= dt;
-    if (spawnTimer <= 0 && !dun) {
+    if (spawnTimer <= 0 && !dun && !finalBossActive) {
       spawnTimer = Math.max(.21, 1.30 - wave * .06);
       const max = Math.min(96, 15 + wave * 5 + (dark > .6 ? 6 : 0));
       if (enemies.filter(e=>!e.dead && isRegular(e)).length < max) { const n = wave > 5 ? 2 : 1; for (let i=0;i<n;i++) trySpawnRandom(440, 850); }
@@ -1968,6 +2039,9 @@
       ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='#6badff55';ctx.beginPath();ctx.arc(l.x,l.y+bob-4,12,0,TAU);ctx.fill();ctx.restore();
       ctx.fillStyle='#91dcff';ctx.beginPath();ctx.moveTo(l.x,l.y+bob-14);ctx.lineTo(l.x+7,l.y+bob-4);ctx.lineTo(l.x,l.y+bob+7);ctx.lineTo(l.x-7,l.y+bob-4);ctx.closePath();ctx.fill();
       ctx.fillStyle='#e3ffff';ctx.beginPath();ctx.moveTo(l.x,l.y+bob-12);ctx.lineTo(l.x+3,l.y+bob-4);ctx.lineTo(l.x,l.y+bob+4);ctx.closePath();ctx.fill();
+    } else if(l.type==='legendary'){
+      ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='#ffd27a44';ctx.beginPath();ctx.arc(l.x,l.y+bob-5,20,0,TAU);ctx.fill();ctx.restore();
+      ctx.save();ctx.translate(l.x,l.y+bob-4);ctx.rotate(-.52);ctx.strokeStyle='#5b351e';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,10);ctx.lineTo(0,-9);ctx.stroke();ctx.strokeStyle='#e8bd5b';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,8);ctx.lineTo(0,-7);ctx.stroke();ctx.fillStyle='#fff0b0';ctx.strokeStyle='#775524';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(-3,-7);ctx.lineTo(-5,-14);ctx.lineTo(0,-22);ctx.lineTo(5,-14);ctx.lineTo(3,-7);ctx.closePath();ctx.fill();ctx.stroke();ctx.strokeStyle='#f8dc8c';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-8,-4);ctx.lineTo(8,-4);ctx.stroke();ctx.restore();
     } else {
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = 'rgba(255,120,110,.22)'; ctx.beginPath(); ctx.arc(l.x, l.y + bob - 4, 13, 0, TAU); ctx.fill();
@@ -2250,7 +2324,7 @@
     el.ultimateButton.setAttribute('aria-label', cust.ultimate ? `Usar ultimate: ${ULTIMATES[cust.ultimate].name}` : 'Ultimate bloqueada até o nível 5');
 
     // alvo
-    const boss = enemies.find(e => e.t.boss && !e.dead && e.state !== 'idle');
+    const boss = enemies.find(e => e.t.boss && !e.dead && (e.finalBoss || e.state !== 'idle'));
     const tg = boss || (targetEnemy && !targetEnemy.dead ? targetEnemy : null);
     if (tg) {
       setText('en', el.enemyName, tg.t.name);
@@ -2306,6 +2380,13 @@
     crystal:['prismite','crystalguard','shardmage','guardian','mage','mimic'],
     arcane:['mage','astraleye','voidwalker','shardmage','guardian','wraith']
   };
+  const PLAYABLE_BIOME = { meadow: 'forest', jungle: 'forest', canyon: 'dunes', mountain: 'frost', coast: 'marsh', abyss: 'ash' };
+  for (const [id, source] of Object.entries(window.ABISMO_PARTIAL_CATALOG || {})) {
+    if (source.boss || id === 'dummy') continue;
+    const biome = PLAYABLE_BIOME[source.biome] || source.biome;
+    const pool = BIOME_MOBS[biome] || (BIOME_MOBS[biome] = []);
+    if (!pool.includes(id)) pool.push(id);
+  }
   const additionalMobs = {
     stag:['CERVO CORROMPIDO',85,136,14,'natureza','flank'],
     thornling:['ESPINHO ANDANTE',72,100,13,'natureza','guard'],
@@ -2355,6 +2436,30 @@
     prisma:{name:'IMPERATRIZ DOS CRISTAIS',hp:2300,r:36,speed:94,dmg:33,reach:0,trigger:330,windup:.7,recover:1,aggro:900,ranged:true,nova:true,xp:1700,coin:[430,480],hostile:true,boss:true,element:'arcano',color:'#c2b7ff'},
     rei_sombras:{name:'REI DAS SOMBRAS',hp:2200,r:35,speed:135,dmg:37,reach:143,trigger:155,windup:.8,recover:.95,lunge:600,aggro:900,xp:1650,coin:[450,500],hostile:true,boss:true,element:'arcano',color:'#a287cb'}
   });
+  const importedEnemies = window.ABISMO_PARTIAL_CATALOG || {};
+  for (const [id, source] of Object.entries(importedEnemies)) {
+    if (id === 'dummy' || TYPES[id]) continue;
+    const boss = !!source.boss || source.arch === 'boss';
+    const attacks = (source.phases || []).flatMap(phase => phase.atk || []);
+    const ranged = ['kite', 'support', 'artillery', 'ranged'].includes(source.ai) || attacks.some(a => ['beam', 'rain', 'nova', 'meteor', 'chain'].includes(a));
+    const hp = Math.max(30, Number(source.hp) || (boss ? 1000 : 80));
+    const radius = Math.max(boss ? 28 : 11, Math.min(boss ? 58 : 28, Number(source.r) || 16));
+    const baseColor = source.pal?.[0] || '#9b8db8';
+    TYPES[id] = {
+      name: String(source.name || id).toLocaleUpperCase('pt-BR'), hp, r: radius,
+      speed: Number(source.speed) || (boss ? 90 : 90), dmg: Number(source.dmg) || (boss ? 24 : 12),
+      reach: ranged ? 0 : radius * 3.2, trigger: ranged ? 280 : radius * 4.5,
+      windup: boss ? .82 : .52, recover: ranged ? 1.22 : .86,
+      lunge: ['charger', 'charge', 'flank'].includes(source.ai) ? 360 : 0,
+      aggro: Number(source.aggro) || (boss ? 900 : 460), xp: boss ? 600 : Math.max(18, Math.round(hp * .36)),
+      coin: boss ? [180, 240] : [6, 22], hostile: true, boss, ranged,
+      nova: attacks.includes('nova') || attacks.includes('rain'), element: source.el || null,
+      color: baseColor, arch: source.arch, artId: id, sourcePhases: source.phases || null
+    };
+  }
+  if (TYPES.boss) TYPES.boss.artId = 'guardian';
+  if (TYPES.guardian) TYPES.guardian.artId = 'runebot';
+  if (TYPES.tempestade) TYPES.tempestade.artId = 'raijin';
   function typeForX(x,y=player.y){
     const biome=biomeAt(x,y),pool=BIOME_MOBS[biome];
     // Later waves unlock the rarer threats of THAT biome, not random mobs from elsewhere.
@@ -2366,8 +2471,63 @@
   const shots = [];
   function shoot(e, ang, spd, mul) { shots.push({ x: e.x, y: e.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 3.2, dmg: e.t.dmg * e.dmgMul * mul, col: e.t.color, boss: !!e.t.boss, element: enemyElement(e) }); }
   function fireFor(e) {
-    const t = e.t, a = Math.atan2(player.y - e.y, player.x - e.x);
-    if (t.nova && e.pattern % 2 === 0) {
+    const t=e.t,a=Math.atan2(player.y-e.y,player.x-e.x),id=e.type;
+    if(id==='lorde'){
+      for(let k=-2;k<=2;k++){shoot(e,a+k*.32,230,Math.abs(k)===2?.65:1);shoot(e,a+k*.32+Math.PI/2,170,.48)}ring(e.x,e.y,'#d9d2ba',25,210);sfx('slam');
+    }else if(id==='colosso'){
+      for(let i=0;i<8;i++)shoot(e,a+i/8*TAU,155,.75);for(let k=-1;k<=1;k++)shoot(e,a+k*.5,340,1.1);ring(e.x,e.y,'#c9a46a',32,260);shake(9);sfx('slam');
+    }else if(id==='prisma'){
+      for(let i=0;i<6;i++){const q=a+i/6*TAU;shoot(e,q,270,.9);shoot(e,q+.12,180,.55)}ring(e.x,e.y,'#b6e7fd',27,255);sfx('skill');
+    }else if(id==='rei_sombras'){
+      for(let k=-2;k<=2;k++){shoot(e,a+k*.12,390,Math.abs(k)===0?1:.72);shoot(e,a+Math.PI/2+k*.15,250,.58)}ring(e.x,e.y,'#a884dc',28,230);sfx('skill');
+    }else if(id==='dragao'){
+      for(let k=-4;k<=4;k++)shoot(e,a+k*.13,330,Math.abs(k)<2?1:.52);for(let i=0;i<6;i++)shoot(e,a+i/6*TAU+e.pattern*.08,150,.4);ring(e.x,e.y,'#ff7141',26,245);sfx('slam');
+    }else if(id==='arquimago'){
+      for(let k=-3;k<=3;k++)shoot(e,a+k*.26,215,Math.abs(k)===3?.45:.82);for(let i=0;i<4;i++)shoot(e,a+i/4*TAU+e.pattern*.2,150,.45);ring(e.x,e.y,'#a4baff',24,210);sfx('skill');
+    }else if(id==='hidra'){
+      for(let h=-1;h<=1;h++)for(let k=-1;k<=1;k++)shoot(e,a+h*.48+k*.13,245,h===0?1:.72);ring(e.x,e.y,'#8ee28b',20,190);sfx('swing');
+    }else if(id==='verme'){
+      for(let i=0;i<3;i++){const q=a+(i-1)*.42;for(let k=-1;k<=1;k++)shoot(e,q+k*.13,290,i===1?1:.72)}ring(player.x,player.y,'#d6a46c',25,180);shake(7);sfx('slam');
+    }else if(id==='kraken'){
+      for(let arm=0;arm<4;arm++){const q=a+arm*Math.PI/2+e.pattern*.12;for(let k=-1;k<=1;k++)shoot(e,q+k*.20,215,.7)}ring(e.x,e.y,'#55c8d6',25,230);sfx('skill');
+    }else if(id==='thorn_queen'||id==='matriarca'){
+      for(let k=-4;k<=4;k++)shoot(e,a+k*.18,190,Math.abs(k)%2?.65:.95);ring(e.x,e.y,'#b86be1',26,215);sfx('skill');
+    }else if(id==='mae_cinzas'){
+      for(let i=0;i<3;i++)for(let k=-2;k<=2;k++)shoot(e,a+(i-1)*.38+k*.11,290-i*35,.88);ring(e.x,e.y,'#ff7546',30,245);sfx('slam');
+    }else if(id==='ent_anc'||id==='forest_lord'){
+      for(let i=0;i<8;i++)shoot(e,a+i/8*TAU+e.pattern*.09,175,.64);
+      for(let k=-1;k<=1;k++)shoot(e,a+k*.2,305,.82);
+      ring(e.x,e.y,'#8ad875',31,240);sfx('skill');
+    }else if(id==='soberana'||id==='ice_archon'){
+      for(let i=0;i<7;i++){const q=a+i/7*TAU+e.pattern*.13;shoot(e,q,250,.67);shoot(e,q+.16,165,.4)}
+      for(let k=-1;k<=1;k++)shoot(e,a+k*.38,335,.76);
+      ring(e.x,e.y,'#9de8ff',27,225);sfx('skill');
+    }else if(id==='tempestade'||id==='raijin'||id==='lightning_lord'){
+      for(let i=0;i<3;i++){const q=a+(i-1)*.56+Math.sin(e.pattern+i)*.08;for(let k=-1;k<=1;k++)shoot(e,q+k*.075,390-i*40,k===0?1:.58)}
+      ring(player.x,player.y,'#8edaff',25,190);sfx('swing');
+    }else if(id==='devorador_astral'||id==='astral_devourer'){
+      for(let arm=0;arm<2;arm++)for(let i=0;i<7;i++)shoot(e,a+arm*Math.PI+i/7*TAU+e.pattern*(arm?-.16:.16),225,.58);
+      shoot(e,a,365,1.15);ring(e.x,e.y,'#c68cff',34,275);sfx('skill');
+    }else if(id==='titan'||id==='red_guardian'){
+      for(let wave=0;wave<3;wave++)for(let k=-2;k<=2;k++)shoot(e,a+k*(.19+wave*.035)+Math.PI*wave,235+wave*45,Math.abs(k)===2?.55:.92);
+      ring(e.x,e.y,'#ff6749',34,250);shake(9);sfx('slam');
+    }else if(id==='mimic_boss'){
+      for(let i=0;i<9;i++)shoot(e,a+(i-4)*.13,245+(i%3)*45,i===4?1.05:.66);
+      for(const side of[-1,1])shoot(e,a+side*.82,340,.82);
+      ring(e.x,e.y,'#f3c960',24,205);sfx('slam');
+    }else if(id==='celestial_vulture'){
+      for(let k=-2;k<=2;k++)shoot(e,a+k*.24,330,k===0?1:.65);ring(e.x,e.y,'#b996ff',18,150);sfx('swing');
+    }else if(id==='lightning_elemental'){
+      for(let k=-2;k<=2;k++)shoot(e,a+k*.17,380,k===0?1:.72);ring(e.x,e.y,'#8edaff',22,180);sfx('swing');
+    }else if(id==='leviathan'){
+      for(let k=-2;k<=2;k++)shoot(e,a+k*.28,245,Math.abs(k)===2?.62:1);sfx('swing');
+    }else if(['fire_elemental','infernal_dragon'].includes(id)){
+      for(let k=-3;k<=3;k++)shoot(e,a+k*.19,250,Math.abs(k)<2?1:.62);ring(e.x,e.y,'#ff7546',28,220);sfx('slam');
+    }else if(id==='oni'&&e.finalBoss){
+      if(e.pattern%2===0){for(let i=0;i<16;i++)shoot(e,a+i/16*TAU,220,.72);ring(e.x,e.y,'#c071ff',36,280)}
+      else for(let k=-2;k<=2;k++)shoot(e,a+k*.15,360,k===0?1.15:.8);
+      sfx('slam');shake(12);
+    }else if (t.nova && e.pattern % 2 === 0) {
       const n = t.boss ? 16 : 10;
       for (let i = 0; i < n; i++) shoot(e, a + i / n * TAU, 210, .8);
       ring(e.x, e.y, t.color, 30, 260); shake(8); sfx('slam');
@@ -2380,18 +2540,35 @@
   const OW = { w: world.width, h: world.height };
   const DUNS = [
     { id: 'cat', name: 'Catacumbas Esquecidas', sub: 'Os mortos não descansam', x: 420, y: 640, lv: 15, bg: ['360_F_589592494_xjem0JGmU7Sc1GKgQ2Fo9LlwjYY6WIZi.jpg', 'medieval-dungeon-corridor-stockcake.jpg'], floor: '#4a4338', wall: '#2b2620', acc: '#ffb45a', mix: ['nightstalker','graveknight','skeleton','wraith'], boss: 'lorde' },
-    { id: 'cis', name: 'Cisterna Esmeralda', sub: 'Algo se move sob a água', x: 780, y: 1580, lv: 17, bg: ['images (2).jpg'], floor: '#2f4a42', wall: '#16261f', acc: '#7dffb0', mix: ['boglurker','plagueshroom','spider','shaman'], boss: 'matriarca' },
-    { id: 'ast', name: 'Templo Astral', sub: 'O céu se partiu aqui', x: 1500, y: 330, lv: 19, bg: ['3311e8dcf9f658e9a595b633eed77671.jpg'], floor: '#3b3a66', wall: '#1a1838', acc: '#8fb8ff', mix: ['astraleye','voidwalker','shardmage','mage'], boss: 'arquimago' },
-    { id: 'forja', name: 'Forja do Abismo', sub: 'O fogo guarda o último segredo', x: 2060, y: 1500, lv: 22, bg: ['boss arena.jpg'], floor: '#4d3640', wall: '#24121a', acc: '#ff8a4a', mix: ['emberling','lavagolem','pyromancer','cultist'], boss: 'titan' },
-    { id: 'gelo', name: 'Observatório Glacial', sub: 'O frio preserva os segredos', x: 3490, y: 610, lv: 25, bg: ['dungeons-palace-background-260nw-181416236.webp'], floor: '#465b68', wall: '#1b2935', acc: '#9de8ff', mix: ['frostling','icegolem','snowstalker','wraith'], boss: 'arquimago' },
-    { id: 'dunas', name: 'Colosso das Dunas', sub: 'A areia se ergue contra você', x: 3700, y: 2110, lv: 27, bg: ['boss arena.jpg'], floor: '#765b3c', wall: '#38271d', acc: '#ffbd69', mix: ['sandscorpion','scarab','duneraider','harpy'], boss: 'titan' },
-    { id: 'bosque', name: 'Bosque Profundo', sub: 'As raízes sentem sua presença', x: 1040, y: 2470, lv: 26, bg: ['images (1).jpg'], floor: '#354c3a', wall: '#17261b', acc: '#a5eb83', mix: ['thornling','dryad','mossbeast','stag'], boss: 'matriarca', biome:'forest' },
-    { id: 'temporal', name:'Pico do Trovão',sub:'O céu ruge sobre as pedras',x:2800,y:-2100,lv:28,bg:[],floor:'#3b5864',wall:'#182932',acc:'#f7df77',mix:['stormwisp','thunderhawk','shockhound','stormwisp'],boss:'tempestade',biome:'storm' },
+    { id: 'cis', name: 'Cisterna Esmeralda', sub: 'Algo se move sob a água', x: 780, y: 1580, lv: 17, bg: ['images (2).jpg'], floor: '#2f4a42', wall: '#16261f', acc: '#7dffb0', mix: ['boglurker','plagueshroom','spider','shaman'], boss: 'hidra' },
+    { id: 'ast', name: 'Templo Astral', sub: 'O céu se partiu aqui', x: 1500, y: 330, lv: 19, bg: ['3311e8dcf9f658e9a595b633eed77671.jpg'], floor: '#3b3a66', wall: '#1a1838', acc: '#8fb8ff', mix: ['astraleye','voidwalker','shardmage','mage'], boss: 'devorador_astral', bossArt:'astral_devourer' },
+    { id: 'forja', name: 'Forja do Abismo', sub: 'O fogo guarda o último segredo', x: 2060, y: 1500, lv: 22, bg: ['boss arena.jpg'], floor: '#4d3640', wall: '#24121a', acc: '#ff8a4a', mix: ['emberling','lavagolem','pyromancer','cultist'], boss: 'mae_cinzas' },
+    { id: 'gelo', name: 'Observatório Glacial', sub: 'O frio preserva os segredos', x: 3490, y: 610, lv: 25, bg: ['dungeons-palace-background-260nw-181416236.webp'], floor: '#465b68', wall: '#1b2935', acc: '#9de8ff', mix: ['frostling','icegolem','snowstalker','wraith'], boss: 'soberana', bossArt:'ice_archon' },
+    { id: 'dunas', name: 'Colosso das Dunas', sub: 'A areia se ergue contra você', x: 3700, y: 2110, lv: 27, bg: ['boss arena.jpg'], floor: '#765b3c', wall: '#38271d', acc: '#ffbd69', mix: ['sandscorpion','scarab','duneraider','harpy'], boss: 'colosso' },
+    { id: 'bosque', name: 'Bosque Profundo', sub: 'As raízes sentem sua presença', x: 1040, y: 2470, lv: 26, bg: ['images (1).jpg'], floor: '#354c3a', wall: '#17261b', acc: '#a5eb83', mix: ['thornling','dryad','mossbeast','stag'], boss: 'ent_anc', bossArt:'forest_lord',biome:'forest' },
+    { id: 'temporal', name:'Pico do Trovão',sub:'O céu ruge sobre as pedras',x:2800,y:-2100,lv:28,bg:[],floor:'#3b5864',wall:'#182932',acc:'#f7df77',mix:['stormwisp','thunderhawk','shockhound','stormwisp'],boss:'tempestade',bossArt:'lightning_lord',biome:'storm' },
     { id: 'prismatico', name:'Palácio Prismático',sub:'Um coração de cristal desperta',x:-1600,y:-1510,lv:30,bg:[],floor:'#43567e',wall:'#202b51',acc:'#b6e7fd',mix:['prismite','crystalguard','shardmage','prismite'],boss:'prisma',biome:'crystal' },
-    { id: 'sombras', name:'Trono das Sombras',sub:'A noite esconde seu rei',x:-2300,y:830,lv:31,bg:[],floor:'#3e394f',wall:'#211d30',acc:'#bb9dff',mix:['nightstalker','graveknight','voidwalker','wraith'],boss:'rei_sombras',biome:'ash' }
+    { id: 'sombras', name:'Trono das Sombras',sub:'A noite esconde seu rei',x:-2300,y:830,lv:31,bg:[],floor:'#3e394f',wall:'#211d30',acc:'#bb9dff',mix:['nightstalker','graveknight','voidwalker','wraith'],boss:'rei_sombras',biome:'ash' },
+    { id:'raizes',name:'Jardim da Rainha Espinhosa',sub:'As raízes fecham a passagem',x:2380,y:2660,lv:26,bg:[],floor:'#344b3b',wall:'#16271e',acc:'#b86be1',mix:['thornling','dryad','mossbeast','stag'],boss:'matriarca',bossArt:'thorn_queen',biome:'marsh'},
+    { id:'oraculo',name:'Observatório do Arquimago',sub:'O firmamento obedece ao mago',x:2040,y:-2350,lv:28,bg:[],floor:'#3d3c69',wall:'#181a3b',acc:'#9dbaff',mix:['astraleye','starfae','voidwalker','runebot'],boss:'arquimago',biome:'arcane'},
+    { id:'cratera',name:'Cratera do Guardião Rubro',sub:'O núcleo da montanha ainda arde',x:4550,y:2450,lv:29,bg:[],floor:'#52343a',wall:'#251a25',acc:'#ff794d',mix:['ember','hellhound','lavagolem','fire_elemental'],boss:'titan',bossArt:'red_guardian',biome:'volcano'},
+    { id:'profundezas',name:'Fenda do Verme',sub:'Algo enorme atravessa a areia',x:-3400,y:2050,lv:30,bg:[],floor:'#60503c',wall:'#2a241e',acc:'#d6a46c',mix:['scorpion','naja','sandwisp','coyote'],boss:'verme',biome:'dunes'},
+    { id:'mare',name:'Abismo da Maré',sub:'As águas escondem tentáculos antigos',x:4420,y:-1690,lv:31,bg:[],floor:'#345767',wall:'#152833',acc:'#55c8d6',mix:['crab','jelly','siren','gull'],boss:'kraken',biome:'marsh'},
+    { id:'wyrm',name:'Ninho do Dragão Ancião',sub:'As chamas cobrem o céu',x:4860,y:170,lv:32,bg:[],floor:'#483840',wall:'#211a26',acc:'#ff8654',mix:['young_dragon','infernal_dragon','hellhound','phoenix'],boss:'dragao',biome:'volcano'},
+    { id:'ceu',name:'Ninho do Abutre Celestial',sub:'As asas cobrem o firmamento',x:5200,y:-1680,lv:33,bg:[],floor:'#354a67',wall:'#18273c',acc:'#b48af4',mix:['thunderhawk','gull','phoenix','harpy'],boss:'celestial_vulture',biome:'storm'}
   ];
-  const DUNGEON_BIOMES={cat:'ash',cis:'marsh',ast:'arcane',forja:'volcano',gelo:'frost',dunas:'dunes',bosque:'forest',temporal:'storm',prismatico:'crystal',sombras:'ash'};
+  const DUNGEON_BIOMES={cat:'ash',cis:'marsh',ast:'arcane',forja:'volcano',gelo:'frost',dunas:'dunes',bosque:'forest',temporal:'storm',prismatico:'crystal',sombras:'ash',raizes:'marsh',oraculo:'arcane',cratera:'volcano',profundezas:'dunes',mare:'marsh',wyrm:'volcano',ceu:'storm'};
   DUNS.forEach(d=>{d.biome=d.biome||DUNGEON_BIOMES[d.id];d.imgs=d.bg.map(f=>{const i=new Image();i.src='assets/'+f;return i;});});
+  function summonFinalOni(x,y){
+    if(finalBossActive||player.dead)return;
+    finalBossActive=true;waveTimer=0;
+    for(const enemy of enemies)if(!enemy.dead&&enemy.type!=='dummy'){enemy.dead=true;burst(enemy.x,enemy.y,10,{color:[enemy.t.color,'#b77aff'],speed:140,life:.45,size:2.8,glow:true});}
+    shots.length=0;
+    const oni=spawnEnemy('oni',x,y);
+    oni.finalBoss=true;oni.emerging=4;oni.summonTimer=10;oni.state='idle';oni.face=Math.atan2(player.y-y,player.x-x);
+    targetEnemy=oni;ring(x,y,'#9d54d8',60,430);shake(18);sfx('slam');
+    showBanner('O ABISMO SE ABRIU','O Oni do Abismo está emergindo.');
+  }
   function campaignTarget(){
     if(dun)return questTarget();
     return DUNS.filter(d=>!cleared[d.id]).sort((a,b)=>Math.hypot(player.x-a.x,player.y-a.y)-Math.hypot(player.x-b.x,player.y-b.y))[0]||null;
@@ -2438,8 +2615,9 @@
     for (let i = 0; i < 16; i++) dropLoot(e.x, e.y, 'coin', Math.round(rand(8, 16) * (first ? 2 : 1)));
     for (let i = 0; i < 3; i++) dropLoot(e.x, e.y, 'potion', 1);
     cleared[d.id] = true; saveExp(); updateCampaignBoard();
-    if(DUNS.every(door=>cleared[door.id]))setTimeout(()=>showRunEnd(true),1800);
-    showBanner('MASMORRA CONCLUÍDA', first ? `${d.name} · recompensa dobrada` : d.name);
+    const allDungeonsCleared=DUNS.every(door=>cleared[door.id]);
+    if(allDungeonsCleared)setTimeout(()=>summonFinalOni(player.x+115,player.y),1800);
+    showBanner(allDungeonsCleared?'O ÚLTIMO SELO CAIU':'MASMORRA CONCLUÍDA',allDungeonsCleared?'O Oni do Abismo despertará em instantes.':first?`${d.name} · recompensa dobrada`:d.name);
     const q = quests[quest.stage];
     if (q && q.dun === d.id) delayed.push({ t: .1, fn: completeQuest });
   }
@@ -2462,6 +2640,7 @@
         for (const p of [dun.exit, dun.exit2]) if (p && Math.hypot(player.x - p.x, player.y - p.y) < 42) { leaveDungeon(false); break; }
         if (dun && !dun.boss && player.x > 1280) {
           dun.boss = spawnEnemy(dun.def.boss, 1500, 640);
+          if(dun.def.bossArt)dun.boss.artOverride=dun.def.bossArt;
           showBanner(dun.boss.t.name, dun.def.sub); sfx('slam'); shake(10); ring(1500, 640, dun.def.acc, 40, 320);
         }
       }
@@ -2626,6 +2805,10 @@
   /* ---------- desenho dos novos inimigos ---------- */
   const NEW_TYPES = ['bat', 'mage', 'brute', 'lorde', 'matriarca', 'arquimago', 'titan','spider','wraith','cultist','guardian','shaman','harpy','mimic'];
   function drawEnemy(e) {
+    if (window.ABISMO_ENEMY_ART?.draw) {
+      const artId = e.artOverride || e.t.artId || (e.type === 'boss' ? 'guardian' : e.type);
+      return window.ABISMO_ENEMY_ART.draw(ctx, artId === e.type ? e : { ...e, type: artId }, gameTime);
+    }
     if (!NEW_TYPES.includes(e.type)) return drawEnemyOld(e);
     const t = e.t, r = t.r, bob = Math.sin(gameTime * 5 + e.bob), dx = Math.cos(e.face) >= 0 ? 1 : -1;
     const raise = e.state === 'windup' ? 1 - e.timer / (e.maxTimer || 1) : 0;
@@ -2755,7 +2938,9 @@
     anao: { n: 'Anão', d: 'Robusto e teimoso. +25% vida, +5% dano, −8% velocidade.', hp: 1.25, sp: .92, fo: 1, dm: 1.05, xp: 1, skin: ['#e0b894', '#c99b74', '#a8643c', '#7a4a2e'] },
     orc: { n: 'Orc', d: 'Brutal. +15% dano, −15% foco.', hp: 1.1, sp: 1, fo: .85, dm: 1.15, xp: 1, skin: ['#7fae5a', '#5f9150', '#8fa070', '#6a7f9a'] },
     tiefling: { n: 'Tiefling', d: 'Sangue infernal. +15% foco, +10% dano, −8% vida.', hp: .92, sp: 1, fo: 1.15, dm: 1.1, xp: 1, skin: ['#b74950','#8b4a91','#d77f6a','#6a617f'] },
-    minotauro: { n: 'Minotauro', d: 'Força taurina. +35% vida, +12% dano, −13% velocidade.', hp: 1.35, sp: .87, fo: .85, dm: 1.12, xp: 1, skin: ['#ae8464','#644737','#c6a088','#8d6764'] }
+    minotauro: { n: 'Minotauro', d: 'Força taurina. +35% vida, +12% dano, −13% velocidade.', hp: 1.35, sp: .87, fo: .85, dm: 1.12, xp: 1, skin: ['#ae8464','#644737','#c6a088','#8d6764'] },
+    kitsune: { n: 'Kitsune', d: 'Raposa espiritual. +12% foco, +10% velocidade e magia ilusória.', hp: .94, sp: 1.1, fo: 1.12, dm: 1.04, xp: 1, skin: ['#f0d7c4','#dca977','#8b5c48','#edc5a2'] },
+    draconato: { n: 'Draconato', d: 'Escamas ancestrais. +18% vida e resistência, com passo mais pesado.', hp: 1.18, sp: .94, fo: .96, dm: 1.08, xp: 1, skin: ['#a75b49','#4e7897','#56815c','#444650'] }
   };
   const CLASSES = {
     guerreiro: { n: 'Guerreiro', w: 'Espada Longa', d: 'Combo de 3 golpes em arco. Habilidade: Redemoinho de lâminas.', hp: 1.1, fo: 1, sp: 1, dm: 1, atk: 1, rng: 1, dc: 1, cost: 20, cd: 4, icon: '✦' },
@@ -2763,7 +2948,8 @@
     arqueiro: { n: 'Arqueiro', w: 'Arco Curto', d: 'Flechas rápidas que perfuram. Habilidade: Leque de 7 flechas.', hp: .9, fo: 1.1, sp: 1.08, dm: 1, atk: 1, rng: 1, dc: 1, cost: 20, cd: 4, icon: '➶' },
     paladino: { n: 'Paladino', w: 'Martelo Sagrado', d: 'Golpes lentos e devastadores. Habilidade: Julgamento (cura + explosão).', hp: 1.3, fo: 1, sp: .96, dm: 1, atk: 1.7, rng: 1.1, dc: 1.7, cost: 25, cd: 6, icon: '☀' },
     druida: { n: 'Druida', w: 'Cajado das Raízes', d: 'Dispara espinhos vivos. Habilidade: Ciclo Vital, cura e fere ao redor.', hp: 1, fo: 1.25, sp: 1, dm: 1.05, atk: 1, rng: 1, dc: 1, cost: 24, cd: 5, icon: '❋' },
-    assassino: { n: 'Assassino', w: 'Lâminas Gêmeas', d: 'Golpes rápidos e críticos. Habilidade: Passo Sombrio, investida cortante.', hp: .88, fo: .95, sp: 1.18, dm: 1.12, atk: .72, rng: .82, dc: 1.1, cost: 18, cd: 3.2, icon: '✧' }
+    assassino: { n: 'Assassino', w: 'Lâminas Gêmeas', d: 'Golpes rápidos e críticos. Habilidade: Passo Sombrio, investida cortante.', hp: .88, fo: .95, sp: 1.18, dm: 1.12, atk: .72, rng: .82, dc: 1.1, cost: 18, cd: 3.2, icon: '✧' },
+    tanke: { n: 'Tanke', w: 'Baluarte Colossal', d: 'Armadura pesada, escudos de corpo inteiro e armas de cerco. Segure B ou ⬡ para gastar mana e bloquear golpes.', hp: 1.48, fo: 1.05, sp: .82, dm: 1.12, atk: 1.2, rng: 1.18, dc: 1.3, cost: 18, cd: 5.5, icon: '⬡' }
   };
   const ARMORS = {
     couro: { n: 'Couro de Caçador', hp: .96, speed: 1.08, guard: .06 },
@@ -2785,7 +2971,12 @@
     totem: { n: 'Totem vivo', cls: 'druida', damage: 1.02, rate: 1, range: 1.2 },
     lunaclara: { n: 'Cajado da lua', cls: 'druida', damage: 1.2, rate: .88, range: 1.1 },
     adagas: { n: 'Adagas gêmeas', cls: 'assassino', damage: 1, rate: 1.08, range: .92 },
-    katars: { n: 'Katars sombrios', cls: 'assassino', damage: 1.18, rate: .92, range: 1.04 }
+    katars: { n: 'Katars sombrios', cls: 'assassino', damage: 1.18, rate: .92, range: 1.04 },
+    tank_escudotorre: { n: 'Escudo-Torre do Sentinela', cls: 'tanke', damage: 1.05, rate: .9, range: 1.12, weaponType: 'shield', shieldModel: 17, large: true },
+    tank_bulwark: { n: 'Escudo Colossal do Baluarte', cls: 'tanke', damage: 1.08, rate: .86, range: 1.08, weaponType: 'shield', shieldModel: 18, large: true },
+    tank_citadel: { n: 'Escudo da Cidadela', cls: 'tanke', damage: 1.13, rate: .8, range: 1.14, weaponType: 'shield', shieldModel: 20, large: true },
+    tank_maul: { n: 'Marreta de Cerco', cls: 'tanke', damage: 1.28, rate: .74, range: 1.2, weaponType: 'hammer', hammerModel: 11, large: true },
+    tank_montante: { n: 'Montante Colossal', cls: 'tanke', damage: 1.25, rate: .78, range: 1.25, weaponType: 'sword', swordModel: 24, large: true }
   };
   const ELEMENTS = {
     fogo: { n: 'Fogo', color: '#ff815b', strong: ['skeleton', 'brute', 'lorde', 'titan'] },
@@ -2801,7 +2992,7 @@
   };
   if (!RACES[cust.race]) cust.race = 'humano';
   if (!CLASSES[cust.cls]) cust.cls = 'guerreiro';
-  const defaultWeapon = cls => ({ guerreiro: 'espada', mago: 'cajado', arqueiro: 'arco', paladino: 'martelo', druida: 'totem', assassino: 'adagas' }[cls]);
+  const defaultWeapon = cls => ({ guerreiro: 'espada', mago: 'cajado', arqueiro: 'arco', paladino: 'martelo', druida: 'totem', assassino: 'adagas', tanke: 'tank_bulwark' }[cls]);
   if (!ARMORS[cust.armorType]) cust.armorType = 'cota';
   if (!WEAPONS[cust.weapon] || WEAPONS[cust.weapon].cls !== cust.cls) cust.weapon = defaultWeapon(cust.cls);
   if (!ELEMENTS[cust.element]) cust.element = 'fogo';
@@ -2818,7 +3009,7 @@
 
   const hpMul = () => RACES[cust.race].hp * CLASSES[cust.cls].hp * ARMORS[cust.armorType].hp * (starterBoon('vitality') ? 1.30 : 1);
   const foMul = () => RACES[cust.race].fo * CLASSES[cust.cls].fo * (starterBoon('focus') ? 1.35 : 1);
-  const dmMul = () => RACES[cust.race].dm * CLASSES[cust.cls].dm * WEAPONS[cust.weapon].damage * (starterBoon('fury') ? 1.15 : 1);
+  const dmMul = () => RACES[cust.race].dm * CLASSES[cust.cls].dm * WEAPONS[cust.weapon].damage * (starterBoon('fury') ? 1.15 : 1) * (player.relics.mimicWeapon ? 1.28 : 1);
   const spMul = () => RACES[cust.race].sp * CLASSES[cust.cls].sp * ARMORS[cust.armorType].speed * (starterBoon('stride') ? 1.12 : 1);
   const xpMul = () => RACES[cust.race].xp;
   const atkMul = () => CLASSES[cust.cls].atk * WEAPONS[cust.weapon].rate, rangeMul = () => CLASSES[cust.cls].rng * WEAPONS[cust.weapon].range, dmgClass = () => CLASSES[cust.cls].dc;
@@ -2915,149 +3106,23 @@
     const t = document.querySelector('.hero-title small'); if (t) t.textContent = `${RACES[cust.race].n} ${CLASSES[cust.cls].n}`;
     const sp = el.skillButton.querySelector('span'); if (sp) sp.textContent = CLASSES[cust.cls].icon;
     el.skillButton.setAttribute('aria-label', 'Habilidade: ' + CLASSES[cust.cls].n);
+    if (el.blockButton) { el.blockButton.hidden = cust.cls !== 'tanke'; if (cust.cls !== 'tanke') setBlocking(false); }
   }
 
   /* ---------- herói: raça, classe e armas ---------- */
+  const worldArtCache = new WeakMap();
   function paintHero(c, x, y, ang, walk) {
-    const sw = Math.sin(walk*.72) * (player.motion ?? 1), cs = cust, R = cs.race, K = cs.cls;
-    const sc = { humano: [1, 1], elfo: [.93, 1.05], anao: [1.1, .9], orc: [1.15, 1.06], tiefling: [1.0, 1.07], minotauro: [1.28,1.15] }[R] || [1, 1];
-    c.save(); c.translate(x, y); c.rotate(ang + Math.PI / 2); c.scale(sc[0] * (cs.body === 'robusto' ? 1.12 : cs.body === 'esguio' ? .91 : 1), sc[1]); c.lineCap = 'round';
-    if (cs.capeStyle === 'sem') c.globalAlpha = 0;
-    c.fillStyle = shade(cs.cape, -35); c.beginPath(); c.moveTo(-10, -3); c.quadraticCurveTo(-17 + sw * 3, 14, -10 + sw * 5, 27); c.lineTo(10 + sw * 5, 27); c.quadraticCurveTo(17 + sw * 3, 14, 10, -3); c.closePath(); c.fill();
-    c.fillStyle = cs.cape; c.beginPath(); c.moveTo(-7, -2); c.quadraticCurveTo(-11 + sw * 2, 13, -6 + sw * 4, 23); c.lineTo(6 + sw * 4, 23); c.quadraticCurveTo(11 + sw * 2, 13, 7, -2); c.closePath(); c.fill();
-    c.globalAlpha = 1;
-    if (K === 'arqueiro') { c.save(); c.rotate(.28); c.fillStyle = '#5a3d24'; c.fillRect(1, 0, 7, 19); c.fillStyle = '#d9d6c3'; for (let i = 0; i < 3; i++) c.fillRect(2 + i * 2, -4, 1.4, 5); c.restore(); }
-    // Two-step gait with forward/back foot placement, separate from facing angle.
-    c.fillStyle = '#181c23';
-    for (const side of [-1,1]) {
-      c.save();c.translate(side*6,12+sw*side*3);
-      c.rotate(-sw*side*.11);
-      c.fillStyle=shade(cs.armor,-45);c.beginPath();c.ellipse(0,-3,4.6,8,0,0,TAU);c.fill();
-      c.fillStyle='#1e2229';c.beginPath();c.roundRect(-4,1,8,11,2);c.fill();
-      c.fillStyle=cs.trim;c.fillRect(-4,4,8,1.5);
-      c.restore();
+    const cs=cust;
+    const sig=[cs.race,cs.cls,cs.skin,cs.hair,cs.hairStyle,cs.armor,cs.cape,cs.capeStyle,cs.armorType,cs.weapon,cs.trim,cs.glow,cs.emblem,cs.body,cs.style].join('|');
+    let cached=worldArtCache.get(cs);
+    if(!cached||cached.sig!==sig){
+      const weapon=WEAPONS[cs.weapon]||{};
+      const look={race:cs.race,cls:cs.cls,skin:cs.skin,hairColor:cs.hair,hairStyle:cs.hairStyle||'curto',beard:cs.beard||'nenhuma',head:cs.style===1?'elmo':cs.style===0?'capuz':'nenhum',capeStyle:cs.capeStyle,capeColor:cs.cape,armorType:cs.armorType,armorColor:cs.armor,trim:cs.trim,glow:cs.glow,weapon:cs.weapon,body:cs.body,emblem:cs.emblem,mark:cs.scars,shoulders:cs.cls==='paladino'||cs.cls==='tanke'?'aco':'nenhum'};
+      cached={sig,model:CharacterArt.makeModel(look,{race:cs.race,class:cs.cls,weaponKey:cs.weapon,weaponName:weapon.n,weaponType:weapon.weaponType,shieldModel:weapon.shieldModel,hammerModel:weapon.hammerModel,swordModel:weapon.swordModel,large:weapon.large})};worldArtCache.set(cs,cached);
     }
-    c.fillStyle = shade(cs.armor, -30); c.beginPath(); c.ellipse(0, 1, 12, 13, 0, 0, TAU); c.fill();
-    c.fillStyle = cs.armor; c.beginPath(); c.ellipse(0, 0, 10.5, 11.5, 0, 0, TAU); c.fill();
-    c.fillStyle = shade(cs.armor, 40); c.beginPath(); c.ellipse(-3, -3, 4.5, 5, -.3, 0, TAU); c.fill();
-    if (cs.armorType === 'couro') {
-      c.strokeStyle = '#d6b17b'; c.lineWidth = 2; c.beginPath(); c.moveTo(-8, -7); c.lineTo(7, 8); c.moveTo(8, -7); c.lineTo(-7, 8); c.stroke();
-      c.fillStyle = '#65452d'; c.fillRect(-13, -6, 5, 9); c.fillRect(8, -6, 5, 9);
-    } else if (cs.armorType === 'placas') {
-      c.fillStyle = shade(cs.armor, 30); c.beginPath(); c.ellipse(-10, -4, 6, 5, -.35, 0, TAU); c.ellipse(10, -4, 6, 5, .35, 0, TAU); c.fill();
-      c.strokeStyle = '#d8d8c8'; c.lineWidth = 1.3; c.beginPath(); c.moveTo(0, -10); c.lineTo(0, 8); c.moveTo(-7, 0); c.lineTo(7, 0); c.stroke();
-      c.fillStyle = cs.glow; c.beginPath(); c.arc(0, -2, 2.2, 0, TAU); c.fill();
-    } else if (cs.armorType === 'runica') {
-      c.strokeStyle = cs.glow; c.globalAlpha = .8; c.lineWidth = 1.4; c.beginPath(); c.moveTo(-6, -7); c.lineTo(-2, -3); c.lineTo(-6, 1); c.moveTo(6, -7); c.lineTo(2, -3); c.lineTo(6, 1); c.stroke(); c.globalAlpha = 1;
-      c.fillStyle = shade(cs.cape, 20); c.beginPath(); c.moveTo(-12, -5); c.lineTo(-16, 3); c.lineTo(-10, 8); c.closePath(); c.moveTo(12, -5); c.lineTo(16, 3); c.lineTo(10, 8); c.closePath(); c.fill();
-    }
-    c.fillStyle = '#c9a458'; c.fillRect(-10, 3, 20, 3);
-    c.strokeStyle = cs.trim || '#c7a65c'; c.lineWidth=1.1;
-    c.beginPath();c.moveTo(-8,-8);c.lineTo(0,-10);c.lineTo(8,-8);c.moveTo(-7,8);c.lineTo(0,10);c.lineTo(7,8);c.stroke();
-    if (cs.emblem === 'sol') { c.fillStyle=cs.trim; c.beginPath();c.arc(0,0,3,0,TAU);c.fill(); }
-    if (cs.emblem === 'lua') {c.strokeStyle=cs.trim;c.lineWidth=2;c.beginPath();c.arc(0,0,3.4,-1.2,1.7);c.stroke();}
-    if (cs.emblem === 'runa') {c.strokeStyle=cs.trim;c.lineWidth=2;c.beginPath();c.moveTo(0,-4);c.lineTo(3,0);c.lineTo(0,4);c.lineTo(-3,0);c.closePath();c.stroke();}
-    if (K === 'paladino') { c.fillStyle = '#f4cf79'; c.fillRect(-1.6, -7, 3.2, 13); c.fillRect(-5, -3, 10, 3); }
-    if (K === 'mago') { c.strokeStyle = cs.glow; c.lineWidth = 1.4; c.beginPath(); c.arc(0, -1, 5, 0, TAU); c.moveTo(-5, -1); c.lineTo(5, -1); c.stroke(); }
-    if (K === 'arqueiro') { c.strokeStyle = '#5a3d24'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(-9, -8); c.lineTo(9, 8); c.stroke(); }
-    const big = K === 'guerreiro' || K === 'paladino';
-    c.fillStyle = shade(cs.armor, 25); c.beginPath(); c.arc(-12, -3, big ? 6.5 : 4.6, 0, TAU); c.arc(12, -3, big ? 6.5 : 4.6, 0, TAU); c.fill();
-    if (K === 'guerreiro') { c.fillStyle = shade(cs.armor, 55); for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 10, -7); c.lineTo(s * 13, -13); c.lineTo(s * 15, -6); c.fill(); } }
-    // armas
-    if (K === 'guerreiro') {
-      c.strokeStyle = '#6a4a2c'; c.lineWidth = 4; c.beginPath(); c.moveTo(14, -2); c.lineTo(16, -29); c.stroke();
-      if (cs.weapon === 'machado') {
-        c.fillStyle = cs.glow; c.beginPath(); c.moveTo(12, -25); c.lineTo(22, -31); c.lineTo(25, -24); c.lineTo(21, -17); c.lineTo(14, -19); c.closePath(); c.fill();
-      } else if (cs.weapon === 'lanca') {
-        c.strokeStyle = '#eef3f0'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(16, -26); c.lineTo(18, -43); c.stroke();
-        c.fillStyle = cs.glow; c.beginPath(); c.moveTo(18, -49); c.lineTo(14, -41); c.lineTo(22, -42); c.closePath(); c.fill();
-      } else {
-        c.globalAlpha = .35; c.strokeStyle = cs.glow; c.lineWidth = 8; c.beginPath(); c.moveTo(14, -2); c.lineTo(16, -29); c.stroke(); c.globalAlpha = 1;
-        c.strokeStyle = '#eef3f0'; c.lineWidth = 3; c.beginPath(); c.moveTo(14, -2); c.lineTo(16, -29); c.stroke();
-      }
-      c.strokeStyle = '#c9a458'; c.lineWidth = 3; c.beginPath(); c.moveTo(10, -3); c.lineTo(19, -3); c.stroke();
-    } else if (K === 'mago') {
-      if (cs.weapon === 'grimorio') {
-        c.fillStyle = '#4b2946'; c.fillRect(11, -22, 13, 17); c.fillStyle = '#d2b477'; c.fillRect(17, -22, 1.5, 17); c.strokeStyle = cs.glow; c.lineWidth = 1; c.strokeRect(13, -19, 8, 10);
-      } else if (cs.weapon === 'varinha') {
-        c.strokeStyle = '#6a4a2c'; c.lineWidth = 3; c.beginPath(); c.moveTo(14, 4); c.lineTo(20, -19); c.stroke();
-        c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = cs.glow; c.beginPath(); c.arc(21, -22, 6, 0, TAU); c.fill(); c.restore();
-      } else {
-        c.strokeStyle = '#6a4a2c'; c.lineWidth = 3; c.beginPath(); c.moveTo(14, 8); c.lineTo(15, -30); c.stroke();
-        c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = cs.glow; c.globalAlpha = .4; c.beginPath(); c.arc(15, -33, 9, 0, TAU); c.fill(); c.globalAlpha = 1; c.beginPath(); c.arc(15, -33, 4.5, 0, TAU); c.fill(); c.restore();
-      }
-    } else if (K === 'arqueiro') {
-      if (cs.weapon === 'besta') {
-        c.strokeStyle = '#8a5a30'; c.lineWidth = 3; c.beginPath(); c.moveTo(8, -11); c.lineTo(25, -11); c.moveTo(16, -18); c.lineTo(16, -4); c.stroke();
-        c.strokeStyle = '#e8e0c0'; c.lineWidth = 1; c.beginPath(); c.moveTo(8, -11); c.lineTo(16, -18); c.lineTo(25, -11); c.lineTo(16, -4); c.stroke();
-      } else {
-        c.strokeStyle = '#8a5a30'; c.lineWidth = 3; c.beginPath(); c.moveTo(15, -28); c.quadraticCurveTo(26, -13, 15, 2); c.stroke();
-        c.strokeStyle = '#e8e0c0'; c.lineWidth = 1; c.beginPath(); c.moveTo(15, -28); c.lineTo(15, 2); c.stroke();
-      }
-    } else if (K === 'paladino') {
-      c.strokeStyle = '#6a4a2c'; c.lineWidth = 3.4; c.beginPath(); c.moveTo(14, 6); c.lineTo(15, -24); c.stroke();
-      if (cs.weapon === 'maça') {
-        c.fillStyle = '#aab4bd'; c.beginPath(); c.arc(16, -28, 8, 0, TAU); c.fill(); c.strokeStyle = '#d6dde2'; c.lineWidth = 2; c.beginPath(); c.moveTo(16, -39); c.lineTo(16, -17); c.moveTo(5, -28); c.lineTo(27, -28); c.stroke();
-      } else { c.fillStyle = '#aab4bd'; c.fillRect(8, -34, 16, 11); c.fillStyle = '#d6dde2'; c.fillRect(8, -34, 16, 3); }
-      c.globalAlpha = .5; c.fillStyle = cs.glow; c.fillRect(10, -31, 12, 5); c.globalAlpha = 1;
-    } else if (K === 'druida') {
-      c.strokeStyle = '#765533'; c.lineWidth = 3.4; c.beginPath(); c.moveTo(14, 7); c.lineTo(16, -34); c.stroke();
-      c.fillStyle = cs.glow; for (let i = 0; i < 3; i++) { c.beginPath(); c.ellipse(16 + (i - 1) * 5, -36 - Math.abs(i - 1) * 3, 3, 6, (i - 1) * .4, 0, TAU); c.fill(); }
-      c.strokeStyle = '#5e8b52'; c.lineWidth = 2; c.beginPath(); c.moveTo(-14, -3); c.quadraticCurveTo(-20, -10, -14, -18); c.stroke();
-    } else {
-      c.strokeStyle = '#b9c1d0'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(12, -4); c.lineTo(18, -23); c.moveTo(-12, -4); c.lineTo(-18, -23); c.stroke();
-      c.fillStyle = cs.glow; c.beginPath(); c.moveTo(18, -27); c.lineTo(14, -21); c.lineTo(20, -22); c.closePath(); c.moveTo(-18, -27); c.lineTo(-20, -22); c.lineTo(-14, -21); c.closePath(); c.fill();
-    }
-    // Fivelas, cotoveleiras, luvas e sombras: silhueta humana mais legível.
-    for(const side of [-1,1]){
-      c.fillStyle=shade(cs.armor,-42);c.beginPath();c.ellipse(side*12,5+sw*side*1.2,4,6,side*.18,0,TAU);c.fill();
-      c.fillStyle=shade(cs.armor,42);c.beginPath();c.ellipse(side*12,-4,4.9,5.8,0,0,TAU);c.fill();
-      c.strokeStyle=cs.trim;c.lineWidth=1.3;c.beginPath();c.moveTo(side*10,3);c.lineTo(side*14,4);c.stroke();
-    }
-    c.fillStyle='#4a3525';c.fillRect(-9,8,18,4);c.fillStyle=cs.trim;c.fillRect(-2,7,4,5);
-    // cabeça
-    if (R === 'elfo' || R === 'orc' || R === 'tiefling') { c.fillStyle = cs.skin; for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 6, -14); c.lineTo(s * 14, -18); c.lineTo(s * 6, -9); c.fill(); } }
-    const eye = () => { c.fillStyle = R === 'orc' ? '#ffd24a' : '#1c1814'; c.beginPath(); c.arc(-2.4, -14.5, 1, 0, TAU); c.arc(2.4, -14.5, 1, 0, TAU); c.fill(); };
-    if (cs.style === 0) {
-      c.fillStyle = shade(cs.cape, -10); c.beginPath(); c.arc(0, -9, 9, 0, TAU); c.fill();
-      c.fillStyle = cs.skin; c.beginPath(); c.arc(0, -13, 5.4, 0, TAU); c.fill(); eye();
-    } else if (cs.style === 1) {
-      c.fillStyle = cs.cape; c.beginPath(); c.ellipse(0, -4, 3, 9, 0, 0, TAU); c.fill();
-      c.fillStyle = '#aab4bd'; c.beginPath(); c.arc(0, -11, 8.2, 0, TAU); c.fill();
-      c.fillStyle = '#d6dde2'; c.beginPath(); c.arc(-2, -13, 3.4, 0, TAU); c.fill();
-      c.fillStyle = '#10161a'; c.fillRect(-5, -16.5, 10, 2.6);
-    } else {
-      c.fillStyle = cs.hair; c.beginPath(); c.arc(0, -9, 8.4, 0, TAU); c.fill();
-      c.fillStyle = cs.skin; c.beginPath(); c.arc(0, -13, 6, 0, TAU); c.fill(); eye();
-      c.fillStyle = cs.hair; c.beginPath(); c.arc(0, -16, 5.2, Math.PI, TAU); c.fill();
-    }
-    if (cs.hairStyle === 'moicano' && cs.style === 2) {c.fillStyle=cs.hair; c.beginPath();c.ellipse(0,-19,3.5,9,0,0,TAU);c.fill();}
-    if (cs.hairStyle === 'longo' && cs.style === 2) {c.fillStyle=cs.hair; c.fillRect(-8,-14,3,17);c.fillRect(5,-14,3,17);}
-    if (cs.hairStyle === 'tranca' && cs.style === 2) {c.fillStyle=cs.hair;c.fillRect(4,-14,4,19);c.fillStyle=cs.trim;c.fillRect(4,-2,4,2);}
-    if (cs.scars !== 'nenhuma' && cs.style !== 1) {c.strokeStyle=cs.scars==='guerra'?'#ab665a':'#694c4c';c.lineWidth=1.2;c.beginPath();c.moveTo(1,-16);c.lineTo(5,-11);c.stroke();}
-    if (R === 'tiefling') {
-      c.fillStyle=shade(cs.skin,-35);
-      for (const side of [-1,1]) {
-        c.beginPath();c.moveTo(side*4,-16);c.quadraticCurveTo(side*13,-30,side*11,-33);c.lineTo(side*7,-19);c.closePath();c.fill();
-      }
-      c.strokeStyle=cs.cape;c.lineWidth=3;c.beginPath();c.moveTo(-8,11);c.quadraticCurveTo(-22,23,-13,32);c.stroke();
-    }
-    if (R === 'minotauro') {
-      c.fillStyle=cs.skin;c.beginPath();c.ellipse(0,-12,9,10,0,0,TAU);c.fill();
-      c.fillStyle='#e5d7b4';
-      for (const side of [-1,1]) {c.beginPath();c.moveTo(side*7,-17);c.quadraticCurveTo(side*20,-34,side*24,-28);c.quadraticCurveTo(side*18,-20,side*10,-15);c.closePath();c.fill();}
-      c.fillStyle=shade(cs.skin,26);c.beginPath();c.ellipse(0,-7,8,5,0,0,TAU);c.fill();
-      c.fillStyle='#35251f';c.beginPath();c.arc(-4,-7,1.4,0,TAU);c.arc(4,-7,1.4,0,TAU);c.fill();
-    }
-    if (R === 'anao') { c.fillStyle = cs.hair; c.beginPath(); c.ellipse(0, -4, 4.8, 4.4, 0, 0, TAU); c.fill(); c.fillStyle = shade(cs.hair, 30); c.fillRect(-1, -2, 2, 6); }
-    if (R === 'orc') { c.fillStyle = '#f4efdc'; for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 3, -18.5); c.lineTo(s * 4.6, -23); c.lineTo(s * 1.6, -19.5); c.fill(); } c.fillStyle = shade(cs.skin, -45); c.fillRect(-5, -15.8, 10, 1.2); }
-    if (K === 'mago') {
-      c.fillStyle = shade(cs.cape, -25); c.beginPath(); c.ellipse(0, -11, 12, 10.5, 0, 0, TAU); c.fill();
-      c.fillStyle = cs.cape; c.beginPath(); c.arc(0, -11, 6.8, 0, TAU); c.fill();
-      c.fillStyle = cs.glow; c.beginPath(); c.arc(-3, -13, 1.6, 0, TAU); c.fill();
-    }
-    if (K === 'arqueiro') { c.fillStyle = '#6fb06a'; c.beginPath(); c.ellipse(7, -10, 2, 7, .5, 0, TAU); c.fill(); }
-    if (K === 'paladino') { c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = '#ffe28a'; c.globalAlpha = .75; c.lineWidth = 2; c.beginPath(); c.arc(0, -11, 11.5, 0, TAU); c.stroke(); c.restore(); }
+    const dir=CharacterArt.viewAngle(ang);
+    c.save();c.translate(x,y+20);c.scale(.78,.78);
+    CharacterArt.draw(c,cached.model,{t:gameTime,ph:walk,mv:Math.min(1,Math.abs(player.motion??1)),view:dir.view,flip:dir.flip,seed:player.level||1,blocking:cs.cls==='tanke'&&player.blocking,atkP:player.swing?Math.max(0,1-player.swing.t/Math.max(.01,player.swing.duration||.3)):0});
     c.restore();
   }
 
@@ -3222,19 +3287,25 @@
     const dialog=$('#npcDialogue');
     if(dialog){dialog.hidden=false;dialog.querySelector('strong').textContent=info.name;dialog.querySelector('p').textContent=line;dialog.querySelector('small').textContent=price?`Interaja novamente · Serviço: ${price} ◈`:'Explore e siga as trilhas'};
   }
+  const npcArtCache = new WeakMap();
   function drawNpc(n) {
     const role=NPC_ROLES[n.role];
     ctx.save();ctx.translate(n.x,n.y);
     ctx.fillStyle='#081c16aa';ctx.beginPath();ctx.ellipse(0,10,16,7,0,0,TAU);ctx.fill();
-    ctx.fillStyle=role.col;ctx.beginPath();ctx.moveTo(0,-19);ctx.quadraticCurveTo(-16,-6,-12,13);ctx.lineTo(12,13);ctx.quadraticCurveTo(16,-6,0,-19);ctx.fill();
-    ctx.fillStyle='#e4c8a4';ctx.beginPath();ctx.arc(0,-18,7,0,TAU);ctx.fill();
-    ctx.fillStyle=n.role==='blacksmith'?'#41434b':'#57452f';ctx.beginPath();ctx.arc(0,-21,7,Math.PI,TAU);ctx.fill();
-    if (n.role==='blacksmith') {ctx.fillStyle='#ccd5d6';ctx.fillRect(9,-14,5,23);ctx.fillRect(5,-16,13,6);}
-    if (n.role==='healer') {ctx.fillStyle='#f0fff3';ctx.fillRect(-2,-4,4,13);ctx.fillRect(-6,0,12,4);}
-    if (n.role==='merchant') {ctx.fillStyle='#c99848';ctx.fillRect(-15,0,7,10);}
-    if (n.role==='bard') {ctx.strokeStyle='#8d593a';ctx.lineWidth=4;ctx.beginPath();ctx.arc(12,1,7,0,TAU);ctx.stroke();}
-    ctx.textAlign='center';ctx.font='bold 10px system-ui';ctx.fillStyle='#d9ffe1';ctx.fillText('◆ '+role.name,n.x-n.x,n.y-n.y-34);
-    if (Math.hypot(player.x-n.x,player.y-n.y)<75) {ctx.font='bold 11px system-ui';ctx.fillStyle='#ffe29a';ctx.fillText('[E] CONVERSAR',0,-48);}
+    const profiles={
+      healer:{race:'elfo',class:'Clérigo',armor:'runica',armorColor:'#e6e9db',capeColor:'#f1eee0',hairColor:'#d7c98e',hairStyle:'longo',head:'capuz',weapon:'maca',glow:'#a4f0c0'},
+      merchant:{race:'humano',class:'guerreiro',armor:'couro',armorColor:'#765239',capeColor:'#6b4935',hairColor:'#4d3528',beard:'cheia',head:'capuz',weapon:'espada',glow:'#ffd27a'},
+      scout:{race:'draconato',class:'arqueiro',armor:'couro',armorColor:'#466848',capeColor:'#294738',hairColor:'#477b68',head:'nenhum',weapon:'arco',glow:'#a5e18e'},
+      blacksmith:{race:'anao',class:'Fighter',armor:'placas',armorColor:'#675d54',capeColor:'#513d30',hairColor:'#5b3927',beard:'cheia',head:'elmo',weapon:'machado',glow:'#ffac70'},
+      bard:{race:'humano',class:'druida',armor:'couro',armorColor:'#634b77',capeColor:'#49345f',hairColor:'#6a4b3b',head:'nenhum',weapon:'totem',glow:'#d0b7fa'},
+      alchemist:{race:'tiefling',class:'Mago',armor:'runica',armorColor:'#59416d',capeColor:'#352840',hairColor:'#372b38',head:'capuz',weapon:'cajado',glow:'#d6a3fa'},
+      ranger:{race:'kitsune',class:'arqueiro',armor:'couro',armorColor:'#4b6844',capeColor:'#334d36',hairColor:'#b87e4b',head:'nenhum',weapon:'arco',glow:'#b8e58e'},
+      sage:{race:'elfo',class:'Mago',armor:'runica',armorColor:'#71879c',capeColor:'#41536f',hairColor:'#d5d9de',head:'capuz',weapon:'cajado',glow:'#acd5f0'}
+    };
+    let look=npcArtCache.get(n);if(!look){const profile=profiles[n.role]||profiles.scout;look=CharacterArt.makeModel(profile,{race:profile.race||'humano',class:profile.class||'arqueiro',seed:n.seed||1});npcArtCache.set(n,look)}
+    ctx.save();ctx.scale(.82,.82);CharacterArt.draw(ctx,look,{t:gameTime,ph:gameTime*2,mv:.08,view:'f',seed:n.seed||1});ctx.restore();
+    ctx.textAlign='center';ctx.font='bold 10px system-ui';ctx.fillStyle='#d9ffe1';ctx.fillText('◆ '+role.name,0,-53);
+    if (Math.hypot(player.x-n.x,player.y-n.y)<75) {ctx.font='bold 11px system-ui';ctx.fillStyle='#ffe29a';ctx.fillText('[E] CONVERSAR',0,-64);}
     ctx.restore();
   }
   function drawBubble(x,y,text,color) {
@@ -3281,7 +3352,7 @@
     if(dun){enemies.length=0;solids.length=0;solids.push(...owSolids);owSolids=[];owEnemies=[];world.width=OW.w;world.height=OW.h;dun=null;ow=null;}
     for(const key of Object.keys(cleared))delete cleared[key];
     Object.assign(player,{x:SPAWN.x,y:SPAWN.y,angle:-Math.PI/2,hp:100,focus:65,stamina:100,level:15,xp:0,coins:500,potions:3,kills:0,healthRanks:0,staminaRanks:0,manaRanks:0,ultimateCd:0,ultimateTime:0,attackCd:0,combo:0,comboTimer:0,charge:0,dashT:0,dashCd:0,skillCd:0,invuln:2,flash:0,hurt:0,walk:0,stepDist:0,aimLock:0,dead:false,deadT:0,burn:0,poison:0,chill:0,shock:0,curse:0,buff:0,kx:0,ky:0,relics:{},motion:0,swing:null,spin:null});
-    quest.stage=0;quest.progress=0;wave=1;waveTimer=0;spawnTimer=1;gameTime=0;biomeExposure=0;fadeSt=null;splash=null;portalCd=0;
+    quest.stage=0;quest.progress=0;wave=1;waveTimer=0;spawnTimer=1;finalBossActive=false;mimicBossTimer=rand(105,185);delete player.legendaryWeapon;gameTime=0;biomeExposure=0;fadeSt=null;splash=null;portalCd=0;
     enemies.length=0;loot.length=0;shots.length=0;pShots.length=0;particles.length=0;delayed.length=0;pendingLevelChoices.length=0;
     targetEnemy=null;attackHeld=false;autoAttack=false;$('#autoAttackBtn').setAttribute('aria-pressed','false');$('#autoAttackBtn').textContent='AUTO ⚔';
     cust.created=false;cust.ultimate=null;cust.boons=[];player.hp=maxHpOf();player.focus=maxFocusOf();player.stamina=maxStaminaOf();

@@ -16,13 +16,13 @@
         <button id="keyboardMode" type="button" aria-pressed="false" aria-label="Usar teclado">⌨ <span>Teclado</span></button>
         <button id="touchMode" type="button" aria-pressed="false" aria-label="Usar controles na tela">☝ <span>Na tela</span></button>
       </div>
-      <div class="top-stats"><button class="campaign-button" id="campaignBtn" type="button" title="Diário de biomas e portais de viagem">▣ <span>MASMORRAS</span> <b id="campaignCount">0/10</b></button><button class="sound-chip auto-chip" id="autoAttackBtn" type="button" aria-pressed="false" title="Alternar ataque automático (T)">AUTO ⚔</button><button class="sound-chip" id="customBtn" type="button" aria-label="Personalizar herói" title="Personalizar herói">☺</button><button class="sound-chip" id="soundToggle" type="button" aria-label="Ligar ou desligar o som" aria-pressed="true">♪</button><span class="level-chip">NV <b id="level">1</b></span><span class="coin-chip">◈ <b id="coins">500</b></span><time id="clock">10:24</time></div>
+      <div class="top-stats"><button class="campaign-button" id="campaignBtn" type="button" title="Diário de biomas e portais de viagem">▣ <span>MASMORRAS</span> <b id="campaignCount">0/17</b></button><button class="sound-chip auto-chip" id="autoAttackBtn" type="button" aria-pressed="false" title="Alternar ataque automático (T)">AUTO ⚔</button><button class="sound-chip" id="customBtn" type="button" aria-label="Personalizar herói" title="Personalizar herói">☺</button><button class="sound-chip" id="soundToggle" type="button" aria-label="Ligar ou desligar o som" aria-pressed="true">♪</button><span class="level-chip">NV <b id="level">1</b></span><span class="coin-chip">◈ <b id="coins">500</b></span><time id="clock">10:24</time></div>
     </header>
 
     <section class="game-frame" aria-label="Mundo aberto">
       <canvas id="world" aria-label="Mapa explorável. Use WASD ou as setas para se mover."></canvas>
       <div class="scene-vignette" aria-hidden="true"></div>
-      <div class="objective"><span class="objective-dot"></span><div><small>OBJETIVO ATUAL</small><strong id="objectiveText">0/10 MASMORRAS · Escolha seu destino</strong></div><span class="objective-distance" id="distance">— m</span></div>
+      <div class="objective"><span class="objective-dot"></span><div><small>OBJETIVO ATUAL</small><strong id="objectiveText">0/17 MASMORRAS · Escolha seu destino</strong></div><span class="objective-distance" id="distance">— m</span></div>
       <div class="minimap-wrap"><canvas id="minimap" aria-label="Minimapa"></canvas><span class="map-label">MAPA</span></div>
       <div class="hero-status"><div class="hero-title"><span class="hero-avatar">⚔</span><span><strong id="heroName">Aventureiro</strong><small>Guardião errante</small></span><span class="status-level">NV <b id="statusLevel">1</b></span></div><div class="meter health"><span id="healthFill"></span></div><div class="meter mana"><span id="manaFill"></span></div><div class="meter stamina"><span id="staminaFill"></span></div><div class="meter-labels"><span>VIDA <b id="healthText">100 / 100</b></span><span>MANA <b id="manaText">65 / 65</b></span></div><div class="meter-labels stamina-labels"><span>VIGOR <b id="staminaText">100 / 100</b></span><span>POÇÕES <b id="potionText">3</b></span></div><div class="meter xp"><span id="xpFill"></span></div><div class="meter-labels xp-labels"><span>XP <b id="xpText">0 / 95</b></span><span></span></div><div class="status-effects" id="statusEffects">PODERES: 0</div></div>
       <div class="enemy-label" id="enemyLabel"><span id="enemyName">ALVO DE TREINO</span><div class="enemy-meter"><i id="enemyHealth"></i></div></div>
@@ -30,7 +30,7 @@
       <div class="level-panel" id="levelPanel" hidden><section class="level-card" role="dialog" aria-modal="true" aria-labelledby="levelPanelTitle"><span class="level-kicker">PROGRESSÃO</span><h2 id="levelPanelTitle">ESCOLHA UM APRIMORAMENTO</h2><div class="level-choices" id="levelChoices"></div></section></div>
       <div class="biome-journal" id="biomeJournal" hidden role="dialog" aria-modal="true" aria-label="Diário das masmorras">
         <div class="journal-card">
-          <header><div><small>CRÔNICAS DO ABISMO · CAMPANHA</small><h2>CONQUISTA DOS BIOMAS</h2><p id="biomeSummary">0 de 10 masmorras purificadas</p></div><button id="journalClose" type="button">✕ FECHAR</button></header>
+          <header><div><small>CRÔNICAS DO ABISMO · CAMPANHA</small><h2>CONQUISTA DOS BIOMAS</h2><p id="biomeSummary">0 de 17 masmorras purificadas</p></div><button id="journalClose" type="button">✕ FECHAR</button></header>
           <p class="journal-note">Cada terreno tem criaturas, perigos e chefes exclusivos. Derrote o guardião de cada masmorra para purificar o Abismo. <strong>Se morrer, você começa uma nova jornada.</strong> Use Viajar para explorar uma região distante.</p>
           <div class="biome-list" id="biomeList"></div>
           <footer>✧ Bênçãos opcionais são escolhidas na criação · ondas continuam ficando mais difíceis</footer>
@@ -40,21 +40,26 @@
       <div class="npc-dialogue" id="npcDialogue" hidden><div class="npc-dialogue-head"><strong>Viajante</strong><button type="button" id="dialogClose" aria-label="Fechar diálogo">✕</button></div><p></p><small></small></div>
        <div class="toast" id="toast" role="status" aria-live="polite"></div>
       <div class="banner" id="banner" role="status" aria-live="polite"></div>
-      <div class="controls-hint">WASD · mover <span>•</span> Espaço · atacar <span>•</span> Q · habilidade <span>•</span> R · ultimate <span>•</span> E · falar <span>•</span> H · poção <span>•</span> T · autoataque</div>
+      <div class="controls-hint">WASD · mover <span>•</span> Espaço · atacar <span>•</span> Q · habilidade <span>•</span> R · ultimate <span>•</span> E · falar <span>•</span> H · poção <span>•</span> B · bloquear (Tanke) <span>•</span> T · autoataque</div>
 
       <div class="touch-controls" aria-label="Controles de toque">
         <div class="joystick" id="joystick" aria-label="Direcional virtual" role="application"><div class="joy-ring"></div><div class="joy-knob" id="joyKnob"></div></div>
         <div class="action-cluster"><button class="small-action interact" id="interactButton" aria-label="Interagir com NPC" title="Conversar" hidden>☏</button>
           <button class="small-action potion" id="healButton" aria-label="Usar poção" title="Usar poção">✚<b class="badge" id="potionBadge">3</b></button>
           <button class="small-action dodge" id="dodgeButton" aria-label="Esquivar" title="Esquivar">➜</button>
+          <button class="small-action tank-block" id="blockButton" aria-label="Bloquear com escudo (Tanke)" title="Segure para bloquear">⬡</button>
           <button class="ultimate-button" id="ultimateButton" aria-label="Usar ultimate" title="Ultimate" hidden><span>✦</span><small>R</small></button>
           <button class="skill-button" id="skillButton" aria-label="Habilidade especial: redemoinho"><span>✦</span><small>Q</small></button>
           <button class="attack-button" id="attackButton" aria-label="Atacar"><span>⚔</span><small>ATACAR</small></button>
         </div>
       </div>
     </section>
-    <footer class="bottom-bar"><span><i class="online-dot"></i>Sobreviva ao Abismo</span><span id="worldMessage">Explore nove biomas. Purifique todas as masmorras. Morrer encerra a jornada.</span><span class="kill-counter"><span>PRÓXIMA <b id="nextWave">38s</b></span><span>ONDA <b id="wave">1</b></span><span>ALVOS <b id="kills">0</b></span></span></footer>
+    <footer class="bottom-bar"><span><i class="online-dot"></i>Sobreviva ao Abismo</span><span id="worldMessage">Explore 15 biomas. Purifique 17 masmorras. O Oni desperta após a última.</span><span class="kill-counter"><span>PRÓXIMA <b id="nextWave">38s</b></span><span>ONDA <b id="wave">1</b></span><span>ALVOS <b id="kills">0</b></span></span></footer>
   </main>
+  <script src="js/character-art.js"></script>
+  <script src="js/partial-catalog.js"></script>
+  <script src="js/reference-roster.js"></script>
+  <script src="js/enemy-art.js"></script>
   <script src="js/open-world.js"></script>
 </body>
 </html>

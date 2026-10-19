@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b171b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="screen-orientation" content="landscape">
+  <title>Crônicas do Abismo — Ascensão Elemental</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/open-world.css">
+</head>
+<body>
+  <main class="explorer" id="explorer" data-state="boot" data-control-mode="keyboard">
+    <canvas id="world" aria-label="Mundo de Crônicas do Abismo"></canvas>
+    <div class="scene-vignette" aria-hidden="true"></div>
+
+    <!-- ===== HUD ===== -->
+    <div class="hud" id="hud" hidden>
+      <div class="hero-card" id="heroCard">
+        <canvas id="portrait" width="96" height="96" aria-hidden="true"></canvas>
+        <div class="hc-main">
+          <div class="hc-top"><strong id="heroName">Aventureiro</strong><small id="heroClass">Humano Guerreiro</small><span class="hc-level">NV <b id="statusLevel">1</b></span></div>
+          <div class="bar hp"><i id="healthFill"></i><span id="healthText">100 / 100</span></div>
+          <div class="bar mp"><i id="manaFill"></i><span id="manaText">65 / 65</span></div>
+          <div class="bar sp"><i id="staminaFill"></i><span id="staminaText">100 / 100</span></div>
+          <div class="bar xp"><i id="xpFill"></i><span id="xpText">0 / 60</span></div>
+          <div class="status-effects" id="statusEffects"></div>
+        </div>
+      </div>
+
+      <div class="objective" id="objective"><span class="objective-dot"></span><div><small id="objectiveTitle">OBJETIVO</small><strong id="objectiveText">—</strong></div><span class="objective-distance" id="distance">— m</span></div>
+
+      <div class="hud-right">
+        <div class="chips">
+          <span class="chip coin-chip" title="Moedas">◈ <b id="coins">0</b></span>
+          <span class="chip potion-chip" title="Poções">✚ <b id="potionText">3</b></span>
+          <time class="chip" id="clock">10:24</time>
+          <button class="chip btn" id="btnAuto" type="button" aria-pressed="false" title="Ataque automático (T)">AUTO</button>
+          <button class="chip btn" id="btnMap" type="button" title="Mapa (M)">🗺</button>
+          <button class="chip btn" id="btnJournal" type="button" title="Diário (J)">📖</button>
+          <button class="chip btn" id="btnChar" type="button" title="Personagem (C)">☺</button>
+          <button class="chip btn" id="btnPause" type="button" title="Pausa (Esc)">❚❚</button>
+        </div>
+        <div class="minimap-wrap" id="minimapWrap"><canvas id="minimap" width="300" height="300" aria-label="Minimapa"></canvas><span class="map-label" id="locationName">Campos de Aurora</span></div>
+      </div>
+
+      <div class="boss-bar" id="bossBar" hidden><div class="bb-name"><span id="bossName">CHEFE</span><small id="bossPhase"></small></div><div class="bb-track"><i id="bossHealth"></i><i id="bossGhost"></i></div></div>
+      <div class="enemy-label" id="enemyLabel"><span id="enemyName">ALVO</span><div class="enemy-meter"><i id="enemyHealth"></i></div></div>
+      <div class="loc-banner" id="locBanner"><small></small><strong></strong><em></em></div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      <div class="banner" id="banner" role="status" aria-live="polite"></div>
+      <div class="npc-dialogue" id="npcDialogue" hidden><div class="npc-dialogue-head"><strong>Viajante</strong><button type="button" id="dialogClose" aria-label="Fechar">✕</button></div><p></p><div class="dlg-actions" id="dlgActions"></div></div>
+      <div class="controls-hint" id="controlsHint"></div>
+    </div>
+
+    <!-- ===== Controles de toque (paisagem) ===== -->
+    <div class="touch-controls" id="touchControls" hidden>
+      <div class="joy-zone" id="joyZone"></div>
+      <div class="joystick" id="joystick" aria-label="Direcional virtual"><div class="joy-ring"></div><div class="joy-knob" id="joyKnob"></div></div>
+      <div class="action-cluster" id="actionCluster">
+        <button class="act attack-button" id="attackButton" aria-label="Atacar"><span>⚔</span></button>
+        <button class="act skill-button" id="skillButton" aria-label="Habilidade 1"><span>✦</span><i class="cd"></i></button>
+        <button class="act skill2-button" id="skill2Button" aria-label="Habilidade 2"><span>✺</span><i class="cd"></i></button>
+        <button class="act ultimate-button" id="ultimateButton" aria-label="Ultimate"><span>✹</span><i class="cd"></i></button>
+        <button class="act dodge" id="dodgeButton" aria-label="Esquivar"><span>➜</span></button>
+        <button class="act potion" id="healButton" aria-label="Usar poção"><span>✚</span><b class="badge" id="potionBadge">3</b></button>
+        <button class="act interact" id="interactButton" aria-label="Interagir" hidden><span>☏</span></button>
+      </div>
+    </div>
+
+    <!-- ===== Telas ===== -->
+    <section class="screen" id="mainMenu" hidden></section>
+    <section class="screen" id="loadScreen" hidden></section>
+    <section class="screen" id="settingsScreen" hidden></section>
+    <section class="screen" id="createScreen" hidden></section>
+    <section class="screen" id="pauseScreen" hidden></section>
+    <section class="screen" id="levelPanel" hidden></section>
+    <section class="screen" id="mapScreen" hidden></section>
+    <section class="screen" id="journalScreen" hidden></section>
+    <section class="screen" id="charScreen" hidden></section>
+    <section class="screen" id="shopScreen" hidden></section>
+    <section class="screen" id="resultScreen" hidden></section>
+    <section class="screen" id="helpScreen" hidden></section>
+
+    <div class="loading" id="loading"><div class="loading-card"><strong>CRÔNICAS DO ABISMO</strong><span id="loadingText">Forjando o mundo…</span><div class="load-bar"><i id="loadBar"></i></div></div></div>
+    <div class="rotate-overlay" id="rotateOverlay"><div><div class="rot-icon">⟳</div><strong>Gire o aparelho</strong><span>Crônicas do Abismo é jogado na horizontal</span><button type="button" id="rotateFs">Tela cheia e travar paisagem</button></div></div>
+  </main>
+  <script src="bundle.js"></script>
+</body>
+</html>

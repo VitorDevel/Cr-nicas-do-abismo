@@ -170,6 +170,7 @@ dialog{border:none;padding:0;background:transparent;color:var(--text)}dialog::ba
 .battle-model3d,.battle-model-fallback{position:absolute;inset:0}.battle-model3d canvas{display:block;width:100%!important;height:100%!important}.battle-model-fallback{display:none}
 .model-stage.no-webgl.oni-boss::after{content:'';position:absolute;z-index:3;right:13%;top:7%;width:19px;height:84%;background:linear-gradient(90deg,#59636d,#e9f3f5 42%,#75818d 70%,#252d36);clip-path:polygon(42% 0,72% 0,100% 82%,76% 82%,76% 100%,25% 100%,25% 84%,0 82%);transform:rotate(22deg);filter:drop-shadow(3px 5px 4px rgba(0,0,0,.65))}
 .model-stage.no-webgl .battle-model3d{display:none}.model-stage.no-webgl .battle-model-fallback{display:block}
+.model-stage.reference-sprite-mode .battle-model3d{display:none}.model-stage.reference-sprite-mode .battle-model-fallback{display:flex;align-items:center;justify-content:center}.enemy-reference-sprite{display:block;width:100%;height:100%;object-fit:contain}
 .creator-3d-wrap canvas{filter:saturate(1.04) contrast(1.02)}
 .battle-char{height:290px}.battle-char canvas{filter:saturate(1.06) contrast(1.03)}
 .preview-3d-badge{background:rgba(8,17,27,.72);backdrop-filter:blur(5px)}
@@ -327,3 +328,16 @@ button[data-act="inventory"]{--button-top:#63c888;--button-bottom:#328b5a;--butt
 #startBtn:hover:not(:disabled){box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 5px 0 #9d681e,0 14px 34px rgba(220,165,58,.28)}
 #startBtn:active:not(:disabled){box-shadow:inset 0 2px 5px rgba(110,64,10,.22),0 1px 0 #9d681e}
 @media(prefers-reduced-motion:reduce){button{transition:none}}
+
+/* Character models derived from the supplied sprite sheets */
+#creatorFallback{display:none;align-items:center;justify-content:center;overflow:hidden}
+.creator-3d-wrap.fallback #creatorFallback{display:flex}
+.creator-3d-wrap.fallback #creator3D{display:none}
+.character-art-sprite{display:block;width:100%;height:100%;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 12px 12px rgba(0,0,0,.38));animation:characterArtBreath 3.2s ease-in-out infinite}
+@keyframes characterArtBreath{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+.model-stage.character-art-mode{display:flex;align-items:center;justify-content:center}
+.model-stage.character-art-mode .battle-model3d{display:none}
+.model-stage.character-art-mode .battle-model-fallback{display:flex;align-items:center;justify-content:center}
+.model-stage.character-art-mode .battle-model-fallback .character-art-sprite{max-width:100%;max-height:100%}
+#merchant3D{display:flex;align-items:center;justify-content:center;min-height:170px}
+#merchant3D .merchant-character-art{width:160px;height:170px}
