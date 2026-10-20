@@ -2206,6 +2206,7 @@
     const sxo = (Math.random() - .5) * camera.shake * 2, syo = (Math.random() - .5) * camera.shake * 2;
     const sx = camera.x + sxo, sy = camera.y + syo;
     const dark = dun ? .55 : 1 - daylight();
+    const vis = (x, y, m = 70) => x > sx - m && x < sx + viewW + m && y > sy - m && y < sy + viewH + m;
 
     ctx.save();
     ctx.scale(camera.scale, camera.scale);
@@ -2232,12 +2233,10 @@
     drawBossArena();
     drawShrine();
     }
-    for (const l of loot) drawLoot(l);
-    for (const e of enemies) drawTelegraph(e);
+    for (const l of loot) if (vis(l.x, l.y, 24)) drawLoot(l);
+    for (const e of enemies) if (!e.dead && e.state === 'windup' && vis(e.x, e.y, 600)) drawTelegraph(e);
 
     drawList.length = 0;
-    const m = 70;
-    const vis = (x, y) => x > sx - m && x < sx + viewW + m && y > sy - m && y < sy + viewH + m;
     for(const t of trees)if(!dun&&vis(t.x,t.y)){
       const oldZone=Math.hypot(t.x-SPAWN.x,t.y-SPAWN.y)<640;
       drawList.push({y:t.y+t.radius*.45,k:oldZone?0:5,o:oldZone?t:{...t,biome:biomeAt(t.x,t.y)}});
@@ -2414,14 +2413,17 @@
   }
 
   /* ---------- laço principal ---------- */
+  let hudTimer = 0, mapTimer = 0;
   function tick(now) {
     const dt = Math.min((now - lastFrame) / 1000, .04);
     lastFrame = now;
     visualTime += dt;
     update(dt);
     draw();
-    updateHud(camera.x, camera.y);
-    drawMap(target.cur);
+    hudTimer += dt;
+    mapTimer += dt;
+    if (hudTimer >= .1) { hudTimer %= .1; updateHud(camera.x, camera.y); }
+    if (mapTimer >= 1 / 12) { mapTimer %= 1 / 12; drawMap(target.cur); }
     requestAnimationFrame(tick);
   }
 
@@ -2689,6 +2691,7 @@
       const n = 10 + Math.min(12, Math.floor(wave * .55)) + ((Math.random() * 3) | 0);
       for (let i = 0; i < n; i++) spawnEnemy(d.mix[i % d.mix.length], rand(560, 1250), rand(400, 850));
       snapCamera(); splash = { d, t: 0 }; portalCd = 1.5;
+      if (d.id === 'wyrm') window.ABISMO_BOSS_RIG?.prewarmDragon(TYPES.dragao);
     });
   }
   function leaveDungeon(dead) {
@@ -3104,8 +3107,8 @@
     arqueiro: { armorType: 'couro', armor: '#3f6b45', cape: '#294738', trim: '#a6c77a', style: 4, capeStyle: 'curta', emblem: 'lua' },
     paladino: { armorType: 'placas', armor: '#b69b55', cape: '#e6dfc9', trim: '#f4cf79', style: 1, capeStyle: 'longa', emblem: 'sol' },
     druida: { armorType: 'runica', armor: '#496a42', cape: '#2f5738', trim: '#a6c77a', style: 0, capeStyle: 'esfarrapada', emblem: 'runa' },
-    assassino: { armorType: 'couro', armor: '#292b35', cape: '#6b3034', trim: '#b98a68', style: 0, capeStyle: 'curta', emblem: 'lua', scars: 'guerra' },
-    ninja: { armorType: 'couro', armor: '#252a30', cape: '#792f35', trim: '#c64f4a', style: 4, capeStyle: 'curta', emblem: 'lua' },
+    assassino: { armorType: 'couro', armor: '#4a3025', cape: '#e4e0d6', trim: '#9d2633', style: 0, capeStyle: 'longa', emblem: 'lua', scars: 'guerra' },
+    ninja: { armorType: 'couro', armor: '#111318', cape: '#090b0f', trim: '#b52e3b', style: 4, capeStyle: 'curta', emblem: 'nenhum' },
     tanke: { armorType: 'placas', armor: '#555b66', cape: '#2c3e6b', trim: '#c7a65c', style: 1, capeStyle: 'curta', emblem: 'sol' }
   };
   if (!ARMORS[cust.armorType]) cust.armorType = 'cota';
@@ -3278,7 +3281,8 @@
     if(!cached||cached.sig!==sig){
       const weapon=WEAPONS[cs.weapon]||{};
       const headMap={0:'capuz',1:'elmo',2:'nenhum',3:'coroa',4:'bandana',5:'chapeu'};
-      const look={race:cs.race,cls:cs.cls,skin:cs.skin,hairColor:cs.hair,hairStyle:cs.hairStyle||'curto',beard:cs.beard||'nenhuma',head:headMap[cs.style]||'nenhum',capeStyle:cs.capeStyle,capeColor:cs.cape,armorType:cs.armorType,armorColor:cs.armor,trim:cs.trim,glow:cs.glow,eye:cs.eye,weapon:cs.weapon,body:cs.body,emblem:cs.emblem,mark:cs.scars,shoulders:cs.cls==='paladino'||cs.cls==='tanke'?'aco':'nenhum'};
+      const head=cs.cls==='ninja'&&cs.style===4?'ninja_mask':cs.cls==='assassino'&&cs.style===0?'assassin_hood_ref':headMap[cs.style]||'nenhum';
+      const look={race:cs.race,cls:cs.cls,skin:cs.skin,hairColor:cs.hair,hairStyle:cs.hairStyle||'curto',beard:cs.beard||'nenhuma',head,capeStyle:cs.capeStyle,capeColor:cs.cape,armorType:cs.armorType,armorColor:cs.armor,trim:cs.trim,glow:cs.glow,eye:cs.eye,weapon:cs.weapon,body:cs.body,emblem:cs.emblem,mark:cs.scars,shoulders:cs.cls==='paladino'||cs.cls==='tanke'?'aco':'nenhum'};
       cached={sig,model:CharacterArt.makeModel(look,{race:cs.race,class:cs.cls,weaponKey:cs.weapon,weaponName:weapon.n,weaponType:weapon.weaponType,shieldModel:weapon.shieldModel,hammerModel:weapon.hammerModel,swordModel:weapon.swordModel,large:weapon.large})};worldArtCache.set(cs,cached);
     }
     const dir=CharacterArt.viewAngle(ang);

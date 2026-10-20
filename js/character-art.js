@@ -58,11 +58,11 @@ const WEAPONS = {
    ============================================================ */
 const BODY_W = { medio: 1, robusto: 1.17, esguio: .87 };
 function hStyle(o) {
-  const sig = [o.race, o.skin, o.hairStyle, o.hairColor, o.beard, o.head, o.cape, o.mark, o.shoulder, o.aura, o.body, o.armor, o.armorColor, o.trim, o.capeColor, o.eye, o.glow, o.weapon, o.emblem, o.extra].join('|');
+  const sig = [o.race, o.class, o.cls, o.skin, o.hairStyle, o.hairColor, o.beard, o.head, o.cape, o.mark, o.shoulder, o.aura, o.body, o.armor, o.armorColor, o.trim, o.capeColor, o.eye, o.glow, o.weapon, o.emblem, o.extra].join('|');
   if (o._sig === sig) return o._st; o._sig = sig;
   const R = RACES[o.race] || RACES.humano, skin = o.skin || R.skin[1], ac = o.armorColor || '#425f69', tr = o.trim || '#c7a65c', cp = o.capeColor || '#8c3a3a', hr = o.hairColor || '#3b2a20';
   o._st = { race: o.race || 'humano', R, skin, skinSh: shade(skin, -.2), skinDk: shade(skin, -.38), skinHi: shade(skin, .16), ac, acSh: shade(ac, -.28), acHi: shade(ac, .22), acDk: shade(ac, -.5), tr, trSh: shade(tr, -.3), trHi: shade(tr, .35), cape: cp, capeSh: shade(cp, -.32), capeHi: shade(cp, .2), hair: hr, hairSh: shade(hr, -.3), hairHi: shade(hr, .28), eye: o.eye || '#3a2a1c', glow: o.glow || '#9fe8ff',
-    bw: BODY_W[o.body] || 1, sw: R.scale[0], sh: R.scale[1], armor: o.armor || 'cota', hairStyle: o.hairStyle || 'curto', beard: o.beard || 'nenhuma', head: o.head || 'nenhum', capeKind: o.cape || 'longa', mark: o.mark || 'nenhuma', shoulder: o.shoulder || 'nenhum', aura: o.aura || 'nenhuma', weapon: o.weapon || 'espada', emblem: o.emblem || 'nenhum' };
+    bw: BODY_W[o.body] || 1, sw: R.scale[0], sh: R.scale[1], class: o.class || o.cls || '', armor: o.armor || 'cota', hairStyle: o.hairStyle || 'curto', beard: o.beard || 'nenhuma', head: o.head || 'nenhum', capeKind: o.cape || 'longa', mark: o.mark || 'nenhuma', shoulder: o.shoulder || 'nenhum', aura: o.aura || 'nenhuma', weapon: o.weapon || 'espada', emblem: o.emblem || 'nenhum' };
   return o._st;
 }
 const HAND_REST = { sword: -1.15, katana: -1.1, axe: -1.2, spear: -1.45, staff: -1.5, tome: -.6, wand: -1.0, orb: -1.2, bow: -1.57, crossbow: -.4, hammer: -1.2, mace: -1.1, totem: -1.5, moon: -1.5, scythe: -1.35, daggers: -.9, katars: -.5, kunai: -.8, hiddenblade: -.15 };
@@ -73,8 +73,8 @@ function limb(g, x0, y0, x1, y1, w, col, colSh) {
 /* ---- pernas e botas ---- */
 function hLegs(g, st, view, A) {
   const k = st.armor, robe = k === 'runica', ph = A.ph, mv = A.mv, bw = st.bw;
-  const legCol = k === 'couro' ? '#5a4030' : k === 'placas' ? st.acSh : k === 'samurai' ? shade(st.ac, -.45) : k === 'escamas' ? st.acSh : robe ? st.acSh : shade(st.ac, -.35);
-  const boot = k === 'placas' ? '#8a8e98' : k === 'samurai' ? '#2a2420' : '#3a2a20', bootHi = shade(boot, .25);
+  const legCol = k === 'couro' ? (st.class === 'ninja' ? st.ac : '#5a4030') : k === 'placas' ? st.acSh : k === 'samurai' ? shade(st.ac, -.45) : k === 'escamas' ? st.acSh : robe ? st.acSh : shade(st.ac, -.35);
+  const boot = st.class === 'ninja' ? '#090b0f' : k === 'placas' ? '#8a8e98' : k === 'samurai' ? '#2a2420' : '#3a2a20', bootHi = shade(boot, .25);
   for (let i = 0; i < 2; i++) {
     const p = ph + i * Math.PI, sw = Math.sin(p), lift = Math.max(0, sw) * 5.2 * mv;
     let x, fx;
@@ -95,7 +95,7 @@ function hLegs(g, st, view, A) {
 function hTorso(g, st, view, A) {
   const bw = st.bw, k = st.armor, br = 1 + Math.sin(A.t * 2.2) * .012, top = -31, bot = -15, sW = (view === 's' ? 6.6 : 8.6) * bw, wW = (view === 's' ? 5.6 : 6.6) * bw;
   g.save(); g.translate(0, bot); g.scale(1, br); g.translate(0, -bot);
-  const baseCol = k === 'couro' ? mixHex(st.ac, '#7a5a3a', .55) : k === 'cota' ? st.ac : k === 'placas' ? '#9aa0ac' : k === 'runica' ? st.ac : k === 'samurai' ? st.ac : st.ac;
+  const baseCol = k === 'couro' ? mixHex(st.ac, '#7a5a3a', st.class === 'ninja' ? .08 : .55) : k === 'cota' ? st.ac : k === 'placas' ? '#9aa0ac' : k === 'runica' ? st.ac : k === 'samurai' ? st.ac : st.ac;
   const skirt = k === 'runica' ? 12 : k === 'samurai' ? 5.5 : k === 'cota' ? 4 : k === 'escamas' ? 3 : 0;
   g.beginPath(); g.moveTo(-sW, top + 1); g.quadraticCurveTo(0, top - 1.5, sW, top + 1); g.lineTo(wW * 1.04, bot - 1); g.lineTo(wW * 1.14 + skirt * .35, bot + skirt); g.lineTo(-wW * 1.14 - skirt * .35, bot + skirt); g.lineTo(-wW * 1.04, bot - 1); g.closePath();
   g.fillStyle = grad(g, -sW, 0, sW, 0, [shade(baseCol, -.22), baseCol, shade(baseCol, .14), shade(baseCol, -.12)]); g.fill(); g.strokeStyle = 'rgba(4,4,10,.62)'; g.lineWidth = 1.1; g.stroke();
@@ -139,7 +139,7 @@ function hArm(g, st, view, A, near) {
   else if (near && A.hold) { hx = shX + (view === 's' ? 7 : 3.4); hy = shY + 8; }
   else if (view === 's') { hx = shX + sw * 5; hy = shY + 13.5 - Math.abs(sw) * .8; }
   else { hx = shX + sx * 1.6; hy = shY + 13.5 - Math.max(0, sw * (near ? -1 : 1)) * 1.2; if (!near && A.off) { hx = shX - 2; hy = shY + 8; } }
-  const sleeve = k === 'runica' ? st.ac : k === 'placas' ? '#9aa0ac' : k === 'couro' ? '#5a4030' : k === 'escamas' ? st.ac : st.ac, bare = k === 'couro' || k === 'cota';
+  const sleeve = k === 'runica' ? st.ac : k === 'placas' ? '#9aa0ac' : k === 'couro' ? (st.class === 'ninja' ? st.ac : '#5a4030') : k === 'escamas' ? st.ac : st.ac, bare = k === 'couro' && st.class !== 'ninja' || k === 'cota';
   const ex = (shX + hx) / 2 + (view === 's' ? -1 : sx * 2.2), ey = (shY + hy) / 2 + 1.2;
   if (view === 's' && !near) g.globalAlpha = .85;
   limb(g, shX, shY, ex, ey, 4.6 * bw, bare && k === 'couro' ? st.skin : sleeve, bare && k === 'couro' ? st.skinSh : shade(sleeve, -.3));
@@ -165,6 +165,34 @@ function hCape(g, st, view, A, front) {
   const kd = st.capeKind; if (kd === 'sem') return; const bw = st.bw;
   const len = kd === 'curta' ? 14 : kd === 'esfarrapada' ? 30 : 33, sh = -30.4;
   const fl = Math.sin(A.t * 3 + A.ph * .5) * (1.4 + A.mv * 2.2) + A.mv * 3.6, ragged = kd === 'esfarrapada';
+  if (st.class === 'assassino') {
+    if (front) {
+      g.fillStyle = st.cape; g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = .8;
+      g.beginPath(); g.moveTo(-8 * bw, sh + 1); g.quadraticCurveTo(0, sh + 4.4, 8 * bw, sh + 1);
+      g.lineTo(6.4 * bw, sh - 1); g.quadraticCurveTo(0, sh + 1, -6.4 * bw, sh - 1); g.closePath(); g.fill(); g.stroke();
+      g.fillStyle = st.tr; g.beginPath(); g.moveTo(-5.5, sh + 1.1); g.lineTo(5.5, sh + 1.1); g.lineTo(3.4, sh + 4.3); g.lineTo(-3.4, sh + 4.3); g.closePath(); g.fill(); g.stroke();
+      return;
+    }
+    g.save();
+    if (view === 's') {
+      g.fillStyle = st.cape; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(-3, sh); g.lineTo(5, sh + 1); g.quadraticCurveTo(1, sh + 12, -8, sh + len + fl * .25);
+      g.lineTo(-12, sh + len - 1); g.quadraticCurveTo(-5, sh + 13, -3, sh); g.closePath(); g.fill(); g.stroke();
+      g.strokeStyle = st.capeSh; g.lineWidth = .8; g.beginPath(); g.moveTo(-5, sh + 5); g.lineTo(-9, sh + len - 5); g.stroke();
+    } else {
+      for (const sd of [-1, 1]) {
+        const sway = fl * .28;
+        g.fillStyle = st.cape; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(sd * 6.5, sh); g.quadraticCurveTo(sd * 10, sh + 2, sd * (10 + sway), sh + 10);
+        g.lineTo(sd * (13 + sway), sh + len); g.lineTo(sd * (8 + sway), sh + len - 1);
+        g.quadraticCurveTo(sd * 7, sh + 12, sd * 6.5, sh); g.closePath(); g.fill(); g.stroke();
+        g.strokeStyle = st.capeSh; g.lineWidth = .8; g.beginPath();
+        g.moveTo(sd * 8.2, sh + 5); g.lineTo(sd * (10 + sway), sh + len - 4); g.stroke();
+      }
+    }
+    g.restore();
+    return;
+  }
   if (front) { // gola e fecho (vista frontal)
     g.fillStyle = st.capeSh; g.beginPath(); g.moveTo(-8 * bw, sh + 1); g.quadraticCurveTo(0, sh + 4.4, 8 * bw, sh + 1); g.lineTo(7 * bw, sh - 1.6); g.quadraticCurveTo(0, sh + 1, -7 * bw, sh - 1.6); g.closePath(); g.fill(); g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = .8; g.stroke(); g.fillStyle = st.tr; g.beginPath(); g.arc(0, sh + 2.6, 1.9, 0, TAU); g.fill(); g.fillStyle = st.trHi; g.beginPath(); g.arc(-.5, sh + 2.1, .8, 0, TAU); g.fill(); return;
   }
@@ -300,7 +328,135 @@ function hMark(g, st, view) {
 function hHeadgear(g, st, view, A) {
   const kd = st.head, hy = -39, side = view === 's', back = view === 'b', cx = side ? 1.2 : 0; if (kd === 'nenhum') return;
   g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 1;
-  if (kd === 'capuz') { const col = st.capeKind === 'sem' ? st.ac : st.cape, dk = shade(col, -.35); g.fillStyle = col; g.beginPath(); g.moveTo(cx - 10.2, hy + 9); g.bezierCurveTo(cx - 12.4, hy - 6, cx - 7, hy - 14.4, cx + 1, hy - 14); g.bezierCurveTo(cx + 9, hy - 13, cx + 12.4, hy - 4, cx + 10.2, hy + 9); g.lineTo(cx + 7, hy + 6.6); g.quadraticCurveTo(cx + 8, hy - 3, cx + 3, hy - 8.4); g.quadraticCurveTo(cx - 4, hy - 8.4, cx - 7, hy - 3); g.quadraticCurveTo(cx - 8, hy + 3, cx - 7, hy + 6.6); g.closePath(); if (back || side) { g.fill(); g.stroke(); } else { g.fill(); g.stroke(); } g.fillStyle = dk; g.beginPath(); g.moveTo(cx - 7, hy - 3); g.quadraticCurveTo(cx, hy - 10.6, cx + 7, hy - 3); g.quadraticCurveTo(cx, hy - 6.6, cx - 7, hy - 3); g.fill(); g.fillStyle = 'rgba(255,255,255,.14)'; g.beginPath(); g.ellipse(cx - 4, hy - 10.4, 3.4, 1.2, -.5, 0, TAU); g.fill(); if (back) { g.fillStyle = col; g.beginPath(); g.ellipse(0, hy + 1, 9, 9.4, 0, 0, TAU); g.fill(); g.stroke(); } }
+  if (kd === 'assassin_hood_ref') {
+    const hood = st.capeKind === 'sem' ? st.ac : st.cape, shadow = shade(hood, -.38), scarf = st.tr;
+    g.fillStyle = hood; g.strokeStyle = 'rgba(0,0,0,.68)'; g.lineWidth = 1;
+    g.beginPath();
+    if (back) {
+      g.moveTo(-8.5, hy + 8); g.lineTo(-9, hy - 5); g.quadraticCurveTo(-8, hy - 14, 0, hy - 19);
+      g.quadraticCurveTo(8, hy - 14, 9, hy - 5); g.lineTo(8.5, hy + 8); g.quadraticCurveTo(0, hy + 11, -8.5, hy + 8);
+    } else if (side) {
+      g.moveTo(cx - 8, hy + 8); g.lineTo(cx - 8.5, hy - 5); g.quadraticCurveTo(cx - 8, hy - 15, cx + 1, hy - 19);
+      g.lineTo(cx + 8, hy - 9); g.lineTo(cx + 5, hy - 3); g.lineTo(cx + 7, hy + 8); g.closePath();
+    } else {
+      g.moveTo(-8.5, hy + 8); g.lineTo(-9, hy - 5); g.quadraticCurveTo(-9, hy - 14, 0, hy - 20);
+      g.quadraticCurveTo(9, hy - 14, 9, hy - 5); g.lineTo(8.5, hy + 8);
+      g.lineTo(5.8, hy + 5); g.quadraticCurveTo(5.4, hy - 5, 0, hy - 8);
+      g.quadraticCurveTo(-5.4, hy - 5, -5.8, hy + 5); g.closePath();
+    }
+    g.fill(); g.stroke();
+    if (back) {
+      g.strokeStyle = shade(hood, -.2); g.lineWidth = .8; g.beginPath();
+      g.moveTo(-5.5, hy - 8); g.quadraticCurveTo(0, hy - 13, 5.5, hy - 8); g.stroke();
+      return;
+    }
+
+    g.fillStyle = shadow; g.beginPath();
+    if (side) {
+      g.moveTo(cx - 4, hy - 3); g.quadraticCurveTo(cx + 2, hy - 8, cx + 6, hy - 2);
+      g.lineTo(cx + 5, hy + 1); g.lineTo(cx - 3, hy + 1); g.closePath();
+    } else {
+      g.moveTo(-6, hy - 3); g.quadraticCurveTo(0, hy - 9, 6, hy - 3);
+      g.lineTo(5, hy + 1); g.lineTo(-5, hy + 1); g.closePath();
+    }
+    g.fill();
+    g.fillStyle = scarf; g.strokeStyle = 'rgba(0,0,0,.72)'; g.lineWidth = .8; g.beginPath();
+    if (side) {
+      g.moveTo(cx - 5, hy + .7); g.quadraticCurveTo(cx + 1, hy + 2, cx + 7, hy + .4);
+      g.lineTo(cx + 6, hy + 5); g.lineTo(cx + 1.5, hy + 8); g.lineTo(cx - 4, hy + 5); g.closePath();
+    } else {
+      g.moveTo(-6, hy + .7); g.quadraticCurveTo(0, hy + 2.4, 6, hy + .7);
+      g.lineTo(5, hy + 5); g.lineTo(0, hy + 8); g.lineTo(-5, hy + 5); g.closePath();
+    }
+    g.fill(); g.stroke();
+    g.strokeStyle = shade(scarf, -.28); g.lineWidth = .8; g.beginPath();
+    if (side) { g.moveTo(cx - 3.5, hy + 3); g.quadraticCurveTo(cx + 1, hy + 4.5, cx + 5, hy + 2.8); }
+    else { g.moveTo(-4.5, hy + 3); g.quadraticCurveTo(0, hy + 4.5, 4.5, hy + 3); }
+    g.stroke();
+    g.fillStyle = '#f0eee8'; g.beginPath();
+    if (side) g.ellipse(cx + 3.8, hy - .8, 1.4, .6, -.1, 0, TAU);
+    else { g.ellipse(-3.1, hy - .8, 1.55, .62, -.1, 0, TAU); g.ellipse(3.1, hy - .8, 1.55, .62, .1, 0, TAU); }
+    g.fill();
+  }
+  else if (kd === 'assassin_hood') { const col=st.capeKind==='sem'?st.ac:st.cape, dk=shade(col,-.38); g.fillStyle=col;g.beginPath();if(back){g.moveTo(-9,hy+8);g.lineTo(-9,hy-6);g.quadraticCurveTo(-8,hy-13,0,hy-18);g.quadraticCurveTo(8,hy-13,9,hy-6);g.lineTo(9,hy+8);g.quadraticCurveTo(0,hy+11,-9,hy+8);}else if(side){g.moveTo(cx-9,hy+9);g.lineTo(cx-9,hy-4);g.quadraticCurveTo(cx-10,hy-14,cx+1,hy-18);g.lineTo(cx+8,hy-10);g.lineTo(cx+5,hy-4);g.lineTo(cx+7,hy+8);g.closePath();}else{g.moveTo(-9,hy+9);g.lineTo(-10,hy-4);g.quadraticCurveTo(-10,hy-13,0,hy-19);g.quadraticCurveTo(10,hy-13,10,hy-4);g.lineTo(8,hy+9);g.lineTo(5,hy+5);g.quadraticCurveTo(6,hy-4,0,hy-8);g.quadraticCurveTo(-6,hy-4,-5,hy+5);g.closePath();}g.fill();g.stroke();g.fillStyle=dk;if(!back){g.beginPath();if(side){g.moveTo(cx-5,hy-3);g.quadraticCurveTo(cx+4,hy-8,cx+7,hy-2);g.lineTo(cx+6,hy+5);g.lineTo(cx-2,hy+6);g.closePath();}else{g.moveTo(-6,hy-3);g.quadraticCurveTo(0,hy-10,6,hy-3);g.lineTo(5,hy+5);g.quadraticCurveTo(0,hy+8,-5,hy+5);g.closePath();}g.fill();}g.fillStyle=st.tr;g.beginPath();if(side){g.moveTo(cx-8,hy+7);g.lineTo(cx-4,hy+5);g.lineTo(cx+5,hy+6);g.lineTo(cx+7,hy+8);g.quadraticCurveTo(cx,hy+11,cx-8,hy+9);}else{g.moveTo(-8,hy+5);g.quadraticCurveTo(0,hy+3,8,hy+5);g.lineTo(7,hy+8);g.quadraticCurveTo(0,hy+10,-7,hy+8);}g.closePath();g.fill();g.strokeStyle='rgba(0,0,0,.55)';g.stroke();g.fillStyle='rgba(255,255,255,.32)';g.beginPath();g.moveTo(-3,hy-12);g.lineTo(0,hy-17);g.lineTo(2,hy-11);g.fill(); }
+  else if (kd === 'ninja_mask') {
+    const cloth = shade(st.ac, -.28), fold = shade(st.ac, .12), band = st.tr;
+    if (back) {
+      g.fillStyle = band; g.strokeStyle = 'rgba(0,0,0,.65)'; g.lineWidth = .8;
+      g.beginPath(); g.moveTo(-8, hy - 6); g.quadraticCurveTo(0, hy - 8, 8, hy - 6); g.lineTo(8, hy - 3); g.quadraticCurveTo(0, hy - 5, -8, hy - 3); g.closePath(); g.fill(); g.stroke();
+      for (const sd of [-1, 1]) {
+        g.beginPath(); g.moveTo(sd * 7, hy - 5); g.quadraticCurveTo(sd * 13, hy - 6, sd * 14, hy - 1); g.lineTo(sd * 13, hy + 5); g.quadraticCurveTo(sd * 10, hy + 1, sd * 9, hy - 1); g.closePath(); g.fill(); g.stroke();
+      }
+      g.fillStyle = fold; g.beginPath(); g.arc(0, hy - 4, 1.6, 0, TAU); g.fill();
+      return;
+    }
+
+    // Wrapped forehead band and tied ends sit above the eye opening.
+    g.fillStyle = band; g.strokeStyle = 'rgba(0,0,0,.72)'; g.lineWidth = .9;
+    g.beginPath();
+    if (side) {
+      g.moveTo(cx - 7, hy - 7); g.quadraticCurveTo(cx + 1, hy - 9, cx + 8, hy - 6);
+      g.lineTo(cx + 7, hy - 3.5); g.quadraticCurveTo(cx, hy - 5.5, cx - 7, hy - 4.5); g.closePath();
+    } else {
+      g.moveTo(-8, hy - 7); g.quadraticCurveTo(0, hy - 9, 8, hy - 7);
+      g.lineTo(8, hy - 4); g.quadraticCurveTo(0, hy - 5.7, -8, hy - 4); g.closePath();
+    }
+    g.fill(); g.stroke();
+    for (const sd of (side ? [1] : [-1, 1])) {
+      g.fillStyle = band; g.beginPath();
+      g.moveTo(cx + sd * 7, hy - 6.6);
+      g.quadraticCurveTo(cx + sd * 10, hy - 7.5, cx + sd * 11, hy - 3.2);
+      g.lineTo(cx + sd * 12, hy + .6);
+      g.lineTo(cx + sd * 10, hy + 3.8);
+      g.quadraticCurveTo(cx + sd * 9.6, hy + 1, cx + sd * 8, hy - 1.6);
+      g.closePath(); g.fill(); g.stroke();
+      g.strokeStyle = shade(band, -.3); g.lineWidth = .7; g.beginPath();
+      g.moveTo(cx + sd * 9.6, hy - 2.4); g.lineTo(cx + sd * 11, hy + .6); g.stroke();
+    }
+    if (!side) {
+      g.fillStyle = '#8c929a'; g.strokeStyle = '#272a30'; g.lineWidth = .8;
+      g.beginPath(); g.roundRect(-3.4, hy - 7.3, 6.8, 4.3, .8); g.fill(); g.stroke();
+      g.fillStyle = '#25282d'; g.font = 'bold 3.7px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText('忍', 0, hy - 5.1);
+    }
+
+    // The mask covers nose and mouth but leaves the eyes unobstructed.
+    g.fillStyle = cloth; g.strokeStyle = 'rgba(0,0,0,.78)'; g.lineWidth = 1;
+    g.beginPath();
+    if (side) {
+      g.moveTo(cx - 5.5, hy + 1.2); g.quadraticCurveTo(cx + 1, hy + 2.6, cx + 8, hy + .7);
+      g.lineTo(cx + 7.2, hy + 6.3); g.quadraticCurveTo(cx + 1.5, hy + 9.3, cx - 4.5, hy + 6.1); g.closePath();
+    } else {
+      g.moveTo(-7, hy + 1.2); g.quadraticCurveTo(0, hy + 2.8, 7, hy + 1.2);
+      g.lineTo(6.1, hy + 6.5); g.quadraticCurveTo(0, hy + 9.5, -6.1, hy + 6.5); g.closePath();
+    }
+    g.fill(); g.stroke();
+    g.strokeStyle = fold; g.lineWidth = .8; g.beginPath();
+    if (side) {
+      g.moveTo(cx - 4, hy + 3.4); g.quadraticCurveTo(cx + 1, hy + 4.8, cx + 6, hy + 3.2);
+      g.moveTo(cx - 2.8, hy + 5.6); g.quadraticCurveTo(cx + 1, hy + 6.5, cx + 4.8, hy + 5.4);
+    } else {
+      g.moveTo(-5, hy + 3.2); g.quadraticCurveTo(0, hy + 4.7, 5, hy + 3.2);
+      g.moveTo(-4, hy + 5.7); g.quadraticCurveTo(0, hy + 6.8, 4, hy + 5.7);
+    }
+    g.stroke();
+
+    // Eye slits are redrawn above the mask seam for a clear ninja expression.
+    g.fillStyle = '#f2e9dc'; g.beginPath();
+    if (side) {
+      g.ellipse(cx + 3.7, hy - .55, 1.45, .72, -.12, 0, TAU);
+    } else {
+      g.ellipse(-3.2, hy - .55, 1.65, .72, -.12, 0, TAU);
+      g.ellipse(3.2, hy - .55, 1.65, .72, .12, 0, TAU);
+    }
+    g.fill();
+    g.fillStyle = '#101116'; g.beginPath();
+    if (side) g.ellipse(cx + 4.1, hy - .55, .42, .65, 0, 0, TAU);
+    else { g.ellipse(-3.1, hy - .55, .42, .65, 0, 0, TAU); g.ellipse(3.3, hy - .55, .42, .65, 0, 0, TAU); }
+    g.fill();
+    g.fillStyle = '#fff'; g.fillRect(side ? cx + 3.7 : -3.5, hy - .92, .45, .35);
+  }
+  else if (kd === 'capuz') { const col = st.capeKind === 'sem' ? st.ac : st.cape, dk = shade(col, -.35); g.fillStyle = col; g.beginPath(); g.moveTo(cx - 10.2, hy + 9); g.bezierCurveTo(cx - 12.4, hy - 6, cx - 7, hy - 14.4, cx + 1, hy - 14); g.bezierCurveTo(cx + 9, hy - 13, cx + 12.4, hy - 4, cx + 10.2, hy + 9); g.lineTo(cx + 7, hy + 6.6); g.quadraticCurveTo(cx + 8, hy - 3, cx + 3, hy - 8.4); g.quadraticCurveTo(cx - 4, hy - 8.4, cx - 7, hy - 3); g.quadraticCurveTo(cx - 8, hy + 3, cx - 7, hy + 6.6); g.closePath(); if (back || side) { g.fill(); g.stroke(); } else { g.fill(); g.stroke(); } g.fillStyle = dk; g.beginPath(); g.moveTo(cx - 7, hy - 3); g.quadraticCurveTo(cx, hy - 10.6, cx + 7, hy - 3); g.quadraticCurveTo(cx, hy - 6.6, cx - 7, hy - 3); g.fill(); g.fillStyle = 'rgba(255,255,255,.14)'; g.beginPath(); g.ellipse(cx - 4, hy - 10.4, 3.4, 1.2, -.5, 0, TAU); g.fill(); if (back) { g.fillStyle = col; g.beginPath(); g.ellipse(0, hy + 1, 9, 9.4, 0, 0, TAU); g.fill(); g.stroke(); } }
   else if (kd === 'elmo' || kd === 'cornos') { const steel = '#a8aeb8', dk = '#6a707c', hi = '#e0e4ec'; if (kd === 'cornos') for (const sd of side ? [1] : [-1, 1]) { g.save(); g.scale(sd, 1); g.fillStyle = '#efe6cc'; g.beginPath(); g.moveTo(cx + 7, hy - 4); g.quadraticCurveTo(cx + 13.4, hy - 4.6, cx + 14.4, hy - 13); g.quadraticCurveTo(cx + 10.6, hy - 8, cx + 6, hy - 7.2); g.closePath(); g.fill(); g.stroke(); g.restore(); }
     g.fillStyle = grad(g, cx - 9, 0, cx + 9, 0, [dk, steel, hi, steel, dk]); g.beginPath(); g.moveTo(cx - 8.8, hy + 2); g.bezierCurveTo(cx - 9.6, hy - 11, cx + 9.6, hy - 11, cx + 8.8, hy + 2); g.lineTo(cx + 8.4, hy + 7.4); g.lineTo(cx + 5.4, hy + 9); g.lineTo(cx + 4.6, hy + 2); g.lineTo(cx - 4.6, hy + 2); g.lineTo(cx - 5.4, hy + 9); g.lineTo(cx - 8.4, hy + 7.4); g.closePath(); if (side) { g.fillStyle = steel; g.beginPath(); g.moveTo(cx - 8.8, hy + 8); g.bezierCurveTo(cx - 9.4, hy - 11, cx + 8, hy - 11.4, cx + 8.4, hy - 2); g.lineTo(cx + 5.4, hy - 1.6); g.lineTo(cx + 5, hy + 2.4); g.lineTo(cx + 2, hy + 8.4); g.closePath(); } g.fill(); g.stroke(); g.fillStyle = st.tr; g.fillRect(cx - 8.9, hy - 2.4, 17.8, 1.8); if (!side && !back) { g.fillStyle = steel; g.fillRect(-1.2, hy - 2, 2.4, 8.2); g.strokeRect(-1.2, hy - 2, 2.4, 8.2); g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(-6.6, hy - .4, 4.2, 1.6); g.fillRect(2.4, hy - .4, 4.2, 1.6); } if (kd === 'elmo') { g.fillStyle = st.cape; g.beginPath(); g.moveTo(cx - 1.6, hy - 10.4); g.quadraticCurveTo(cx, hy - 16, cx + 1.6, hy - 10.4); g.fill(); } }
   else if (kd === 'coroa') { g.fillStyle = '#e8c040'; g.beginPath(); g.moveTo(cx - 7, hy - 5.4); g.lineTo(cx - 7.6, hy - 11); g.lineTo(cx - 3.8, hy - 8); g.lineTo(cx, hy - 12.6); g.lineTo(cx + 3.8, hy - 8); g.lineTo(cx + 7.6, hy - 11); g.lineTo(cx + 7, hy - 5.4); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#fff2a0'; g.fillRect(cx - 7, hy - 6.4, 14, 1.4); if (!back) { g.fillStyle = '#e83a5a'; g.beginPath(); g.arc(cx, hy - 7.6, 1.3, 0, TAU); g.fill(); g.fillStyle = '#4ac8ff'; g.beginPath(); g.arc(cx - 4, hy - 7, .9, 0, TAU); g.arc(cx + 4, hy - 7, .9, 0, TAU); g.fill(); } }

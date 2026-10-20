@@ -352,19 +352,92 @@ const RIG_IDS = {dragao:'dragon', young_dragon:'dragon', infernal_dragon:'dragon
 const A0 = window.ABISMO_ENEMY_ART;
 if (A0 && A0.draw) {
   const orig = A0.draw;
+  const rigCache = new Map();
+  const rigInterval = 1 / 20;
+  const cacheKeyFor = (kind, e, k, rasterScale) => `${kind}|${e.t.r || 40}|${e.state}|${k.phase}|${rasterScale}|${k.pal.join(',')}`;
+  function trimRigCache() {
+    while (rigCache.size > 12) rigCache.delete(rigCache.keys().next().value);
+  }
   A0.draw = function (ctx, e, now) {
     const kind = e && e.t && RIG_IDS[e.type];
     if (!kind || !BOSS_DRAW[kind]) return orig(ctx, e, now);
+    if (kind === 'dragon' && !e.t.boss) return orig(ctx, e, now);
     const t = e.t, r = t.r || 40, moving = e.state === 'chase' || e.state === 'attack';
     const pal = (t.pal && t.pal.length >= 4) ? t.pal : ['#c0402a', '#4a1008', '#ffd070', '#ffe030'];
     const wind = e.state === 'windup' ? Math.max(0, 1 - (e.timer || 0) / (e.maxTimer || 1)) : 0;
     const k = { t: now, ph: now * (moving ? 9 : 3) + (e.bob || 0), mv: moving ? 1 : 0, atk: e.state === 'attack' ? 1 : 0, wind, hurt: e.hit || 0, R: r, pal, el: t.el || 'fogo', kind, seed: ((e.bob || 1) * 1000) | 0, z: 0, type: t, ang: e.face || 0, phase: e.bossPhase || 0, enraged: (e.bossPhase || 0) >= 2 };
-    ctx.save(); ctx.translate(e.x, e.y); BOSS_DRAW[kind](ctx, k);
+    const box = kind === 'dragon' ? [520, 430, 260, 320] : (kind === 'yeti_giant' ? [560, 500, 280, 370] : [580, 520, 290, 390]);
+    const rasterScale = 1.5;
+    const cacheKey = cacheKeyFor(kind, e, k, rasterScale);
+    let cached = rigCache.get(cacheKey);
+    if (cached) { rigCache.delete(cacheKey); rigCache.set(cacheKey, cached); }
+    if (!cached) {
+      cached = { a: document.createElement('canvas'), b: document.createElement('canvas'), front: null, previous: null, at: 0, warm: false };
+      rigCache.set(cacheKey, cached);
+      trimRigCache();
+    }
+    if (!cached.front || (!cached.warm && now - cached.at >= rigInterval)) {
+      const u = 1;
+      const width = Math.max(1, Math.ceil(box[0] * u * rasterScale));
+      const height = Math.max(1, Math.ceil(box[1] * u * rasterScale));
+      const target = cached.front === cached.a ? cached.b : cached.a;
+      if (target.width !== width) target.width = width;
+      if (target.height !== height) target.height = height;
+      const spriteCtx = target.getContext('2d');
+      spriteCtx.setTransform(1, 0, 0, 1, 0, 0);
+      spriteCtx.clearRect(0, 0, width, height);
+      spriteCtx.setTransform(rasterScale, 0, 0, rasterScale, box[2] * rasterScale, box[3] * rasterScale);
+      const normalized = { ...k, R: 40 };
+      BOSS_DRAW[kind](spriteCtx, normalized);
+      cached.previous = cached.front;
+      cached.front = target;
+      cached.at = now;
+      cached.warm = false;
+    } else if (cached.warm) {
+      cached.at = now;
+      cached.warm = false;
+    }
+    const blend = cached.previous ? clamp((now - cached.at) / rigInterval, 0, 1) : 1;
+    const u = r / 40, width = box[0] * u, height = box[1] * u;
+    ctx.save();
+    if (cached.previous && blend < 1) {
+      ctx.globalAlpha = 1 - blend;
+      ctx.drawImage(cached.previous, e.x - box[2] * u, e.y - box[3] * u, width, height);
+    }
+    ctx.globalAlpha = blend;
+    ctx.drawImage(cached.front, e.x - box[2] * u, e.y - box[3] * u, width, height);
+    ctx.globalAlpha = 1;
+    ctx.translate(e.x, e.y);
     if (e.hit > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,246,208,${Math.min(.45, e.hit * 3)})`; ctx.beginPath(); ctx.ellipse(0, -r * .6, r * 1.1, r * .8, 0, 0, TAU); ctx.fill(); }
     ctx.restore();
     if (e.elite) { ctx.strokeStyle = '#ffdc89'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, e.y - 3, r * 1.5, r * 1.18, 0, 0, TAU); ctx.stroke(); }
     if (e.hp < e.maxHp && !t.boss && e.hp > 0) { const w = 34, x = e.x - w / 2, y = e.y - r * 1.6; ctx.fillStyle = 'rgba(10,18,14,.78)'; ctx.fillRect(x - 1, y - 1, w + 2, 6); ctx.fillStyle = '#e66562'; ctx.fillRect(x, y, w * e.hp / e.maxHp, 4); }
   };
-  window.ABISMO_BOSS_RIG = { BOSS_DRAW, defBoss, RIG_IDS };
+  function prewarmDragon(type) {
+    if (!type || !type.boss) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext('2d');
+    const states = ['idle', 'chase', 'windup', 'attack'];
+    let index = 0;
+    const warmNext = () => {
+      const state = states[index++];
+      const now = performance.now() / 1000;
+      const enemy = { type: 'dragao', t: type, x: 0, y: 0, state, timer: .25, maxTimer: 1, bossPhase: 0, face: 0, bob: 0, hit: 0, hp: type.hp, maxHp: type.hp, elite: false };
+      ctx.setTransform(1.5, 0, 0, 1.5, 0, 0);
+      A0.draw(ctx, enemy, now);
+      const pal = type.pal && type.pal.length >= 4 ? type.pal : ['#c0402a', '#4a1008', '#ffd070', '#ffe030'];
+      const key = cacheKeyFor('dragon', enemy, { phase: 0, pal }, 1.5);
+      const cached = rigCache.get(key);
+      if (cached) { cached.warm = true; cached.at = now; }
+      if (index < states.length) {
+        if (window.requestIdleCallback) window.requestIdleCallback(warmNext, { timeout: 500 });
+        else window.setTimeout(warmNext, 80);
+      }
+    };
+    if (window.requestIdleCallback) window.requestIdleCallback(warmNext, { timeout: 500 });
+    else window.setTimeout(warmNext, 80);
+  }
+  window.ABISMO_BOSS_RIG = { BOSS_DRAW, defBoss, RIG_IDS, prewarmDragon };
 }
 })();
