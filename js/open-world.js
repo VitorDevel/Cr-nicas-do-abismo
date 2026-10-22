@@ -79,6 +79,10 @@
   const xpNeed = level => 60 + (level - 14) * 35;
 
   const enemies = [];
+  // Necromancer companions: up to ten warriors and two weapon-wielding giants.
+  const skeletonSummons = [];
+  const giantSummons = [];
+  let summonSerial = 1;
   const loot = [];
   const particles = [];
   const floaters = [];
@@ -1012,6 +1016,7 @@
   function die() {
     player.hp = 0;
     player.dead = true;
+    skeletonSummons.length = 0; giantSummons.length = 0;
     player.deadT = 0;
     attackHeld = false;
     const lost = Math.floor(player.coins * .1);
@@ -1143,9 +1148,16 @@
       case 'attack': {
         e.timer -= dt;
         e.x += e.lx * dt; e.y += e.ly * dt;
-        if (!e.atkDone && Math.hypot(player.x - e.x, player.y - e.y) < t.r + 14 + (e.charge ? 18 : t.reach * .4)) {
-          e.atkDone = true;
-          hurtPlayer(t.dmg * e.dmgMul * (e.charge ? 1.2 : 1), e.x, e.y, !!t.boss, enemyElement(e));
+        if (!e.atkDone) {
+          const hitRange = t.r + 14 + (e.charge ? 18 : t.reach * .4);
+          const playerDist = Math.hypot(player.x - e.x, player.y - e.y);
+          const blocker = nearestSummonAt(e.x, e.y, hitRange + 10);
+          const summonDist = blocker ? Math.hypot(blocker.x - e.x, blocker.y - e.y) : Infinity;
+          if (blocker && summonDist < playerDist && summonDist < hitRange + summonRadius(blocker)) {
+            e.atkDone = true; damageSummon(blocker, t.dmg * e.dmgMul * (e.charge ? 1.2 : 1), e.x, e.y);
+          } else if (playerDist < hitRange) {
+            e.atkDone = true; hurtPlayer(t.dmg * e.dmgMul * (e.charge ? 1.2 : 1), e.x, e.y, !!t.boss, enemyElement(e));
+          }
         }
         if (e.timer <= 0) { e.state = 'recover'; e.timer = t.recover; e.pattern++; }
         break;
@@ -1179,6 +1191,7 @@
     } else {
       const a = aoeOf(e);
       if (Math.hypot(player.x - a.x, player.y - a.y) < a.r + 10) hurtPlayer(t.dmg * e.dmgMul, e.x, e.y, !!t.boss, enemyElement(e));
+      for (const summon of activeSummons()) if (Math.hypot(summon.x - a.x, summon.y - a.y) < a.r + summonRadius(summon)) damageSummon(summon, t.dmg * e.dmgMul * .85, e.x, e.y);
       burst(a.x, a.y, t.boss ? 26 : 10, { color: ['#c9b98a', '#8b7d5b', '#5d6b45'], speed: t.boss ? 280 : 150, life: .5, size: 3.5, drag: 4 });
       if (t.boss) { shake(14); sfx('slam'); ring(a.x, a.y, '#b27cf0', 36, 330); }
       e.state = 'recover'; e.timer = t.recover; e.pattern++;
@@ -1382,7 +1395,7 @@
   /* ---------- ações do herói ---------- */
   function autoAim() {
     if (player.aimLock > 0) return;
-    let best = null, bd = (cust.cls === 'mago' || cust.cls === 'arqueiro') ? 420 : 170;
+    let best = null, bd = (cust.cls === 'mago' || cust.cls === 'arqueiro') ? 420 : (cust.cls === 'necromancer' ? 720 : 170);
     for (const e of enemies) {
       if (e.dead) continue;
       const d = Math.hypot(e.x - player.x, e.y - player.y) - e.t.r;
@@ -1394,19 +1407,20 @@
   }
   function damageEnemy(e, base, o = {}) {
     if (e.dead || (e.finalBoss && e.emerging > 0)) return;
-    const element = ELEMENTS[cust.element];
-    const resistance = ELEMENT_RESIST[enemyElement(e)]?.[cust.element] ?? 1;
+    const elementId = o.element || cust.element;
+    const element = ELEMENTS[elementId];
+    const resistance = ELEMENT_RESIST[enemyElement(e)]?.[elementId] ?? 1;
     const empowered = element.strong.includes(e.type) || resistance > 1.05;
     const crit = Math.random() < .12 + (player.relics.fury || 0) * .015;
     const exposed = e.mark > 0 ? 1.28 + (player.relics.arcana || 0) * .06 : 1;
-    const physical = base * .70, elemental = base * .30 * resistance;
+    const physical = o.pureElement ? 0 : base * .70, elemental = base * (o.pureElement ? 1 : .30) * resistance;
     const dmg = Math.max(1, Math.round((physical + elemental) * exposed * rand(.91, 1.09) * (crit ? 1.75 : 1) * (empowered ? 1.13 : 1)));
     e.hp -= dmg; e.hit = .17; e.lastHit = gameTime;
-    applyEnemyEffect(e, cust.element, (1.7 + (player.relics.arcana || 0) * .14), o.skill ? 1.5 : 1);
-    if (cust.element === 'natureza') player.hp = Math.min(maxHpOf(), player.hp + .8 + (player.relics.vampire || 0) * .5);
-    else if (cust.element === 'arcano') player.focus = Math.min(maxFocusOf(), player.focus + 1.5);
-    if (cust.element === 'gelo' && player.relics.cryo) e.freeze = Math.max(e.freeze, .18 + player.relics.cryo * .06);
-    if (cust.element === 'raio') {
+    applyEnemyEffect(e, elementId, (1.7 + (player.relics.arcana || 0) * .14), o.skill ? 1.5 : 1);
+    if (elementId === 'natureza') player.hp = Math.min(maxHpOf(), player.hp + .8 + (player.relics.vampire || 0) * .5);
+    else if (elementId === 'arcano') player.focus = Math.min(maxFocusOf(), player.focus + 1.5);
+    if (elementId === 'gelo' && player.relics.cryo) e.freeze = Math.max(e.freeze, .18 + player.relics.cryo * .06);
+    if (elementId === 'raio') {
       const chained = enemies.filter(other => other !== e && !other.dead && Math.hypot(other.x-e.x, other.y-e.y) < 155 + (player.relics.storm || 0) * 25).slice(0, 1 + (player.relics.storm || 0));
       for (const target of chained) {
         const chainDamage = Math.max(1, Math.round(dmg * (.24 + (player.relics.storm || 0) * .04)));
@@ -1490,6 +1504,7 @@
   }
   function useUltimate() {
     if (player.dead || paused) return;
+    if (cust.cls === 'necromancer') { summonGiantSkeleton(); return; }
     if (!cust.ultimate) { showToast('Desbloqueie uma ultimate no nível 5'); return; }
     if (player.ultimateCd > 0) { showToast(`Ultimate: ${Math.ceil(player.ultimateCd)} s`); return; }
     player.ultimateCd = 40;
@@ -1550,7 +1565,7 @@
     if (event.repeat) return;
     if (key === ' ' || key === 'j') playerAttack();
     if (key === 'q') useSkill();
-    if (key === 'r') useUltimate();
+    if (key === 'r') { if (cust.cls === 'necromancer') summonGiantSkeleton(); else useUltimate(); }
     if (key === 'shift') dash();
     if (key === 'b' && cust.cls === 'tanke') setBlocking(true);
     if (key === 'h') heal();
@@ -1578,6 +1593,13 @@
         ninjaKatanaAttack();
       } else if (cust.cls === 'tanke') {
         setBlocking(true);
+      } else if (cust.cls === 'necromancer') {
+        const rect = canvas.getBoundingClientRect();
+        const wx = (event.clientX - rect.left) / camera.scale + camera.x;
+        const wy = (event.clientY - rect.top) / camera.scale + camera.y;
+        player.angle = Math.atan2(wy - player.y, wx - player.x);
+        player.aimLock = .32;
+        necromancerDaggerAttack();
       }
       return;
     }
@@ -1593,7 +1615,7 @@
   canvas.addEventListener('contextmenu', event => event.preventDefault());
 
   const bindButton = (node, fn, hold) => {
-    node.addEventListener('pointerdown', event => { event.preventDefault(); if (dialogueActive) return; if (hold) attackHeld = true; fn(); });
+    node.addEventListener('pointerdown', event => { event.preventDefault(); if (dialogueActive) return; if (hold && cust.cls !== 'necromancer') attackHeld = true; fn(); });
   };
   bindButton(el.attackButton, playerAttack, true);
   bindButton(el.skillButton, useSkill);
@@ -1786,8 +1808,9 @@
     // aliados contratados
     updateCompanions(dt);
 
-    // inimigos
+    // inimigos e invocações do necromante
     for (const e of enemies) if (!e.dead) updateEnemy(e, dt);
+    updateSummons(dt);
     for (let i = 0; i < enemies.length; i++) {
       const a = enemies[i]; if (a.dead || a.t.speed === 0) continue;
       for (let j = i + 1; j < enemies.length; j++) {
@@ -1900,6 +1923,95 @@
     } else ctx.fillRect(p.x - 15, p.y - p.h - 6, 30, 7);
     ctx.fillStyle = 'rgba(94,140,70,.55)'; ctx.fillRect(p.x - 11, p.y - p.h * .35, 9, p.h * .35);
   }
+  function drawSummon(s) {
+    const giant = s.role === 'giant';
+    const scale = giant ? 1.78 : 1;
+    const pulse = .72 + .28 * Math.sin(gameTime * 5 + s.id);
+    const gait = Math.sin(s.walk || 0) * (s.motion > .12 ? 1 : .12);
+    const bob = s.motion > .12 ? Math.abs(Math.sin(s.walk || 0)) * (giant ? 2.1 : 1.15) : Math.sin(gameTime * 2.5 + s.id) * .45;
+    const attackP = s.swing > 0 ? Math.sin(clamp(1 - s.swing / (giant ? .48 : .32), 0, 1) * Math.PI) : 0;
+    const barW = giant ? 62 : 32;
+    const headY = giant ? -37 : -21;
+    ctx.save();
+    ctx.translate(s.x, s.y + bob);
+    ctx.fillStyle = 'rgba(8,10,18,.42)'; ctx.beginPath(); ctx.ellipse(2, 10, (giant ? 26 : 14) * scale, (giant ? 11 : 6.5) * scale, 0, 0, TAU); ctx.fill();
+    ctx.globalCompositeOperation = 'lighter';
+    const aura = ctx.createRadialGradient(0, -7, 1, 0, -7, (giant ? 47 : 24));
+    aura.addColorStop(0, `rgba(98,232,255,${(giant ? .21 : .12) * pulse})`); aura.addColorStop(1, 'rgba(130,82,180,0)');
+    ctx.fillStyle = aura; ctx.beginPath(); ctx.arc(0, -7, giant ? 47 : 24, 0, TAU); ctx.fill(); ctx.globalCompositeOperation = 'source-over';
+    ctx.rotate(s.angle + Math.PI / 2); ctx.scale(scale, scale);
+    if (s.hit > 0 && Math.floor(gameTime * 30) % 2) ctx.globalAlpha = .6;
+
+    const bone = '#e4decd', boneHi = '#fff8e8', boneShade = '#928b9e', dark = '#292432', dark2 = '#17151f', purple = giant ? '#58d9f4' : '#9a7cc4';
+    const stroke = (col, w) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; };
+    const boneLimb = (x1,y1,x2,y2,w=3) => { stroke(dark2,w+2);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();stroke(bone,w);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.fillStyle=boneHi;ctx.beginPath();ctx.arc(x2,y2,w*.65,0,TAU);ctx.fill(); };
+
+    // Segmented leg bones follow the same alternating walk cadence as the hero rig.
+    const stride = gait * (giant ? 5.5 : 3.2);
+    for (const side of [-1, 1]) {
+      const sx = side * (giant ? 7 : 4.2), swing = stride * (side < 0 ? 1 : -1);
+      boneLimb(sx, 5, sx + swing * .45, 11, giant ? 4.2 : 2.8);
+      boneLimb(sx + swing * .45, 11, sx + swing, 16, giant ? 4.0 : 2.5);
+      ctx.fillStyle = dark; ctx.strokeStyle = boneShade; ctx.lineWidth = .8;
+      ctx.beginPath(); ctx.roundRect(sx + swing - (giant ? 5 : 3.2), 14, giant ? 10 : 6.4, giant ? 5 : 3.6, 1.6); ctx.fill(); ctx.stroke();
+    }
+
+    // Rib cage and pelvis, with visible seams so the silhouette reads as a skeleton.
+    ctx.fillStyle = dark; ctx.strokeStyle = dark2; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(-8,-17);ctx.lineTo(8,-17);ctx.lineTo(10,3);ctx.lineTo(5,8);ctx.lineTo(-5,8);ctx.lineTo(-10,3);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.strokeStyle = bone; ctx.lineWidth = giant ? 2.7 : 1.9;
+    for (let i=0;i<4;i++) { const y=-14+i*4.2; ctx.beginPath();ctx.moveTo(-7,y);ctx.quadraticCurveTo(0,y+3.1,7,y);ctx.stroke(); }
+    ctx.strokeStyle = boneShade; ctx.lineWidth = .9;ctx.beginPath();ctx.moveTo(0,-15);ctx.lineTo(0,5);ctx.stroke();
+    ctx.fillStyle = '#5b4b70'; ctx.strokeStyle = dark2;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(-7,4);ctx.lineTo(0,2);ctx.lineTo(7,4);ctx.lineTo(6,9);ctx.lineTo(0,11);ctx.lineTo(-6,9);ctx.closePath();ctx.fill();ctx.stroke();
+
+    // Arms articulate with the gait and drive a broad weapon swing on attack.
+    for (const side of [-1, 1]) {
+      const shoulderX = side * 9, shoulderY = -15;
+      const armSwing = gait * (side < 0 ? -3.1 : 3.1) + (attackP * (giant ? 10.5 : 5.5) * (side === 1 ? 1 : -.25));
+      boneLimb(shoulderX, shoulderY, shoulderX + side * 2.5 + armSwing * .32, -8, giant ? 4.4 : 2.8);
+      boneLimb(shoulderX + side * 2.5 + armSwing * .32, -8, shoulderX + side * 4 + armSwing, -2, giant ? 4.0 : 2.5);
+      ctx.fillStyle = boneHi; ctx.beginPath();ctx.arc(shoulderX,-16,giant?4.5:2.9,0,TAU);ctx.fill();
+      ctx.fillStyle = dark; ctx.fillRect(shoulderX-3,-19,6,4);
+    }
+
+    // Skull face with sockets and illuminated eyes.
+    ctx.fillStyle = bone; ctx.strokeStyle = dark2; ctx.lineWidth = 1.6;
+    ctx.beginPath();ctx.moveTo(-7,-29);ctx.quadraticCurveTo(-8,-39,0,-40);ctx.quadraticCurveTo(8,-39,7,-29);ctx.lineTo(5,-23);ctx.lineTo(3,-20);ctx.lineTo(-3,-20);ctx.lineTo(-5,-23);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle = boneHi;ctx.beginPath();ctx.moveTo(-4,-37);ctx.lineTo(0,-39);ctx.lineTo(4,-37);ctx.lineTo(2,-32);ctx.lineTo(-2,-32);ctx.closePath();ctx.fill();
+    ctx.fillStyle = '#211b2c';ctx.beginPath();ctx.ellipse(-3,-30,2.25,2.8,0,0,TAU);ctx.ellipse(3,-30,2.25,2.8,0,0,TAU);ctx.fill();
+    ctx.fillStyle = purple;ctx.shadowColor = purple;ctx.shadowBlur = giant?10:6;ctx.beginPath();ctx.arc(-3,-30,1,0,TAU);ctx.arc(3,-30,1,0,TAU);ctx.fill();ctx.shadowBlur=0;
+    ctx.strokeStyle=boneShade;ctx.lineWidth=.75;ctx.beginPath();ctx.moveTo(-3,-23);ctx.lineTo(-2,-21);ctx.lineTo(0,-22);ctx.lineTo(2,-21);ctx.lineTo(3,-23);ctx.stroke();
+
+    // Weapon follows the same attack-swing timing. Giants carry oversized two-handed steel.
+    const weaponSide = 1, wx = giant ? 15 : 12, wy = attackP ? -8 - attackP*5 : -5 + Math.sin(gameTime*3+s.id)*.8;
+    ctx.save();ctx.translate(wx,wy);ctx.rotate((giant ? -.58 : -.34) + attackP * (giant ? 1.8 : 1.25));
+    if (giant) {
+      stroke('#6b4d37', 4.8);ctx.beginPath();ctx.moveTo(0,13);ctx.lineTo(0,-23);ctx.stroke();
+      stroke('#c3d8df', 1.4);ctx.beginPath();ctx.moveTo(-1.2,9);ctx.lineTo(-1.2,-18);ctx.stroke();
+      if (s.weapon === 'hammer') {
+        ctx.fillStyle='#566c79';ctx.strokeStyle='#11151e';ctx.lineWidth=1.8;ctx.beginPath();ctx.roundRect(-10,-32,20,12,2);ctx.fill();ctx.stroke();
+        ctx.fillStyle='#b8edf7';ctx.fillRect(-7,-30,14,2.4);ctx.fillStyle='#7a8e9b';ctx.fillRect(-9,-24,18,2.4);
+        ctx.strokeStyle=purple;ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(-5,-28);ctx.lineTo(0,-25);ctx.lineTo(5,-28);ctx.stroke();
+      } else {
+        ctx.fillStyle='#dfe9ed';ctx.strokeStyle='#3d4754';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(-4,-19);ctx.lineTo(0,-48);ctx.lineTo(4,-19);ctx.lineTo(2,-13);ctx.lineTo(-2,-13);ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.fillStyle='#6b4d37';ctx.fillRect(-8,-17,16,3);ctx.fillStyle=purple;ctx.fillRect(-1.2,-44,2.4,22);
+      }
+    } else {
+      stroke('#6b4d37', 3.5);ctx.beginPath();ctx.moveTo(0,5);ctx.lineTo(0,-13);ctx.stroke();
+      ctx.fillStyle='#dfe8e7';ctx.strokeStyle='#515867';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-2.3,-10);ctx.lineTo(0,-25);ctx.lineTo(2.3,-10);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle='#9b7bc1';ctx.fillRect(-4,-11,8,2.2);
+    }
+    ctx.restore();ctx.restore();
+
+    // Always-visible health bar; giants also get a readable label.
+    const barY = s.y - (giant ? 88 : 49), barX = s.x - barW / 2;
+    ctx.save();ctx.globalAlpha=.98;ctx.fillStyle='rgba(8,10,17,.86)';ctx.fillRect(barX,barY,barW,5);
+    ctx.fillStyle=giant?'#62e8ff':'#b995e4';ctx.fillRect(barX+1,barY+1,(barW-2)*clamp(s.hp/s.maxHp,0,1),3);
+    ctx.strokeStyle='rgba(236,246,255,.55)';ctx.lineWidth=.7;ctx.strokeRect(barX,barY,barW,5);
+    if (giant) {ctx.font='700 9px Rajdhani, sans-serif';ctx.textAlign='center';ctx.lineWidth=2.5;ctx.strokeStyle='rgba(7,10,17,.9)';ctx.strokeText(s.weapon==='hammer'?'COLOSSO · MARTELO':'COLOSSO · ESPADA',s.x,barY-4);ctx.fillStyle='#dffaff';ctx.fillText(s.weapon==='hammer'?'COLOSSO · MARTELO':'COLOSSO · ESPADA',s.x,barY-4);}
+    ctx.restore();
+  }
+
   function drawHeroOld() {
     if (player.dead) return;
     const stride = Math.sin(player.walk) * .06;
@@ -1936,7 +2048,8 @@
       ctx.save();
       ctx.lineCap = 'round';
       ctx.globalCompositeOperation = 'lighter';
-      for (const [w, a, col] of [[s.finisher ? 22 : 16, .22, s.finisher ? '255,210,110' : '170,230,240'], [s.finisher ? 9 : 6, .8, '255,248,220']]) {
+      const palette = s.style === 'dagger' ? ['190,130,255', '244,225,255'] : [s.finisher ? '255,210,110' : '170,230,240', '255,248,220'];
+      for (const [w, a, col] of [[s.finisher ? 22 : (s.style === 'dagger' ? 8 : 16), .22, s.finisher ? '255,210,110' : palette[0]], [s.finisher ? 9 : (s.style === 'dagger' ? 3 : 6), .8, palette[1]]]) {
         ctx.strokeStyle = `rgba(${col},${a * (1 - p * .6)})`;
         ctx.lineWidth = w * (1 - p * .4);
         ctx.beginPath(); ctx.arc(player.x, player.y, s.range * .72, start, end, s.dir < 0); ctx.stroke();
@@ -2182,6 +2295,8 @@
       miniCtx.fillStyle = e.type === 'boss' ? '#b27cf0' : (e.type === 'dummy' ? '#e8c45d' : '#ef7168');
       miniCtx.beginPath(); miniCtx.arc(mx(e.x), my(e.y), e.type === 'boss' ? 7 : 4, 0, TAU); miniCtx.fill();
     }
+    for (const summon of skeletonSummons) { miniCtx.fillStyle = '#c3a0ef'; miniCtx.beginPath(); miniCtx.arc(mx(summon.x), my(summon.y), 2.6, 0, TAU); miniCtx.fill(); }
+    for (const summon of giantSummons) { miniCtx.fillStyle = '#6feaff'; miniCtx.beginPath(); miniCtx.arc(mx(summon.x), my(summon.y), 4.1, 0, TAU); miniCtx.fill(); }
     mapExt(mx, my);
     if (target) {
       const p = .5 + .5 * Math.sin(gameTime * 5);
@@ -2247,6 +2362,8 @@
     }
     for (const p of (dun ? dun.pillars : pillars)) if (vis(p.x, p.y)) drawList.push({ y: p.y + 8, k: 1, o: p });
     for (const e of enemies) if (!e.dead && vis(e.x, e.y)) drawList.push({ y: e.y, k: 2, o: e });
+    for (const summon of skeletonSummons) if (vis(summon.x, summon.y)) drawList.push({ y: summon.y, k: 7, o: summon });
+    for (const summon of giantSummons) if (vis(summon.x, summon.y)) drawList.push({ y: summon.y, k: 7, o: summon });
     if (!dun) {
       for (const npc of homeNpcs) if(!npc.companion&&vis(npc.x,npc.y)) drawList.push({y:npc.y,k:4,o:npc});
       for (const chunk of worldChunks.values()) for (const npc of chunk.npcs) if (!npc.companion&&vis(npc.x,npc.y)) drawList.push({y:npc.y,k:4,o:npc});
@@ -2261,7 +2378,8 @@
       else if (d.k === 6) drawBiomeFeature(d.o);
       else if (d.k === 2) drawEnemy(d.o);
       else if (d.k === 4) drawNpc(d.o);
-      else { drawHero(); drawSwing(); }
+      else if (d.k === 7) drawSummon(d.o);
+      else if (d.k === 3) { drawHero(); drawSwing(); }
     }
 
     drawExt();
@@ -2378,7 +2496,9 @@
     setText('wave', el.wave, wave);
     const waveCountdown=$('#nextWave');if(waveCountdown)waveCountdown.textContent=Math.max(0,Math.ceil(38-waveTimer))+'s';
     const icons = [['🔥',player.burn],['☠',player.poison],['❄',player.chill],['⚡',player.shock],['✦',player.curse]].filter(x=>x[1]>0).map(x=>x[0]).join(' ');
-    const statusEl=$('#statusEffects'); if (statusEl) statusEl.textContent=icons ? 'EFEITOS: '+icons : `PODERES: ${Object.values(player.relics).reduce((a,b)=>a+b,0)} · ONDA +${Math.round((Math.pow(1 + (wave-1)*.17,1.10)-1)*100)}%`;
+    const statusEl=$('#statusEffects'); if (statusEl) statusEl.textContent = cust.cls === 'necromancer'
+      ? `GUERREIROS: ${skeletonSummons.length}/10 · GIGANTES: ${giantSummons.length}/2`
+      : icons ? 'EFEITOS: '+icons : `PODERES: ${Object.values(player.relics).reduce((a,b)=>a+b,0)} · ONDA +${Math.round((Math.pow(1 + (wave-1)*.17,1.10)-1)*100)}%`;
     const near = nearestNpc(); const ib = $('#interactButton'); if (ib) {ib.hidden=!near;ib.title=near?`Falar com ${NPC_ROLES[near.role].name}`:'';}
     setText('location', el.locationName, worldRegionName(player.x, player.y));
     const mm = Math.floor(clockMinutes());
@@ -2395,9 +2515,9 @@
     el.skillButton.classList.toggle('cooling', player.skillCd > 0 || player.focus < CLASSES[cust.cls].cost);
     el.dodgeButton.classList.toggle('cooling', player.dashCd > 0 || player.stamina < 30);
     el.healButton.classList.toggle('cooling', player.potions <= 0);
-    el.ultimateButton.hidden = !cust.ultimate;
-    el.ultimateButton.classList.toggle('cooling', player.ultimateCd > 0);
-    el.ultimateButton.setAttribute('aria-label', cust.ultimate ? `Usar ultimate: ${ULTIMATES[cust.ultimate].name}` : 'Ultimate bloqueada até o nível 5');
+    el.ultimateButton.hidden = !cust.ultimate && cust.cls !== 'necromancer';
+    el.ultimateButton.classList.toggle('cooling', player.ultimateCd > 0 || (cust.cls === 'necromancer' && giantSummons.length >= 2));
+    el.ultimateButton.setAttribute('aria-label', cust.cls === 'necromancer' ? 'Invocar gigante esqueleto (R)' : cust.ultimate ? `Usar ultimate: ${ULTIMATES[cust.ultimate].name}` : 'Ultimate bloqueada até o nível 5');
 
     // alvo
     const boss = enemies.find(e => e.t.boss && !e.dead && (e.finalBoss || e.state !== 'idle'));
@@ -2743,9 +2863,17 @@
       }
     }
     updateList(shots, s => {
-      s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt;
+      s.life -= dt; s.prevX = s.x; s.prevY = s.y; s.x += s.vx * dt; s.y += s.vy * dt;
       if (s.life <= 0 || (dun && (s.x < 0 || s.x > world.width || s.y > world.height || s.y < FLOOR_TOP - 20))) return false;
-      if (!player.dead && Math.hypot(player.x - s.x, player.y - s.y) < 18) {
+      const pd = player.dead ? Infinity : Math.hypot(player.x - s.x, player.y - s.y);
+      const summonHit = nearestSummonAt(s.x, s.y, 20);
+      const sd = summonHit ? Math.hypot(summonHit.x - s.x, summonHit.y - s.y) : Infinity;
+      if (summonHit && sd < pd && sd < 20 + summonRadius(summonHit)) {
+        damageSummon(summonHit, s.dmg, s.x - s.vx, s.y - s.vy);
+        burst(s.x, s.y, 8, { color: [s.col, '#fff'], speed: 150, life: .3, size: 2.6, glow: true });
+        return false;
+      }
+      if (!player.dead && pd < 18) {
         hurtPlayer(s.dmg, s.x - s.vx, s.y - s.vy, s.boss, s.element);
         burst(s.x, s.y, 8, { color: [s.col, '#fff'], speed: 150, life: .3, size: 2.6, glow: true });
         return false;
@@ -3047,7 +3175,8 @@
     druida: { n: 'Druida', w: 'Cajado das Raízes', d: 'Dispara espinhos vivos. Habilidade: Ciclo Vital, cura e fere ao redor.', hp: 1, fo: 1.25, sp: 1, dm: 1.05, atk: 1, rng: 1, dc: 1, cost: 24, cd: 5, icon: '❋' },
     assassino: { n: 'Assassino', w: 'Lâmina Oculta', d: 'Capuz, couro escuro e lâmina de pulso: ataques velozes e Passo Sombrio para eliminar alvos.', hp: .88, fo: .95, sp: 1.18, dm: 1.12, atk: .72, rng: .82, dc: 1.1, cost: 18, cd: 3.2, icon: '✧' },
     ninja: { n: 'Ninja', w: 'Kunai e Katana', d: 'Lança kunais e shurikens. Habilidade: chuva de sete shurikens.', hp: .9, fo: 1, sp: 1.18, dm: 1.08, atk: .78, rng: 1, dc: 1.08, cost: 18, cd: 3.4, icon: '✧' },
-    tanke: { n: 'Tanke', w: 'Baluarte Colossal', d: 'Armadura pesada e golpes poderosos. Bloqueie segurando o botão direito ou B para converter dano em mana.', hp: 1.48, fo: 1.05, sp: .82, dm: 1.12, atk: 1.2, rng: 1.18, dc: 1.3, cost: 18, cd: 5.5, icon: '⬡' }
+    tanke: { n: 'Tanke', w: 'Baluarte Colossal', d: 'Armadura pesada e golpes poderosos. Bloqueie segurando o botão direito ou B para converter dano em mana.', hp: 1.48, fo: 1.05, sp: .82, dm: 1.12, atk: 1.2, rng: 1.18, dc: 1.3, cost: 18, cd: 5.5, icon: '⬡' },
+    necromancer: { n: 'Necromante', w: 'Adaga Ossária', d: 'Q ergue até 10 guerreiros esqueléticos fortes. Clique esquerdo dispara um raio elétrico; clique direito golpeia com a adaga. R invoca até 2 gigantes esqueletos com martelo ou espada. Todas as invocações têm vida própria e podem morrer.', hp: .92, fo: 1.3, sp: .96, dm: .94, atk: 1, rng: .82, dc: .94, cost: 8, cd: 1.15, icon: '☠' }
   };
   const ARMORS = {
     couro: { n: 'Couro de Caçador', hp: .96, speed: 1.08, guard: .06 },
@@ -3084,7 +3213,8 @@
     tank_bulwark: { n: 'Escudo Colossal do Baluarte', cls: 'tanke', damage: 1.08, rate: .86, range: 1.08, weaponType: 'shield', shieldModel: 18, large: true },
     tank_citadel: { n: 'Escudo da Cidadela', cls: 'tanke', damage: 1.13, rate: .8, range: 1.14, weaponType: 'shield', shieldModel: 20, large: true },
     tank_maul: { n: 'Marreta de Cerco', cls: 'tanke', damage: 1.28, rate: .74, range: 1.2, weaponType: 'hammer', hammerModel: 11, large: true },
-    tank_montante: { n: 'Montante Colossal', cls: 'tanke', damage: 1.25, rate: .78, range: 1.25, weaponType: 'sword', swordModel: 24, large: true }
+    tank_montante: { n: 'Montante Colossal', cls: 'tanke', damage: 1.25, rate: .78, range: 1.25, weaponType: 'sword', swordModel: 24, large: true },
+    necro_dagger: { n: 'Adaga Ossária', cls: 'necromancer', damage: .94, rate: 1.12, range: .88, weaponType: 'dagger' }
   };
   const ELEMENTS = {
     fogo: { n: 'Fogo', color: '#ff815b', strong: ['skeleton', 'brute', 'lorde', 'titan'] },
@@ -3100,7 +3230,7 @@
   };
   if (!RACES[cust.race]) cust.race = 'humano';
   if (!CLASSES[cust.cls]) cust.cls = 'guerreiro';
-  const defaultWeapon = cls => ({ guerreiro: 'espada', mago: 'cajado', arqueiro: 'arco', paladino: 'martelo', druida: 'totem', assassino: 'hidden_blade', ninja: 'ninja_katana', tanke: 'tank_bulwark' }[cls]);
+  const defaultWeapon = cls => ({ guerreiro: 'espada', mago: 'cajado', arqueiro: 'arco', paladino: 'martelo', druida: 'totem', assassino: 'hidden_blade', ninja: 'ninja_katana', tanke: 'tank_bulwark', necromancer: 'necro_dagger' }[cls]);
   const CLASS_STARTING_LOOK = {
     guerreiro: { armorType: 'cota', armor: '#425f69', cape: '#8c3a3a', trim: '#c7a65c', style: 1, capeStyle: 'longa', emblem: 'sol' },
     mago: { armorType: 'runica', armor: '#3d4d7b', cape: '#352e62', trim: '#b69cff', style: 0, capeStyle: 'longa', emblem: 'runa' },
@@ -3109,7 +3239,8 @@
     druida: { armorType: 'runica', armor: '#496a42', cape: '#2f5738', trim: '#a6c77a', style: 0, capeStyle: 'esfarrapada', emblem: 'runa' },
     assassino: { armorType: 'couro', armor: '#4a3025', cape: '#e4e0d6', trim: '#9d2633', style: 0, capeStyle: 'longa', emblem: 'lua', scars: 'guerra' },
     ninja: { armorType: 'couro', armor: '#111318', cape: '#090b0f', trim: '#b52e3b', style: 4, capeStyle: 'curta', emblem: 'nenhum' },
-    tanke: { armorType: 'placas', armor: '#555b66', cape: '#2c3e6b', trim: '#c7a65c', style: 1, capeStyle: 'curta', emblem: 'sol' }
+    tanke: { armorType: 'placas', armor: '#555b66', cape: '#2c3e6b', trim: '#c7a65c', style: 1, capeStyle: 'curta', emblem: 'sol' },
+    necromancer: { armorType: 'runica', armor: '#292432', cape: '#17131f', trim: '#8d63bc', glow: '#b78aff', style: 0, capeStyle: 'longa', emblem: 'runa', scars: 'runas', weapon: 'necro_dagger' }
   };
   if (!ARMORS[cust.armorType]) cust.armorType = 'cota';
   if (!WEAPONS[cust.weapon] || WEAPONS[cust.weapon].cls !== cust.cls) cust.weapon = defaultWeapon(cust.cls);
@@ -3142,8 +3273,220 @@
     if (level.crystalShards) for (const offset of [-.16, 0, .16]) pShoot(a + offset, 620, damageOf() * (.24 + level.crystalShards * .05), 'shard', 0, .85);
     if (level.firebrand) pShoot(a, 430, damageOf() * (.55 + level.firebrand * .1), 'fireball', 0, 1.45);
   }
+  function activeSummons() { return [...skeletonSummons, ...giantSummons].filter(s => s.hp > 0); }
+  function summonRadius(s) { return s.role === 'giant' ? 25 : 13; }
+  function nearestSummonAt(x, y, radius = Infinity) {
+    let best = null, bestD = Infinity;
+    for (const s of activeSummons()) {
+      const d = Math.hypot(s.x - x, s.y - y);
+      if (d <= radius + summonRadius(s) && d < bestD) { bestD = d; best = s; }
+    }
+    return best;
+  }
+  function damageSummon(s, amount, fromX, fromY) {
+    if (!s || s.hp <= 0) return;
+    const dealt = Math.max(1, Math.round(amount * (s.role === 'giant' ? .62 : .82)));
+    s.hp = Math.max(0, s.hp - dealt); s.hit = .18;
+    const a = Math.atan2(s.y - fromY, s.x - fromX);
+    s.kx = (s.kx || 0) + Math.cos(a) * (s.role === 'giant' ? 130 : 185);
+    s.ky = (s.ky || 0) + Math.sin(a) * (s.role === 'giant' ? 130 : 185);
+    floatText(s.x, s.y - (s.role === 'giant' ? 55 : 36), `-${dealt}`, '#ff8b9d', 12);
+    burst(s.x, s.y - 7, s.role === 'giant' ? 7 : 4, { color: ['#eee7d8', '#8e78aa', '#62e8ff'], speed: 100, life: .26, size: 2.4, glow: true });
+    if (s.hp <= 0) s.dying = true;
+  }
+  function cleanupDeadSummons() {
+    for (const s of [...skeletonSummons, ...giantSummons]) {
+      if (s.hp > 0) continue;
+      burst(s.x, s.y - 4, s.role === 'giant' ? 24 : 12, { color: ['#e4ded0', '#9c8db6', '#62e8ff'], speed: s.role === 'giant' ? 175 : 130, life: .55, size: 3, glow: true });
+      ring(s.x, s.y, '#9c8db6', s.role === 'giant' ? 22 : 13, s.role === 'giant' ? 155 : 95);
+      if (s.role === 'giant') {
+        const idx = giantSummons.indexOf(s); if (idx >= 0) giantSummons.splice(idx, 1);
+        showToast('Um gigante esqueleto foi destruído!');
+      } else {
+        const idx = skeletonSummons.indexOf(s); if (idx >= 0) skeletonSummons.splice(idx, 1);
+        showToast('Um esqueleto guerreiro foi destruído');
+      }
+    }
+  }
+  function summonWarriorSkeleton() {
+    if (cust.cls !== 'necromancer' || player.dead || paused || dialogueActive) return;
+    if (player.skillCd > 0) { showToast(`Q disponível em ${player.skillCd.toFixed(1)} s`); return; }
+    if (skeletonSummons.length >= 10) { showToast('Limite atingido: 10 esqueletos guerreiros'); return; }
+    const cost = CLASSES.necromancer.cost;
+    if (player.focus < cost) { showToast('Foco insuficiente para erguer o esqueleto'); return; }
+    player.focus -= cost;
+    player.skillCd = CLASSES.necromancer.cd;
+    const slot = skeletonSummons.length;
+    const a = player.angle + Math.PI + (slot / 10) * TAU;
+    const x = player.x + Math.cos(a) * (34 + (slot % 2) * 9), y = player.y + Math.sin(a) * (34 + (slot % 2) * 9);
+    const hp = 235 + rankOf() * 22 + Math.floor(wave * 1.8);
+    skeletonSummons.push({ id: summonSerial++, role: 'warrior', x, y, angle: player.angle, walk: 0, motion: 0, kx: 0, ky: 0, attackCd: rand(.12, .42), swing: 0, target: null, hp, maxHp: hp, born: 0, hit: 0, weapon: 'sword', bodySize: 1 });
+    ring(x, y, '#aa8bdf', 17, 125);
+    burst(x, y, 15, { color: ['#eee4d1', '#a58bcf', '#62e8ff'], speed: 115, life: .5, size: 2.9, glow: true });
+    sfx('skill'); showToast(`Guerreiro esquelético erguido · ${skeletonSummons.length}/10`);
+  }
+
+  function summonGiantSkeleton() {
+    if (cust.cls !== 'necromancer' || player.dead || paused || dialogueActive) return;
+    if (giantSummons.length >= 2) { showToast('Você já comanda 2 gigantes esqueletos'); return; }
+    if (player.ultimateCd > 0) { showToast(`R disponível em ${Math.ceil(player.ultimateCd)} s`); return; }
+    const cost = 26;
+    if (player.focus < cost) { showToast('Foco insuficiente para invocar um gigante'); return; }
+    player.focus -= cost; player.ultimateCd = 8.5;
+    const slot = giantSummons.length, weapon = Math.random() < .5 ? 'hammer' : 'sword';
+    const a = player.angle + Math.PI + (slot ? .62 : -.62);
+    const x = player.x + Math.cos(a) * 58, y = player.y + Math.sin(a) * 58;
+    const hp = 760 + rankOf() * 86 + Math.floor(wave * 4);
+    const giant = { id: summonSerial++, role: 'giant', weapon, x, y, angle: player.angle, walk: 0, motion: 0, kx: 0, ky: 0, attackCd: .65, swing: 0, target: null, hp, maxHp: hp, born: 0, hit: 0, bodySize: 1.85 };
+    giantSummons.push(giant);
+    ring(x, y, '#62e8ff', 30, 230);
+    burst(x, y, 28, { color: ['#f2ffff', '#62e8ff', '#9279da'], speed: 165, life: .68, size: 3.5, glow: true });
+    sfx('level'); shake(5); showBanner('GIGANTE ESQUELÉTICO ERGUIDO', weapon === 'hammer' ? 'Um colosso armado com martelo de guerra atende ao chamado.' : 'Um colosso armado com espada colossal atende ao chamado.');
+  }
+
+  // Kept for older callers, but left-click no longer commands followers.
+  function commandSummons(wx = null, wy = null) {
+    if (cust.cls !== 'necromancer' || player.dead || paused) return;
+    const party = activeSummons();
+    if (!party.length) { showToast('Use Q ou R para erguer esqueletos'); return; }
+    let target = null;
+    if (Number.isFinite(wx) && Number.isFinite(wy)) {
+      let cursorBest = Infinity;
+      for (const e of enemies) {
+        if (e.dead || (e.finalBoss && e.emerging > 0)) continue;
+        const d = Math.hypot(e.x - wx, e.y - wy);
+        if (d < Math.max(58, e.t.r + 34) && d < cursorBest) { cursorBest = d; target = e; }
+      }
+    }
+    if (!target) {
+      let best = Infinity;
+      for (const e of enemies) {
+        if (e.dead || (e.finalBoss && e.emerging > 0)) continue;
+        const d = Math.hypot(e.x - player.x, e.y - player.y);
+        const off = angDiff(Math.atan2(e.y - player.y, e.x - player.x), player.angle);
+        const score = d + off * 190;
+        if (d < 720 && off < 1.22 && score < best) { best = score; target = e; }
+      }
+    }
+    if (!target) { showToast('Nenhum inimigo próximo'); return; }
+    for (const summon of party) { summon.target = target; summon.attackCd = Math.min(summon.attackCd || 0, .25); }
+  }
+  function commandSummonsByFacing() { commandSummons(); }
+
+  function updateSummons(dt) {
+    cleanupDeadSummons();
+    const party = [...skeletonSummons, ...giantSummons];
+    for (const summon of party) {
+      if (summon.hp <= 0) continue;
+      summon.born += dt;
+      summon.attackCd = Math.max(0, summon.attackCd - dt);
+      summon.swing = Math.max(0, (summon.swing || 0) - dt);
+      summon.hit = Math.max(0, (summon.hit || 0) - dt);
+      summon.walk = (summon.walk || 0) + dt * (summon.motion > .15 ? 9 : 1.6);
+      // Apply gentle knockback from enemy hits.
+      summon.x += (summon.kx || 0) * dt; summon.y += (summon.ky || 0) * dt;
+      const friction = Math.exp(-8 * dt); summon.kx = (summon.kx || 0) * friction; summon.ky = (summon.ky || 0) * friction;
+      if (summon.target?.dead || (summon.target && summon.target.hp <= 0) || (summon.target && Math.hypot(summon.target.x - summon.x, summon.target.y - summon.y) > 980)) summon.target = null;
+      if (!summon.target) {
+        const scanRange = summon.role === 'giant' ? 390 : 290;
+        let closest = null, best = scanRange;
+        for (const e of enemies) {
+          if (e.dead || (e.finalBoss && e.emerging > 0) || e.type === 'dummy' && quest.stage > 0) continue;
+          const d = Math.hypot(e.x - summon.x, e.y - summon.y);
+          if (d < best) { best = d; closest = e; }
+        }
+        if (closest) summon.target = closest;
+      }
+      const target = summon.target;
+      let tx, ty, moving = false;
+      if (target) {
+        const dx = target.x - summon.x, dy = target.y - summon.y, dist = Math.hypot(dx, dy) || 1;
+        summon.angle = Math.atan2(dy, dx);
+        const isGiant = summon.role === 'giant';
+        const desiredRange = isGiant ? (summon.weapon === 'hammer' ? 92 : 72) : 29;
+        if (dist > desiredRange) {
+          const speed = isGiant ? 142 : 235;
+          const step = Math.min(dist - desiredRange, speed * dt);
+          summon.x += dx / dist * step; summon.y += dy / dist * step; moving = step > .15;
+        } else if (summon.attackCd <= 0) {
+          summon.attackCd = isGiant ? (summon.weapon === 'hammer' ? 1.62 : 1.32) : .66;
+          summon.swing = isGiant ? .48 : .32;
+          if (isGiant) {
+            const reach = summon.weapon === 'hammer' ? 126 : 98;
+            const cone = summon.weapon === 'hammer' ? .95 : .72;
+            let hitCount = 0;
+            for (const foe of enemies) {
+              if (foe.dead) continue;
+              const ex = foe.x - summon.x, ey = foe.y - summon.y, d = Math.hypot(ex, ey);
+              if (d > reach + foe.t.r) continue;
+              if (summon.weapon === 'sword' && angDiff(Math.atan2(ey, ex), summon.angle) > cone) continue;
+              damageEnemy(foe, damageOf() * (summon.weapon === 'hammer' ? 1.8 : 1.95) * (1 + rankOf() * .035), { kb: summon.weapon === 'hammer' ? 310 : 245, skill: true });
+              hitCount++;
+            }
+            burst(target.x, target.y - 6, summon.weapon === 'hammer' ? 16 : 10, { color: summon.weapon === 'hammer' ? ['#62e8ff', '#e7ffff', '#a58bcf'] : ['#e8e5dd', '#62e8ff', '#a58bcf'], speed: 150, life: .38, size: 3.2, glow: true });
+            if (hitCount) { shake(summon.weapon === 'hammer' ? 4 : 2); sfx(summon.weapon === 'hammer' ? 'slam' : 'swing'); }
+          } else {
+            const dealt = damageOf() * (.78 + rankOf() * .035) * (1 + Math.min(wave, 80) * .0025);
+            damageEnemy(target, dealt, { kb: 175, skill: true });
+            burst(target.x, target.y - 5, 6, { color: ['#eee4d1', '#a58bcf', '#62e8ff'], speed: 110, life: .3, size: 2.4, glow: true });
+          }
+        }
+      } else {
+        const index = summon.role === 'giant' ? skeletonSummons.length + giantSummons.indexOf(summon) : Math.max(0, skeletonSummons.indexOf(summon));
+        const count = Math.max(1, skeletonSummons.length + giantSummons.length);
+        const a = visualTime * .24 + index * TAU / count + (summon.role === 'giant' ? Math.PI : 0);
+        const radius = summon.role === 'giant' ? 82 : 34 + (index % 3) * 11;
+        tx = player.x + Math.cos(a) * radius; ty = player.y + Math.sin(a) * radius;
+        const dx = tx - summon.x, dy = ty - summon.y, dist = Math.hypot(dx, dy);
+        if (dist > (summon.role === 'giant' ? 32 : 16)) {
+          const speed = summon.role === 'giant' ? 145 : 190;
+          const step = Math.min(dist, speed * dt);
+          summon.x += dx / (dist || 1) * step; summon.y += dy / (dist || 1) * step; moving = step > .15;
+          summon.angle = Math.atan2(dy, dx);
+        } else summon.angle = player.angle;
+      }
+      summon.motion = moving ? Math.min(1, (summon.motion || 0) + dt * 6) : Math.max(0, (summon.motion || 0) - dt * 7);
+      summon.x = clamp(summon.x, 18, world.width - 18);
+      summon.y = clamp(summon.y, dun ? FLOOR_TOP + 8 : 18, world.height - 18);
+    }
+    cleanupDeadSummons();
+  }
+
+  function necromancerDaggerAttack() {
+    if (cust.cls !== 'necromancer' || player.dead || player.attackCd > 0 || paused || dialogueActive) return;
+    player.attackCd = .34 * atkMul();
+    const range = 82 * rangeMul(), arc = 1.03;
+    player.swing = { t: 0, dur: .19, angle: player.angle, range, arc, finisher: false, dir: 1, style: 'dagger' };
+    player.kx += Math.cos(player.angle) * 42; player.ky += Math.sin(player.angle) * 42;
+    const damage = damageOf() * .82 * dmgClass();
+    for (const enemy of enemies) {
+      if (enemy.dead) continue;
+      const dx = enemy.x - player.x, dy = enemy.y - player.y, distance = Math.hypot(dx, dy);
+      if (distance > range + enemy.t.r) continue;
+      if (angDiff(Math.atan2(dy, dx), player.angle) > arc / 2 + Math.atan2(enemy.t.r, Math.max(distance, 1))) continue;
+      damageEnemy(enemy, damage, { kb: 160 });
+    }
+    burst(player.x + Math.cos(player.angle) * 27, player.y + Math.sin(player.angle) * 27, 4, { color: ['#c9a5ff', '#eee4d1'], speed: 75, life: .2, size: 2, glow: true });
+    sfx('swing');
+  }
+
   function classAttack() {
     const c = cust.cls;
+    if (c === 'necromancer') {
+      if (player.dead || player.attackCd > 0 || paused || dialogueActive) return true;
+      autoAim();
+      player.attackCd = .36 * atkMul();
+      player.swing = { t: 0, dur: .16, angle: player.angle, range: 24, arc: .4, finisher: false, dir: 1, style: 'necro_bolt' };
+      const speed = 760;
+      pShots.push({ x: player.x + Math.cos(player.angle) * 18, y: player.y + Math.sin(player.angle) * 18,
+        vx: Math.cos(player.angle) * speed, vy: Math.sin(player.angle) * speed, a: player.angle,
+        dmg: damageOf() * (1.22 + rankOf() * .035), kind: 'necro_bolt', element: 'raio', pierce: 0,
+        life: 1.12, hit: new Set(), summon: false });
+      burst(player.x + Math.cos(player.angle) * 18, player.y + Math.sin(player.angle) * 18, 7,
+        { color: ['#62e8ff', '#d9fbff', '#9a8aff'], speed: 105, life: .24, size: 2.5, glow: true });
+      sfx('skill');
+      return true;
+    }
     if (c !== 'mago' && c !== 'arqueiro' && c !== 'druida' && c !== 'ninja') return false;
     if (player.dead || player.attackCd > 0 || paused) return true;
     if (c !== 'ninja') autoAim();
@@ -3163,6 +3506,7 @@
   }
   function classSkill() {
     const K = CLASSES[cust.cls];
+    if (cust.cls === 'necromancer') { summonWarriorSkeleton(); return; }
     if (player.skillCd > 0) return;
     if (player.focus < K.cost) { showToast('Foco insuficiente'); return; }
     player.focus -= K.cost; player.skillCd = K.cd; player.invuln = Math.max(player.invuln, .25);
@@ -3199,11 +3543,11 @@
       if (s.life <= 0 || (dun && (s.x < 0 || s.x > world.width || s.y > world.height || s.y < FLOOR_TOP - 20))) return false;
       for (const e of enemies) {
         if (e.dead || s.hit.has(e) || Math.hypot(e.x - s.x, e.y - s.y) > e.t.r + 8) continue;
-        s.hit.add(e); damageEnemy(e, s.dmg, { kb: 220 });
-        if (s.kind !== 'arqueiro') { burst(s.x, s.y, 10, { color: [ELEMENTS[cust.element].color, '#fff'], speed: 160, life: .3, size: 3, glow: true }); return false; }
+        s.hit.add(e); damageEnemy(e, s.dmg, { kb: s.kind === 'necro_bolt' ? 285 : 220, skill: !!s.summon, element: s.element || undefined, pureElement: s.kind === 'necro_bolt' });
+        if (s.kind !== 'arqueiro') { const impact = s.kind === 'necro_bolt' ? ['#62e8ff', '#f4ffff', '#9c8bff'] : [ELEMENTS[cust.element].color, '#fff']; burst(s.x, s.y, s.kind === 'necro_bolt' ? 16 : 10, { color: impact, speed: 190, life: .34, size: 3.2, glow: true }); return false; }
         if (s.pierce-- <= 0) return false;
       }
-      if (Math.random() < dt * 40) addParticle({ x: s.x, y: s.y, vx: 0, vy: 0, life: .25, max: .25, size: 3, color: s.kind === 'mago' ? '#b69cff' : '#e8e0c0', drag: 0, glow: s.kind === 'mago', shrink: true });
+      if (Math.random() < dt * 40) addParticle({ x: s.x, y: s.y, vx: 0, vy: 0, life: .25, max: .25, size: s.kind === 'necro_bolt' ? 3.4 : 3, color: s.kind === 'necro_bolt' ? '#62e8ff' : s.kind === 'necro_mage' ? '#b69cff' : s.kind === 'mago' ? '#b69cff' : '#e8e0c0', drag: 0, glow: s.kind === 'mago' || s.kind === 'necro_mage' || s.kind === 'necro_bolt', shrink: true });
       return true;
     });
   }
@@ -3220,6 +3564,17 @@
       } else if (s.kind === 'fireball') {
         ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = '#ff7546aa'; ctx.beginPath(); ctx.arc(s.x, s.y, 16, 0, TAU); ctx.fill();
         ctx.fillStyle = '#ff8a3d'; ctx.beginPath(); ctx.arc(s.x, s.y, 7, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff2a0'; ctx.beginPath(); ctx.arc(s.x - 2, s.y - 2, 3, 0, TAU); ctx.fill();
+      } else if (s.kind === 'necro_bolt') {
+        ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.a); ctx.globalCompositeOperation = 'lighter';
+        const halo = ctx.createRadialGradient(0, 0, 1, 0, 0, 18); halo.addColorStop(0, 'rgba(231,255,255,.95)'); halo.addColorStop(.25, 'rgba(98,232,255,.78)'); halo.addColorStop(1, 'rgba(98,232,255,0)');
+        ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(0, 0, 18, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#54ddff'; ctx.shadowColor = '#62e8ff'; ctx.shadowBlur = 12; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(-17, 1); ctx.lineTo(-10, -4 + Math.sin(visualTime * 42 + s.x) * 2); ctx.lineTo(-4, 4); ctx.lineTo(2, -5); ctx.lineTo(8, 2); ctx.lineTo(14, -1); ctx.stroke();
+        ctx.strokeStyle = '#f3ffff'; ctx.lineWidth = 1.15; ctx.shadowBlur = 4; ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-6, -1); ctx.lineTo(0, 0); ctx.lineTo(8, -1); ctx.lineTo(15, 0); ctx.stroke(); ctx.restore();
+      } else if (s.kind === 'necro_mage') {
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        const orb = ctx.createRadialGradient(s.x - 2, s.y - 2, 1, s.x, s.y, 13); orb.addColorStop(0, '#f5ecff'); orb.addColorStop(.38, '#c59aff'); orb.addColorStop(1, 'rgba(126,67,183,0)');
+        ctx.fillStyle = orb; ctx.beginPath(); ctx.arc(s.x, s.y, 13, 0, TAU); ctx.fill(); ctx.strokeStyle = '#d6b7ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(s.x - 7, s.y); ctx.lineTo(s.x + 7, s.y); ctx.moveTo(s.x, s.y - 7); ctx.lineTo(s.x, s.y + 7); ctx.stroke(); ctx.restore();
       } else if (s.kind === 'kunai') {
         ctx.translate(s.x, s.y); ctx.rotate(s.a); ctx.shadowColor = '#b5d5e4'; ctx.shadowBlur = 7;
         ctx.fillStyle = '#dce8ed'; ctx.strokeStyle = '#384b58'; ctx.lineWidth = 1.5;
@@ -3258,13 +3613,22 @@
   }
   function syncHeroTag() {
     const t = document.querySelector('.hero-title small'); if (t) t.textContent = `${RACES[cust.race].n} ${CLASSES[cust.cls].n}`;
-    if (el.hint) el.hint.textContent = cust.cls === 'ninja'
-      ? 'WASD · mover  |  Clique esquerdo · kunai  |  Direito · katana  |  Q · habilidade  |  R · ultimate'
-      : cust.cls === 'tanke'
-        ? 'WASD · mover  |  Clique esquerdo · atacar  |  Segure direito ou B · bloquear com mana  |  Q · habilidade  |  R · ultimate'
-        : 'WASD · mover  |  Clique esquerdo · atacar  |  Q · habilidade  |  R · ultimate';
+    if (el.hint) el.hint.textContent = cust.cls === 'necromancer'
+      ? 'WASD · mover  |  Clique esquerdo / Espaço · raio elétrico  |  Clique direito · adaga  |  Q · até 10 guerreiros  |  R · até 2 gigantes (martelo/espada)'
+      : cust.cls === 'ninja'
+        ? 'WASD · mover  |  Clique esquerdo · kunai  |  Direito · katana  |  Q · habilidade  |  R · ultimate'
+        : cust.cls === 'tanke'
+          ? 'WASD · mover  |  Clique esquerdo · atacar  |  Segure direito ou B · bloquear com mana  |  Q · habilidade  |  R · ultimate'
+          : 'WASD · mover  |  Clique esquerdo · atacar  |  Q · habilidade  |  R · ultimate';
     const sp = el.skillButton.querySelector('span'); if (sp) sp.textContent = CLASSES[cust.cls].icon;
-    el.skillButton.setAttribute('aria-label', 'Habilidade: ' + CLASSES[cust.cls].n);
+    el.skillButton.setAttribute('aria-label', cust.cls === 'necromancer' ? 'Erguer esqueleto guerreiro (Q, máximo 10)' : 'Habilidade: ' + CLASSES[cust.cls].n);
+    const attackSmall = el.attackButton?.querySelector('small');
+    if (attackSmall) attackSmall.textContent = cust.cls === 'necromancer' ? 'RAIO' : 'ATACAR';
+    if (el.ultimateButton) {
+      const u = el.ultimateButton.querySelector('span'), label = el.ultimateButton.querySelector('small');
+      if (cust.cls === 'necromancer') { if (u) u.textContent = '⚒'; if (label) label.textContent = 'R'; el.ultimateButton.title = 'Invocar gigante esqueleto (R, máximo 2)'; }
+      else { if (u) u.textContent = '✦'; if (label) label.textContent = 'R'; el.ultimateButton.title = 'Ultimate'; }
+    }
     if (el.blockButton) {
       el.blockButton.hidden = cust.cls !== 'tanke';
       el.blockButton.setAttribute('aria-label', 'Bloquear com mana (Tanke)');
@@ -3281,7 +3645,7 @@
     if(!cached||cached.sig!==sig){
       const weapon=WEAPONS[cs.weapon]||{};
       const headMap={0:'capuz',1:'elmo',2:'nenhum',3:'coroa',4:'bandana',5:'chapeu'};
-      const head=cs.cls==='ninja'&&cs.style===4?'ninja_mask':cs.cls==='assassino'&&cs.style===0?'assassin_hood_ref':headMap[cs.style]||'nenhum';
+      const head=cs.cls==='necromancer'?'capuz':cs.cls==='ninja'&&cs.style===4?'ninja_mask':cs.cls==='assassino'&&cs.style===0?'assassin_hood_ref':headMap[cs.style]||'nenhum';
       const look={race:cs.race,cls:cs.cls,skin:cs.skin,hairColor:cs.hair,hairStyle:cs.hairStyle||'curto',beard:cs.beard||'nenhuma',head,capeStyle:cs.capeStyle,capeColor:cs.cape,armorType:cs.armorType,armorColor:cs.armor,trim:cs.trim,glow:cs.glow,eye:cs.eye,weapon:cs.weapon,body:cs.body,emblem:cs.emblem,mark:cs.scars,shoulders:cs.cls==='paladino'||cs.cls==='tanke'?'aco':'nenhum'};
       cached={sig,model:CharacterArt.makeModel(look,{race:cs.race,class:cs.cls,weaponKey:cs.weapon,weaponName:weapon.n,weaponType:weapon.weaponType,shieldModel:weapon.shieldModel,hammerModel:weapon.hammerModel,swordModel:weapon.swordModel,large:weapon.large})};worldArtCache.set(cs,cached);
     }
@@ -3394,7 +3758,9 @@
     }
     if (b.dataset.race) { cust.race = b.dataset.race; cust.skin = RACES[cust.race].skin[0]; }
     else if (b.dataset.cls) {
+      const previousClass = cust.cls;
       cust.cls = b.dataset.cls;
+      if (previousClass === 'necromancer' && cust.cls !== 'necromancer') { skeletonSummons.length = 0; giantSummons.length = 0; }
       cust.weapon = defaultWeapon(cust.cls);
       Object.assign(cust, CLASS_STARTING_LOOK[cust.cls]);
     }
@@ -3631,6 +3997,7 @@
     for(const key of Object.keys(cleared))delete cleared[key];
     Object.assign(player,{x:SPAWN.x,y:SPAWN.y,angle:-Math.PI/2,hp:100,focus:65,stamina:100,level:15,xp:0,coins:500,potions:3,kills:0,healthRanks:0,staminaRanks:0,manaRanks:0,ultimateCd:0,ultimateTime:0,attackCd:0,combo:0,comboTimer:0,charge:0,dashT:0,dashCd:0,skillCd:0,invuln:2,flash:0,hurt:0,walk:0,stepDist:0,aimLock:0,dead:false,deadT:0,burn:0,poison:0,chill:0,shock:0,curse:0,buff:0,kx:0,ky:0,relics:{},motion:0,swing:null,spin:null});
      companions.length=0;for(const n of homeNpcs){n.hired=false;n.companion=false;}
+    skeletonSummons.length=0;giantSummons.length=0;
      quest.stage=0;quest.progress=0;wave=1;waveTimer=0;spawnTimer=1;finalBossActive=false;mimicBossTimer=rand(105,185);delete player.legendaryWeapon;gameTime=0;biomeExposure=0;fadeSt=null;splash=null;portalCd=0;
     enemies.length=0;loot.length=0;shots.length=0;pShots.length=0;particles.length=0;delayed.length=0;pendingLevelChoices.length=0;
     targetEnemy=null;attackHeld=false;autoAttack=false;$('#autoAttackBtn').setAttribute('aria-pressed','false');$('#autoAttackBtn').textContent='AUTO ⚔';
