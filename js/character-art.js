@@ -22,6 +22,7 @@ const RACES = {
 };
 const WEAPONS = {
   espada: { n: 'Espada Longa', cls: 'guerreiro', dmg: 1, rate: 1, range: 1, kind: 'sword' },
+  necro_staff: { n: 'Cajado Ossário', cls: 'necromancer', dmg: 1.08, rate: .96, range: 1.12, kind: 'necrostaff' },
   machado: { n: 'Machado de Guerra', cls: 'guerreiro', dmg: 1.22, rate: .82, range: 1.06, kind: 'axe' },
   machado_duplo: { n: 'Machado Duplo', cls: 'guerreiro', dmg: 1.3, rate: .74, range: 1.12, kind: 'axe' },
   machado_gancho: { n: 'Machado Gancho', cls: 'guerreiro', dmg: 1.16, rate: .9, range: 1.18, kind: 'axe' },
@@ -168,6 +169,7 @@ function hGear(g, st, view, A) {
   }
   // mago: gema arcana no cinto
   if (cls === 'mago' && !backV) { g.fillStyle = gc; g.shadowColor = gc; g.shadowBlur = 6; g.beginPath(); g.moveTo(0, bot - 4.8); g.lineTo(1.4, bot - 3.4); g.lineTo(0, bot - 2); g.lineTo(-1.4, bot - 3.4); g.closePath(); g.fill(); g.shadowBlur = 0; }
+  if (cls === 'necromancer' && !backV && !sideV) { g.strokeStyle = st.glow; g.lineWidth = .8; g.shadowColor = st.glow; g.shadowBlur = 3; g.beginPath(); g.moveTo(0, top + 3); g.lineTo(0, top + 7); g.moveTo(-1.8, top + 5); g.lineTo(1.8, top + 5); g.moveTo(0, bot - 5); g.lineTo(0, bot - 2); g.stroke(); g.shadowBlur = 0; }
   // arqueiro: alça da aljava e aljava com flechas
   if (cls === 'arqueiro') {
     g.strokeStyle = '#3a2a1a'; g.lineWidth = 1.6; g.beginPath();
@@ -188,6 +190,40 @@ function hGear(g, st, view, A) {
   if (cls === 'paladino' && !backV) { g.strokeStyle = st.tr; g.lineWidth = 2; g.beginPath(); if (sideV) { g.moveTo(-sW * .4, top + 1.5); g.lineTo(sW * .7, bot - 2); } else { g.moveTo(-sW * .8, top + 1.5); g.lineTo(sW * .75, bot - 2.4); } g.stroke(); }
   // assassino: tiras de couro cruzadas no peito
   if (cls === 'assassino' && !backV && !sideV) { g.strokeStyle = '#2a1f16'; g.lineWidth = 1; g.beginPath(); g.moveTo(-sW * .6, top + 3); g.lineTo(sW * .4, bot - 3); g.moveTo(sW * .6, top + 3); g.lineTo(-sW * .4, bot - 3); g.stroke(); }
+  // Emblemas de classe com formas simples que continuam legíveis no sprite de batalha.
+  if (!backV && !sideV) {
+    const cy = top + 8, jewel = (x, y, r, color) => {
+      g.fillStyle = color; g.strokeStyle = 'rgba(0,0,0,.62)'; g.lineWidth = .65;
+      g.beginPath(); g.moveTo(x, y-r); g.lineTo(x+r*.72, y); g.lineTo(x, y+r); g.lineTo(x-r*.72, y); g.closePath(); g.fill(); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = .45; g.beginPath(); g.moveTo(x, y-r*.68); g.lineTo(x, y+r*.68); g.stroke();
+    };
+    if (cls === 'tanke' || cls === 'tank') {
+      g.fillStyle = st.acDk; g.strokeStyle = st.tr; g.lineWidth = .9;
+      g.beginPath(); g.moveTo(0, cy-4.5); g.lineTo(4, cy-2.2); g.lineTo(3.2, cy+2.2); g.lineTo(0, cy+5); g.lineTo(-3.2, cy+2.2); g.lineTo(-4, cy-2.2); g.closePath(); g.fill(); g.stroke();
+      g.strokeStyle = st.trHi; g.lineWidth = .8; g.beginPath(); g.moveTo(0, cy-2.8); g.lineTo(0, cy+3.5); g.moveTo(-2.4, cy-.3); g.lineTo(2.4, cy-.3); g.stroke();
+    } else if (cls === 'paladino' || cls === 'clérigo' || cls === 'clerigo') {
+      g.strokeStyle = cls === 'paladino' ? st.trHi : st.glow; g.lineCap = 'round'; g.lineWidth = cls === 'paladino' ? 1.45 : 1.2;
+      g.beginPath(); g.moveTo(0, cy-4); g.lineTo(0, cy+4); g.moveTo(-2.7, cy-.8); g.lineTo(2.7, cy-.8); g.stroke();
+      jewel(0, cy-4.8, 1.55, cls === 'paladino' ? st.tr : st.glow);
+    } else if (cls === 'mago') {
+      g.strokeStyle = st.glow; g.lineWidth = .75; g.shadowColor = st.glow; g.shadowBlur = 4;
+      g.beginPath(); g.arc(0, cy, 3.3, .15, Math.PI*1.85); g.stroke(); g.beginPath(); g.arc(0, cy, 1.5, 0, TAU); g.fillStyle = st.glow; g.fill();
+      g.beginPath(); g.moveTo(0, cy-5); g.lineTo(1.2, cy-1); g.lineTo(4.5, cy); g.lineTo(1.2, cy+1); g.lineTo(0, cy+5); g.lineTo(-1.2, cy+1); g.lineTo(-4.5, cy); g.lineTo(-1.2, cy-1); g.closePath(); g.stroke(); g.shadowBlur = 0;
+    } else if (cls === 'assassino') {
+      jewel(0, top+3.8, 2.6, st.tr); g.strokeStyle = st.trSh; g.lineWidth = .7;
+      g.beginPath(); g.moveTo(-4.5, top+4); g.lineTo(-2.4, top+1.7); g.moveTo(4.5, top+4); g.lineTo(2.4, top+1.7); g.stroke();
+    } else if (cls === 'arqueiro') {
+      g.strokeStyle = st.trHi; g.lineWidth = .9; g.beginPath(); g.moveTo(0, cy+3.5); g.quadraticCurveTo(-3.7, cy+.7, -.2, cy-4); g.quadraticCurveTo(1.9, cy-.7, 0, cy+3.5); g.stroke();
+      g.beginPath(); g.moveTo(-.2, cy-3.6); g.lineTo(2.7, cy+2.3); g.stroke();
+    } else if (cls === 'fighter' || cls === 'guerreiro') {
+      jewel(0, cy, cls === 'fighter' ? 3 : 2.5, st.tr);
+      g.strokeStyle = st.trHi; g.lineWidth = .65; g.beginPath(); g.moveTo(-sW*.62, top+2); g.lineTo(-sW*.35, top+4); g.moveTo(sW*.62, top+2); g.lineTo(sW*.35, top+4); g.stroke();
+    } else if (cls === 'druida') {
+      g.fillStyle = '#4f9a4a'; g.strokeStyle = st.tr; g.lineWidth = .65;
+      g.beginPath(); g.moveTo(0, cy+4); g.quadraticCurveTo(-4.5, cy, 0, cy-4.5); g.quadraticCurveTo(4.5, cy, 0, cy+4); g.fill(); g.stroke();
+      g.strokeStyle = '#d5f0a3'; g.lineWidth = .55; g.beginPath(); g.moveTo(0, cy+3); g.lineTo(0, cy-3); g.stroke();
+    }
+  }
   // gorjal de placas, logo abaixo do queixo
   if (k === 'placas') { const cw = (sideV ? 4.4 : 5.8) * bw; g.fillStyle = '#8f96a2'; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = .8; g.beginPath(); g.roundRect(-cw, top + .5, cw * 2, 3.2, 1.4); g.fill(); g.stroke(); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(-cw + 1.2, top + .9, cw * 2 - 2.4, .8); }
   // druida: folhas penduradas no cinto
@@ -340,7 +376,9 @@ function hCape(g, st, view, A, front) {
 function hShoulders(g, st, view) {
   const kd = st.shoulder; if (kd === 'nenhum') return; const bw = st.bw, ys = -30;
   const sides = view === 's' ? [1] : [-1, 1];
-  if (kd === 'pele') { g.fillStyle = '#e4dcc8'; g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = .9; g.beginPath(); g.ellipse(0, ys - .4, (view === 's' ? 6.4 : 11.4 * bw), 3.6, 0, 0, TAU); g.fill(); g.stroke(); g.fillStyle = '#b8ae98'; for (let i = 0; i < 9; i++) { const a = i / 9 * TAU; g.beginPath(); g.moveTo(Math.cos(a) * 9 * bw, ys - .4 + Math.sin(a) * 3); g.lineTo(Math.cos(a) * 11.4 * bw, ys + Math.sin(a) * 3.6 + 1); g.lineTo(Math.cos(a + .18) * 9 * bw, ys + Math.sin(a + .18) * 3); g.fill(); } return; }
+  if (kd === 'skull') { g.fillStyle='#29232e';g.strokeStyle='rgba(0,0,0,.65)';g.lineWidth=.9;g.beginPath();g.ellipse(0,ys,view==='s'?6.4:10.5,4,0,0,TAU);g.fill();g.stroke();g.fillStyle='#d8cfbc';g.beginPath();g.ellipse(view==='s'?4.2:7,ys-.4,2.8,2.6,0,0,TAU);g.fill();g.strokeStyle='#6b566d';g.lineWidth=.7;g.stroke();g.fillStyle=st.glow;g.beginPath();g.arc(view==='s'?3.4:6.1,ys-.8,.55,0,TAU);g.arc(view==='s'?5:7.9,ys-.8,.55,0,TAU);g.fill();return; }
+  if (kd === 'lacquer') { g.fillStyle='#79262a';g.strokeStyle='rgba(0,0,0,.65)';g.lineWidth=.9;for(const sd of sides){g.save();g.translate(view==='s'?1:sd*(8.8*bw+1.2),ys);g.scale(sd,1);g.beginPath();g.moveTo(-4,1);g.quadraticCurveTo(-5,-4,1,-5);g.quadraticCurveTo(6,-4,7,2);g.quadraticCurveTo(2,5,-4,1);g.closePath();g.fill();g.stroke();g.strokeStyle=st.tr;g.lineWidth=.9;g.beginPath();g.moveTo(-3,1);g.quadraticCurveTo(2,4,6,2);g.stroke();g.fillStyle='#c08b56';g.beginPath();g.arc(1,-1.6,.85,0,TAU);g.fill();g.restore()}return; }
+  if (kd === 'pele' || kd === 'pelomarrom') { const base=kd==='pelomarrom'?'#70513d':st.class==='tanke'?'#c1b8a8':'#e4dcc8', light=shade(base,.17), dark=shade(base,-.22); g.fillStyle=base; g.strokeStyle='rgba(0,0,0,.5)'; g.lineWidth=.9; g.beginPath(); g.ellipse(0,ys-.4,(view==='s'?6.4:11.4*bw),st.class==='berserker'?5.2:3.6,0,0,TAU); g.fill(); g.stroke(); g.fillStyle=light; for(let i=0;i<9;i++){const a=i/9*TAU;g.beginPath();g.moveTo(Math.cos(a)*9*bw,ys-.4+Math.sin(a)*3);g.lineTo(Math.cos(a)*11.4*bw,ys+Math.sin(a)*4.5+1);g.lineTo(Math.cos(a+.18)*9*bw,ys+Math.sin(a)*3);g.fill()}g.strokeStyle=dark;g.lineWidth=.7;for(let i=0;i<7;i++){const x=(i-3)*2.5;g.beginPath();g.moveTo(x,ys-2);g.lineTo(x+(i%2?1:-1),ys+3.4);g.stroke()} if(st.class==='necromancer'){g.fillStyle='#d7cbef';g.strokeStyle='rgba(0,0,0,.6)';g.beginPath();g.arc(view==='s'?4:7,ys,3.1,0,TAU);g.fill();g.stroke();g.fillStyle=st.glow;g.beginPath();g.arc(view==='s'?4:6,ys-.6,.7,0,TAU);g.arc(view==='s'?4:8,ys-.6,.7,0,TAU);g.fill()} return; }
   for (const sd of sides) {
     const x = view === 's' ? 1 : sd * (8.8 * bw + 1.2); g.save(); g.translate(x, ys); g.scale(sd, 1); const base = kd === 'couro' ? '#6a4a30' : '#9aa0ac', dk = shade(base, -.32), hi = shade(base, .26);
     g.fillStyle = base; g.beginPath(); g.moveTo(-3.6, 1.4); g.quadraticCurveTo(-4.4, -4.4, 1.4, -5); g.quadraticCurveTo(6.4, -4, 7.2, 2.6); g.quadraticCurveTo(3, 5, -3.6, 1.4); g.closePath(); g.fill(); g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 1; g.stroke();
@@ -351,7 +389,7 @@ function hShoulders(g, st, view) {
   }
 }
 /* ---- cabelo ---- */
-const HAIR_COVER = new Set(['capuz', 'elmo', 'cornos', 'assassin_hood']);
+const HAIR_COVER = new Set(['capuz', 'elmo', 'cornos', 'assassin_hood', 'kasa', 'skullhelm']);
 function hHairBack(g, st, view, A) {
   if (HAIR_COVER.has(st.head)) return; const hs = st.hairStyle, c = st.hair, c2 = st.hairSh, wv = Math.sin(A.t * 2.4) * .8 + A.mv * 1.4, hy = -39;
   g.fillStyle = c; g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = .9;
@@ -513,6 +551,35 @@ function hHeadgear(g, st, view, A) {
     if (side) g.ellipse(cx + 3.8, hy - .8, 1.4, .6, -.1, 0, TAU);
     else { g.ellipse(-3.1, hy - .8, 1.55, .62, -.1, 0, TAU); g.ellipse(3.1, hy - .8, 1.55, .62, .1, 0, TAU); }
     g.fill();
+  }
+  else if (kd === 'kasa') {
+    const straw='#79563a', edge='#342820', lit='#aa8051';
+    g.fillStyle=straw; g.strokeStyle=edge; g.lineWidth=1;
+    g.beginPath();
+    if(back){g.moveTo(-11,hy-1);g.lineTo(-8,hy-8);g.lineTo(0,hy-12);g.lineTo(8,hy-8);g.lineTo(11,hy-1);g.quadraticCurveTo(0,hy+1,-11,hy-1)}
+    else if(side){g.moveTo(cx-10,hy-1);g.lineTo(cx-6,hy-8);g.lineTo(cx+1,hy-11);g.lineTo(cx+9,hy-3);g.quadraticCurveTo(cx+1,hy, cx-10,hy-1)}
+    else{g.moveTo(-17,hy-1);g.lineTo(-11,hy-4);g.lineTo(-7,hy-9);g.quadraticCurveTo(0,hy-13,7,hy-9);g.lineTo(11,hy-4);g.lineTo(17,hy-1);g.quadraticCurveTo(0,hy+1,-17,hy-1)}
+    g.closePath();g.fill();g.stroke();
+    g.strokeStyle=lit;g.lineWidth=.8;g.beginPath();
+    if(!side&&!back){g.moveTo(-14,hy-1);g.quadraticCurveTo(0,hy-3,14,hy-1);g.moveTo(-7,hy-7);g.lineTo(0,hy-10);g.lineTo(7,hy-7);g.stroke();g.fillStyle=st.tr;g.beginPath();g.moveTo(0,hy-8);g.lineTo(2.8,hy-5);g.lineTo(0,hy-2.2);g.lineTo(-2.8,hy-5);g.closePath();g.fill()}
+    else{g.moveTo(cx-7,hy-7);g.lineTo(cx+1,hy-10);g.lineTo(cx+8,hy-3);g.stroke()}
+  }
+  else if (kd === 'skullhelm') {
+    const bone='#d6c7a8', boneHi='#f0e7ce', boneDk='#88755d', red='#8e2925';
+    g.fillStyle='#332c28';g.strokeStyle='rgba(0,0,0,.78)';g.lineWidth=1;
+    g.beginPath();
+    if(back){g.moveTo(-9,hy+7);g.lineTo(-10,hy-5);g.lineTo(-6,hy-11);g.lineTo(0,hy-8);g.lineTo(6,hy-11);g.lineTo(10,hy-5);g.lineTo(9,hy+7);g.quadraticCurveTo(0,hy+10,-9,hy+7)}
+    else if(side){g.moveTo(cx-7,hy-7);g.lineTo(cx+5,hy-9);g.lineTo(cx+9,hy-3);g.lineTo(cx+8,hy+6);g.lineTo(cx+1,hy+9);g.lineTo(cx-6,hy+6);g.closePath()}
+    else{g.moveTo(-8,hy-6);g.lineTo(-5,hy-10);g.lineTo(-2,hy-7);g.lineTo(0,hy-11);g.lineTo(3,hy-7);g.lineTo(6,hy-10);g.lineTo(8,hy-5);g.lineTo(7,hy+6);g.lineTo(3,hy+10);g.lineTo(-3,hy+10);g.lineTo(-7,hy+6);g.closePath()}
+    g.fill();g.stroke();
+    if(!back){g.fillStyle=bone;g.strokeStyle=boneDk;g.lineWidth=.8;g.beginPath();
+      if(side){g.moveTo(cx-5,hy-5);g.lineTo(cx+4,hy-6);g.lineTo(cx+6,hy+1);g.lineTo(cx+3,hy+7);g.lineTo(cx-4,hy+6);g.closePath()}
+      else{g.moveTo(-5,hy-6);g.lineTo(-2,hy-8);g.lineTo(0,hy-6);g.lineTo(2,hy-8);g.lineTo(5,hy-5);g.lineTo(4,hy+5);g.lineTo(2,hy+8);g.lineTo(-2,hy+8);g.lineTo(-4,hy+5);g.closePath()}
+      g.fill();g.stroke();g.fillStyle='#211917';g.beginPath();if(side){g.ellipse(cx+3,hy-1,2.2,1.8,0,0,TAU)}else{g.ellipse(-2.5,hy-1.8,1.8,1.5,-.2,0,TAU);g.ellipse(2.5,hy-1.8,1.8,1.5,.2,0,TAU)}g.fill();
+      g.strokeStyle=red;g.lineWidth=1.4;g.beginPath();if(side){g.moveTo(cx+1,hy-6);g.lineTo(cx+4,hy+4)}else{g.moveTo(-1,hy-7);g.lineTo(-2,hy-2);g.lineTo(-.5,hy+2);g.moveTo(2,hy-5);g.lineTo(3,hy+4)}g.stroke();
+      g.fillStyle=boneHi;g.beginPath();if(side){g.moveTo(cx+1,hy+3);g.lineTo(cx+4,hy+3);g.lineTo(cx+3.5,hy+7);g.lineTo(cx+1.5,hy+7)}else{for(let i=0;i<5;i++){const x=-3.6+i*1.8;g.moveTo(x,hy+4);g.lineTo(x+.7,hy+7);g.lineTo(x+1.4,hy+4)}}g.fill();
+    }
+    g.strokeStyle=boneDk;g.lineWidth=1;g.beginPath();if(!side&&!back){g.moveTo(-10,hy-3);g.quadraticCurveTo(-15,hy-11,-15,hy-15);g.moveTo(10,hy-3);g.quadraticCurveTo(15,hy-11,15,hy-15)}else if(side&&!back){g.moveTo(cx+4,hy-5);g.quadraticCurveTo(cx+13,hy-11,cx+12,hy-15)}g.stroke();
   }
   else if (kd === 'assassin_hood') {
     const col = st.capeKind === 'sem' ? st.ac : st.cape;
@@ -698,6 +765,7 @@ function hWeapon(g, st, kind, A, hand) {
       g.fillStyle=tr; circ(g,21,0,1.8); break;
     }
     case 'spear': g.fillStyle = wood; g.fillRect(-14, -1.4, 40, 2.8); g.strokeRect(-14, -1.4, 40, 2.8); g.fillStyle = steelDk; g.fillRect(24, -2.4, 3, 4.8); g.fillStyle = grad(g, 0, -4, 0, 4, ['#f4f8ff', steel, steelDk]); g.beginPath(); g.moveTo(26, -4.4); g.quadraticCurveTo(33, -3.4, 41, 0); g.quadraticCurveTo(33, 3.4, 26, 4.4); g.quadraticCurveTo(29, 0, 26, -4.4); g.fill(); g.stroke(); g.fillStyle = '#c8302a'; g.beginPath(); g.moveTo(24, 0); g.quadraticCurveTo(21, 4 + Math.sin(t * 5) * 1.4, 17, 5 + Math.sin(t * 5 + 1) * 1.4); g.lineTo(21, 0); g.fill(); break;
+    case 'necrostaff': { g.strokeStyle='#211a27';g.lineWidth=4;g.beginPath();g.moveTo(-13,0);g.lineTo(30,0);g.stroke();g.strokeStyle='#59433a';g.lineWidth=2.4;g.beginPath();g.moveTo(-13,0);g.lineTo(30,0);g.stroke();for(let x=-9;x<20;x+=6){g.strokeStyle='#9a3f65';g.lineWidth=1;g.beginPath();g.moveTo(x,-1.3);g.lineTo(x+2,1.3);g.stroke()}g.fillStyle='#d7cbb4';g.strokeStyle='#594c65';g.lineWidth=.8;g.beginPath();g.ellipse(30,0,4.7,5.1,0,0,TAU);g.fill();g.stroke();g.fillStyle='#281b34';g.beginPath();g.ellipse(28.2,-.8,.9,1.1,0,0,TAU);g.ellipse(31.8,-.8,.9,1.1,0,0,TAU);g.fill();g.fillStyle='#b78aff';g.shadowColor='#b78aff';g.shadowBlur=7;g.beginPath();g.arc(30,2.3,1.3,0,TAU);g.fill();g.shadowBlur=0;g.strokeStyle='#a88bb7';g.lineWidth=1;g.beginPath();g.moveTo(27,3.5);g.lineTo(28,6);g.lineTo(30,4);g.lineTo(32,6);g.lineTo(33,3.5);g.stroke();g.fillStyle='#825ca6';for(const sd of [-1,1]){g.beginPath();g.moveTo(30+sd*3.5,-2);g.lineTo(30+sd*6,-7);g.lineTo(30+sd*5.2,-1);g.fill()}glowOrb(30,-5,1.6,'#b78aff');break; }
     case 'staff': case 'moon': case 'totem': g.fillStyle = wood; g.fillRect(-12, -1.6, 38, 3.2); g.strokeRect(-12, -1.6, 38, 3.2);
       if (kind === 'staff') { g.strokeStyle = tr; g.lineWidth = 2.2; g.beginPath(); g.arc(30, 0, 4.4, Math.PI * .6, Math.PI * 2.4); g.stroke(); glowOrb(30, 0, 2.8, gl); }
       else if (kind === 'moon') { g.fillStyle = '#e8e4ff'; g.beginPath(); g.arc(30, 0, 6.4, -Math.PI / 2 - .2, Math.PI / 2 + .2); g.arc(33, 0, 5, Math.PI / 2 + .3, -Math.PI / 2 - .3, true); g.closePath(); g.shadowColor = gl; g.shadowBlur = 8; g.fill(); g.shadowBlur = 0; g.stroke(); glowOrb(32, 0, 1.6, gl); }
@@ -791,7 +859,7 @@ function makeModel(character={},meta={}){const c=character||{},m=meta||{},rawRac
 const skinValue=c.skin||c.skinTone||c.skinColor||m.skin;
 const model={race,skin:skinFor(race,skinValue),hairStyle:enumValue('hair',c.hairStyle,'curto'),hairColor:c.hairColor||c.hair||'#3b2a20',beard:enumValue('beard',c.beard,'nenhuma'),head:c.head||((c.helmet==='sim'||c.helmet==='true'||c.helmet===true)?'elmo':enumValue('head',c.accessory,'nenhum')),cape:c.capeStyle==='sem'||c.cape==='sem'?'sem':enumValue('cape',c.cape||c.capeStyle,'longa'),mark:enumValue('mark',c.mark||c.marking,'nenhuma'),shoulder:enumValue('shoulder',c.shoulder||c.shoulders,'aco'),aura:c.aura||'nenhuma',body:c.body||((c.bodyType==='robusto'||c.bodyType==='forte')?'robusto':c.bodyType==='esguio'?'esguio':'medio'),armor,armorColor:c.armorColor||c.armor||'#425f69',trim:c.trim||c.accentColor||'#c7a65c',capeColor:c.capeColor||c.cape||'#8c3a3a',eye:c.eye||c.eyeColor||'#3a2a1c',glow:c.glow||c.auraColor||'#9fe8ff',weapon:pickWeapon(c,m),emblem:c.emblem||'runa',extra:c.extra||'',class:cls,large:!!m.large||!!c.large,weaponName:m.weaponName||'',tankShield:/escudo|shield|aegis/i.test(String(m.weaponName||m.weaponId||c.weaponId||'')),blocking:!!(m.blocking||m.isBlocking||(m.class==='Tanke'&&m.shield>0)),shieldModel:modelSelector(m.shieldModel||c.shieldModel),hammerModel:modelSelector(m.hammerModel||c.hammerModel),swordModel:modelSelector(m.swordModel||c.swordModel),seed:m.seed||1};
 const family=String(m.weaponType||'').toLowerCase(),weaponText=String(m.weaponName||m.weaponId||c.weaponId||'').toLowerCase();model.tankWeapon=family==='sword'||model.swordModel||/montante|espada colossal|greatsword/.test(weaponText)?'sword':family==='hammer'||model.hammerModel||/malho|martelo colossal|ma[cç]a colossal/.test(weaponText)?'hammer':'shield';model.tankShield=model.tankWeapon==='shield'||/escudo|shield|aegis/.test(weaponText);
-if(model.class==='tanke'||model.class==='tank') {model.class='tanke'; model.armor='placas';model.body='robusto';model.shoulder='aco';model.weapon='nenhuma';model.armorColor=c.armorColor||'#536878';model.capeColor=c.capeColor||'#273a4a';}
+if(model.class==='tanke'||model.class==='tank') {model.class='tanke'; model.armor='placas';model.body='robusto';model.shoulder=c.shoulder||c.shoulders||'aco';model.weapon='nenhuma';model.armorColor=c.armorColor||'#536878';model.capeColor=c.capeColor||'#273a4a';}
 if(model.class==='mago')model.head=model.head==='nenhum'?'chapeu':model.head;
 if(model.class==='paladino'||model.class==='fighter')model.head=model.head==='nenhum'?'elmo':model.head;
 if(model.class==='druida')model.shoulder='pele';

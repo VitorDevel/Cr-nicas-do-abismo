@@ -655,6 +655,9 @@ function buildArmorChoices(reset=false){const list=compatibleArmorSets(),sel=$('
 function selectedArmorFromCreator(){return armorCatalog.find(a=>a.id===$('#armorSet')?.value)||compatibleArmorSets()[0]||null}
 function buildAppearanceOptions(reset=false){
   const cls=getClass().name,branch=getBranchName(),profile=appearanceProfiles[cls],sel=$('#armorStyle'),previous=sel.value;
+  const refChoice=$('#referenceArtChoice'),refInput=$('#referenceArt'),hasReferenceArt=!!window.ReferenceCharacterArt?.hasClass(cls,branch);
+  if(refChoice)refChoice.hidden=!hasReferenceArt;
+  if(refInput){refInput.disabled=!hasReferenceArt;if(reset)refInput.checked=hasReferenceArt&&!window.ClassSpriteAnimations?.hasClass(cls)}
   sel.innerHTML=profile.styles.map(([v,n])=>`<option value="${v}">${n}</option>`).join('');
   if(!reset&&profile.styles.some(x=>x[0]===previous))sel.value=previous;
   else sel.value=profile.styles[0][0];
@@ -665,9 +668,36 @@ function buildAppearanceOptions(reset=false){
 }
 function randomOption(id){const el=$('#'+id);if(!el||!el.options?.length)return;el.selectedIndex=rand(0,el.options.length-1)}
 function randomizeAppearance(){['gender','bodyType','heightType','stance','raceFeature','racePattern','buildDetail','faceShape','eyeShape','browStyle','noseStyle','mouthStyle','marking','hairStyle','hairColor','beard','accessory','helmet','shoulders','cape','gloves','boots','chestDetail'].forEach(randomOption);randomOption('skinTone');const profile=appearanceProfiles[getClass().name];$('#armorStyle').value=pick(profile.styles)[0];$('#palettePreset').value='branch';applyPalette('branch');updatePreview()}
-function custom(){return {armorSet:starterArmorId(getClass().name,getRace().large)||compatibleArmorSets()[0]?.id||null,helmet:$('#helmet').value,gender:$('#gender').value,presentation:$('#presentation').value,bodyType:$('#bodyType').value,heightType:$('#heightType').value,stance:$('#stance').value,buildDetail:$('#buildDetail').value,browStyle:$('#browStyle').value,noseStyle:$('#noseStyle').value,mouthStyle:$('#mouthStyle').value,skinTone:$('#skinTone').value,raceFeature:$('#raceFeature').value,racePattern:$('#racePattern').value,faceShape:$('#faceShape').value,eyeShape:$('#eyeShape').value,hairStyle:$('#hairStyle').value,hairColor:$('#hairColor').value,eyeColor:$('#eyeColor').value,armorColor:$('#armorColor').value,secondaryColor:$('#secondaryColor').value,accentColor:$('#accentColor').value,metalColor:$('#metalColor').value,auraColor:$('#auraColor').value,material:$('#material').value,palettePreset:$('#palettePreset').value,armorStyle:$('#armorStyle').value,accessory:$('#accessory').value,beard:$('#beard').value,marking:$('#marking').value,shoulders:$('#shoulders').value,cape:$('#cape').value,gloves:$('#gloves').value,boots:$('#boots').value,chestDetail:$('#chestDetail').value,swordModel:$('#swordModel').value,shieldModel:$('#shieldModel').value,hammerModel:$('#hammerModel').value}}
+function custom(){return {armorSet:starterArmorId(getClass().name,getRace().large)||compatibleArmorSets()[0]?.id||null,helmet:$('#helmet').value,gender:$('#gender').value,presentation:$('#presentation').value,bodyType:$('#bodyType').value,heightType:$('#heightType').value,stance:$('#stance').value,buildDetail:$('#buildDetail').value,browStyle:$('#browStyle').value,noseStyle:$('#noseStyle').value,mouthStyle:$('#mouthStyle').value,skinTone:$('#skinTone').value,raceFeature:$('#raceFeature').value,racePattern:$('#racePattern').value,faceShape:$('#faceShape').value,eyeShape:$('#eyeShape').value,hairStyle:$('#hairStyle').value,hairColor:$('#hairColor').value,eyeColor:$('#eyeColor').value,armorColor:$('#armorColor').value,secondaryColor:$('#secondaryColor').value,accentColor:$('#accentColor').value,metalColor:$('#metalColor').value,auraColor:$('#auraColor').value,material:$('#material').value,palettePreset:$('#palettePreset').value,armorStyle:$('#armorStyle').value,accessory:$('#accessory').value,beard:$('#beard').value,marking:$('#marking').value,shoulders:$('#shoulders').value,cape:$('#cape').value,gloves:$('#gloves').value,boots:$('#boots').value,chestDetail:$('#chestDetail').value,swordModel:$('#swordModel').value,shieldModel:$('#shieldModel').value,hammerModel:$('#hammerModel').value,referenceArt:$('#referenceArt')?.checked??false}}
 
+let battleSpriteAction='idle',battleSpriteActionStart=0;
+function setBattleSpriteAction(action='attack'){
+ battleSpriteAction=action;battleSpriteActionStart=performance.now()/1000;
+}
+function animateCharacterSprite(host,className,{battle=false}={}){
+ const canvas=host?.querySelector('.class-sprite-animation');if(!canvas||!window.ClassSpriteAnimations?.hasClass(className))return false;
+ const g=canvas.getContext('2d');if(!g)return false;
+ const frame=now=>{
+  if(!canvas.isConnected)return;
+  const box=canvas.getBoundingClientRect();
+  if(!box.width||!box.height){requestAnimationFrame(frame);return}
+  const dpr=Math.min(window.devicePixelRatio||1,1.5),w=Math.round(box.width*dpr),h=Math.round(box.height*dpr);
+  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}
+  g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,box.width,box.height);
+  const time=now/1000,age=time-battleSpriteActionStart;
+  const action=battle&&battleSpriteAction==='attack'&&age<.48?'attack':'idle';
+  const progress=action==='attack'?Math.max(0,Math.min(.999,age/.48)):0;
+  const scale=Math.min((box.height-18)/68,(box.width-20)/52);
+  g.save();g.translate(box.width/2,box.height-8);g.scale(scale,scale);
+  window.ClassSpriteAnimations.draw(g,className,0,0,{action,time,progress,height:68});
+  g.restore();requestAnimationFrame(frame);
+ };
+ requestAnimationFrame(frame);return true;
+}
 function characterSVG(c,weaponName='',meta={}){
+ const referenceSrc=window.ReferenceCharacterArt?.urlForClass(meta.class,meta.branch);
+ if(referenceSrc&&c.referenceArt!==false)return `<img class="character-art-sprite concept-character-art" src="${referenceSrc}" alt="" aria-hidden="true">`;
+ if(window.ClassSpriteAnimations?.hasClass(meta.class))return '<canvas class="class-sprite-animation" aria-hidden="true"></canvas>';
  const race=meta.race||'Humano';
  const item=weaponCatalog.find(x=>x.id===meta.weaponId)||{};
  const look=CharacterArt.makeModel({...c,skin:raceSkinColor(race,c.skinTone),hairColor:c.hairColor||'#3b2a20',glow:c.auraColor||'#9fe8ff',armorColor:c.armorColor||'#536878',trim:c.accentColor||'#c7a65c',capeColor:c.secondaryColor||'#8c3a3a'}, {...item,...meta,weaponName});
@@ -728,9 +758,9 @@ function createViewport(hostId,{interactive=false,enemy=false}={}){
   host.innerHTML='';
   const scene=new THREE.Scene(),creator=hostId==='creator3D',sceneColor=enemy?0x091018:0x07121c;if(!creator)scene.background=new THREE.Color(sceneColor);if(!creator)scene.fog=new THREE.Fog(sceneColor,24,65);
   const camera=new THREE.PerspectiveCamera(31,1,.1,60);camera.position.set(0,.25,8.2);
-  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:creator,powerPreference:'high-performance'});if(creator)renderer.setClearColor(0,0);renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.02;host.appendChild(renderer.domElement);
+  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:creator,powerPreference:'high-performance'});if(creator)renderer.setClearColor(0,0);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.02;host.appendChild(renderer.domElement);
   scene.add(new THREE.HemisphereLight(0xb9ddff,0x333042,1.7));
-  const key=new THREE.DirectionalLight(0xffe9cf,2.7);key.position.set(4.2,6.3,5.2);key.castShadow=true;key.shadow.mapSize.set(1024,1024);scene.add(key);
+  const key=new THREE.DirectionalLight(0xffe9cf,2.7);key.position.set(4.2,6.3,5.2);key.castShadow=true;key.shadow.mapSize.set(512,512);scene.add(key);
   const fill=new THREE.DirectionalLight(0x6faeff,1.7);fill.position.set(-4.6,2.8,4);scene.add(fill);
   const rim=new THREE.DirectionalLight(enemy?0xff765f:0x9a86ff,2.0);rim.position.set(-3,4,-5);scene.add(rim);
   const floor=new THREE.Mesh(new THREE.CircleGeometry(3.35,64),new THREE.MeshPhysicalMaterial({color:enemy?0x0c151d:0x0b1721,roughness:.94,metalness:.03}));floor.rotation.x=-Math.PI/2;floor.position.y=-1.82;floor.receiveShadow=true;scene.add(floor);
@@ -741,7 +771,7 @@ function createViewport(hostId,{interactive=false,enemy=false}={}){
   renderer.domElement.addEventListener('webglcontextrestored',()=>{vp.contextLost=false;host.closest('.model-stage')?.classList.remove('no-webgl');host.closest('.creator-3d-wrap')?.classList.remove('fallback')});
   const resize=()=>{const w=Math.max(1,host.clientWidth||360),h=Math.max(1,host.clientHeight||360);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();if(vp.model)fitViewportToModel(vp,vp.model)};new ResizeObserver(resize).observe(host);resize();
   if(interactive){host.addEventListener('pointerdown',e=>{vp.drag=true;vp.lastX=e.clientX;host.setPointerCapture?.(e.pointerId)});host.addEventListener('pointermove',e=>{if(!vp.drag)return;vp.targetRotY+=(e.clientX-vp.lastX)*.010;vp.lastX=e.clientX});host.addEventListener('pointerup',()=>vp.drag=false);host.addEventListener('pointercancel',()=>vp.drag=false);host.addEventListener('wheel',e=>{e.preventDefault();vp.targetZoom=clamp(vp.targetZoom+e.deltaY*.004,vp.minZoom,vp.maxZoom)},{passive:false})}
-  const loop=()=>{const t=performance.now()/1000;vp.rotY+=(vp.targetRotY-vp.rotY)*.075;vp.zoom+=(vp.targetZoom-vp.zoom)*.075;camera.position.z=vp.zoom;camera.position.y=vp.lookY+.12;camera.lookAt(0,vp.lookY,0);if(vp.model){vp.model.rotation.y=vp.rotY;animateModel(vp,t)}if(host.clientWidth&&host.clientHeight&&!document.hidden&&!vp.contextLost)renderer.render(scene,camera);vp.raf=requestAnimationFrame(loop)};loop();return vp
+  let lastRender=0;const loop=()=>{if(!host.isConnected)return;if(!host.clientWidth||!host.clientHeight||document.hidden||vp.contextLost){vp.raf=window.setTimeout(loop,250);return}const now=performance.now();if(now-lastRender<1000/30){vp.raf=requestAnimationFrame(loop);return}lastRender=now;const t=now/1000;vp.rotY+=(vp.targetRotY-vp.rotY)*.075;vp.zoom+=(vp.targetZoom-vp.zoom)*.075;camera.position.z=vp.zoom;camera.position.y=vp.lookY+.12;camera.lookAt(0,vp.lookY,0);if(vp.model){vp.model.rotation.y=vp.rotY;animateModel(vp,t)}renderer.render(scene,camera);vp.raf=requestAnimationFrame(loop)};loop();return vp
  }catch(err){console.warn('Falha ao criar viewport 3D:',err);return null}
 }
 function fitViewportToModel(vp,model){
@@ -2287,13 +2317,6 @@ function buildMerchantModel(){
  const tray=joint(chest,[-.55,-.38,.32],[0,0,.18]);makePart(tray,new THREE.CylinderGeometry(.26,.22,.055,16),gold,[0,0,0]);for(const x of[-.11,0,.11])makePart(tray,new THREE.OctahedronGeometry(.045,0),x===0?glow:gold,[x,.055,.02],[1,1,.5]);
  root.userData.parts={chest,headJoint:head,aura:lantern};return root
 }
-function ensure3D(){
- if(typeof THREE==='undefined')return false;
- if(!viewports.creator)viewports.creator=createViewport('creator3D',{interactive:true});
- if(!viewports.hero)viewports.hero=createViewport('hero3D',{interactive:false});
- if(!viewports.enemy)viewports.enemy=createViewport('enemy3D',{interactive:false,enemy:true});
- return !!viewports.creator
-}
 function renderMerchant3D(){const host=$('#merchant3D');if(!host||!window.CharacterArt)return false;const look=CharacterArt.makeModel({race:'Humano',class:'guerreiro',armor:'couro',armorColor:'#765239',capeColor:'#4a3025',hairColor:'#3b281d',beard:'cheia',head:'capuz',weapon:'espada',glow:'#ffd27a'},{race:'Humano',class:'guerreiro',weaponName:'Espada do Mercador'});host.innerHTML=`<img class="character-art-sprite merchant-character-art" alt="Rath, o Mercador Errante" src="${CharacterArt.dataURL(look,{view:'f'})}">`;return true}
 function renderCreator3D(){return false}
 function renderReferenceEnemy(e){
@@ -2309,6 +2332,7 @@ function renderBattle3D(h,e,w,a){
  const enemyFrame=$('#enemyFrame'),referenceSprite=!!(e.referenceArt&&window.ABISMO_ENEMY_ART?.draw);
  enemyFrame.classList.toggle('reference-sprite-mode',referenceSprite);
  if(referenceSprite){enemyFrame.classList.remove('no-webgl');renderReferenceEnemy(e);return true}
+ if(!viewports.enemy)viewports.enemy=createViewport('enemy3D',{interactive:false,enemy:true});
  const specs=[['enemy',[e.name,e.kind,e.tier,e.maxHp].join('|'),()=>buildEnemyModel(e)]];
  for(const [key,signature,build] of specs){const vp=viewports[key];let ok=false;
   try{if(vp&&!vp.contextLost){if(vp.signature!==signature){setViewportModel(vp,build());vp.signature=signature}ok=true}}catch(error){console.warn('Modelo indisponível: '+key,error)}
@@ -2319,7 +2343,7 @@ function renderBattle3D(h,e,w,a){
 function updatePreview(){
  $('#creatorTotalWins').textContent=state.totalWins||0;
  const r=getRace(),c=getClass(),b=getBranch(),w=selectedWeapon(),cu=custom(),branch=getBranchName(),meta={race:r.name,class:c.name,branch,large:r.large};
- const armor=selectedArmorFromCreator();meta.equippedArmorId=armor?.id||'';meta.equippedArmor=armor?.name||'';meta.armorId=armor?.id||'';meta.weaponId=w?.id||'';meta.weaponType=w?.weaponType||'';meta.shieldModel=w?.shieldModel||'';meta.hammerModel=w?.hammerModel||'';meta.swordModel=w?.swordModel||'';const ok3d=false;$('#creatorFallback').innerHTML=characterSVG(cu,w?.name||'',meta);$('#creator3DWrap').classList.toggle('fallback',!ok3d);
+ const armor=selectedArmorFromCreator();meta.equippedArmorId=armor?.id||'';meta.equippedArmor=armor?.name||'';meta.armorId=armor?.id||'';meta.weaponId=w?.id||'';meta.weaponType=w?.weaponType||'';meta.shieldModel=w?.shieldModel||'';meta.hammerModel=w?.hammerModel||'';meta.swordModel=w?.swordModel||'';const ok3d=false;$('#creatorFallback').innerHTML=characterSVG(cu,w?.name||'',meta);animateCharacterSprite($('#creatorFallback'),meta.class);$('#creator3DWrap').classList.toggle('fallback',!ok3d);
  $('#previewTitle').textContent=`${r.name} ${c.name} • ${branch}`;$('#previewMeta').textContent=`${cu.gender==='feminino'?'Feminino':'Masculino'} • ${cu.bodyType} • ${cu.heightType} • ${w.name} • ${w.rarity} • +${w.bonus} dano • ${armor?.name||'Sem armadura'}`;$('#previewDetail').textContent=`${b.desc} Passiva racial: ${r.passive}. O conjunto acima é seu equipamento inicial; novos conjuntos serão descobertos durante a progressão.`;const rl=raceLore[r.name]||raceLore.Humano;$('#raceAppearanceNote').innerHTML=`<b>${rl.title}</b> — ${rl.text} <span class="race-card-traits">${rl.tags.map(t=>`<i>${t}</i>`).join('')}</span>`;$('#appearanceSummary').innerHTML=`<span class="appearance-pill gear-preview-tag">🛡 ${armor?.name||'Sem armadura'}</span><span class="appearance-pill gear-preview-tag">${armor?.bonusTitle||'Bônus defensivo'}</span><span class="appearance-pill">${appearanceProfiles[c.name].styles.find(x=>x[0]===cu.armorStyle)?.[1]||'Equipamento da classe'}</span><span class="appearance-pill">${{aco:'Aço temperado',acoNegro:'Aço negro',couro:'Couro',tecido:'Tecido',arcano:'Liga arcana',dourado:'Metal dourado'}[cu.material]||cu.material}</span><span class="appearance-pill">${cu.palettePreset==='custom'?'Paleta personalizada':cu.palettePreset==='class'?'Cores clássicas':cu.palettePreset==='veteran'?'Veterano':'Cores da ramificação'}</span><span class="appearance-pill">⚔ ${w.name}</span><span class="appearance-pill gear-preview-tag">Modelo único #${w.signature||'—'}</span>`;updatePaletteStrip()
 }
 
@@ -2341,14 +2365,14 @@ function render(){
  $('#heroTitle').textContent=h.name;$('#heroMeta').textContent=`${h.race} • ${h.class} • ${h.branch} • ARM ${h.arm}`;$('#levelBadge').textContent=`Nível ${h.level}`;$('#xpBadge').textContent=`XP ${h.xp}/${xpToNextLevel(h.level)}`;$('#coinsBadge').innerHTML=`💰 ${h.coins}`;$('#winsBadge').textContent=`Vitórias da run ${h.wins}`;$('#totalWinsBadge').textContent=`🏆 Total ${state.totalWins}`;
  $('#enemyTitle').textContent=e.name;$('#enemyMeta').textContent=`${e.type} • ${e.area} • ARM ${e.armor}`;$('#tierBadge').textContent=ti.name;$('#turnBadge').textContent=`Turno ${state.turn}`;$('#sceneHeroName').textContent=h.name;$('#sceneHeroMeta').textContent=`${h.race} • ${h.class} • ${h.branch}`;$('#sceneEnemyName').textContent=e.name;$('#sceneEnemyMeta').textContent=`Ameaça ${ti.name} • ${e.type}`;
  $('#heroGear').innerHTML=`Arma: <b>${w.name}</b> +${w.bonus}${w.upgrade?` (+${w.upgrade} melhoria)`:''}<br>Armadura: <b>${a.name}</b> • ARM total ${h.arm}`;$('#enemyLore').textContent=e.lore;$('#basicAttackBtn').innerHTML=`${basicAttackName(h,w)}<span class="action-sub">8 stamina • +${h.basicDamageBonus||0} dano de level up</span>`;
- $('#hero3DFallback').innerHTML=characterSVG(h.custom,w.name,h);$('#enemy3DFallback').innerHTML=enemySVG(e.kind,e.tier);$('#enemyFrame').classList.toggle('oni-boss',e.kind==='oni');renderBattle3D(h,e,w,a);
+ $('#hero3DFallback').innerHTML=characterSVG({...h.custom,referenceArt:false},w.name,h);animateCharacterSprite($('#hero3DFallback'),h.class,{battle:true});$('#enemy3DFallback').innerHTML=enemySVG(e.kind,e.tier);$('#enemyFrame').classList.toggle('oni-boss',e.kind==='oni');renderBattle3D(h,e,w,a);
  setBar('#hpMini','Vida',h.hp,h.maxHp);setBar('#manaMini','Mana',h.mana,h.maxMana);setBar('#stamMini','Stamina',h.stam,h.maxStam);setBar('#enemyMini','Vida',e.hp,e.maxHp);setBar('#ultMini','Suprema',h.ult,100);
  const sk=skillsFor(h),relicSkill=relicSkillFor(h),raceUlt=raceUltimateFor(h);$('#skill1Btn').innerHTML=`${sk[0]}<span class="action-sub">${resourceFor(h)==='mana'?'12 mana':'12 stamina'}</span>`;$('#skill2Btn').innerHTML=`${sk[1]}<span class="action-sub">${resourceFor(h)==='mana'?'18 mana':'18 stamina'}</span>`;$('#weaponSkillBtn').innerHTML=relicSkill?`${relicSkill.name}<span class="action-sub">${relicSkill.cost} mana • arma elemental</span>`:'';$('#weaponSkillBtn').classList.toggle('hidden',!relicSkill);$('#ultBtn').innerHTML=`${sk[2]||'Suprema de Classe'}<span class="action-sub">100 Suprema • ${h.ultChoice==='class'?'escolhida':'bloqueada'}</span>`;$('#ultBtn').classList.toggle('hidden',!h.ultUnlocked||h.ultChoice!=='class');$('#ultBtn').disabled=!h.ultUnlocked||h.ult<100;$('#raceUltBtn').innerHTML=`${raceUlt.name}<span class="action-sub">100 Suprema • ${h.ultChoice==='race'?'escolhida':'bloqueada'}</span>`;$('#raceUltBtn').classList.toggle('hidden',!h.ultUnlocked||h.ultChoice!=='race');$('#raceUltBtn').disabled=!h.ultUnlocked||h.ult<100;$('#progressHint').textContent=tierProgressText()
 }
 function log(msg,type='info'){const p=document.createElement('p');p.className=type;p.innerHTML=msg;$('#combatLog').prepend(p)}
 
 function themeFx(theme){if(theme==='elemental')return pick(['fire','ice','lightning']);if(theme==='poison')return 'nature';if(theme==='shadow'||theme==='ghost'||theme==='blood')return 'dark';return ['fire','ice','lightning','dark','holy','nature','astral','physical'].includes(theme)?theme:'physical'}
-function playFx(theme,fromHero=true,heavy=false){const type=themeFx(theme),layer=$('#fxLayer'),actor=$(fromHero?'#heroCombatant':'#enemyCombatant'),target=$(fromHero?'#enemyCombatant':'#heroCombatant');trigger3D(fromHero?viewports.hero:viewports.enemy,(type==='physical'?'attack':'cast'));setTimeout(()=>trigger3D(fromHero?viewports.enemy:viewports.hero,'hit'),150);actor.classList.remove('hero-lunge','enemy-lunge');target.classList.remove('hit-react');$('#battleScene').classList.remove('scene-shake');void actor.offsetWidth;actor.classList.add(fromHero?'hero-lunge':'enemy-lunge');setTimeout(()=>{target.classList.add('hit-react');$('#battleScene').classList.add('scene-shake')},170);const icon={physical:'⚔',fire:'🔥',ice:'❄',lightning:'⚡',dark:'✦',holy:'✧',nature:'☘',astral:'☄'}[type];const proj=document.createElement('div');proj.className=`fx-projectile${fromHero?'':' enemy'}`;proj.textContent=icon;layer.appendChild(proj);if(type==='physical'){const arc=document.createElement('div');arc.className='slash-arc';layer.appendChild(arc);setTimeout(()=>arc.remove(),520)}const ring=document.createElement('div');ring.className='impact-ring';layer.appendChild(ring);for(let i=0;i<(heavy?18:10);i++){const p=document.createElement('div');p.className='fx-particle';p.style.background={fire:'#ff7b45',ice:'#85e8ff',lightning:'#ffe46d',dark:'#bc7bff',holy:'#fff2a8',nature:'#66db8f',astral:'#84bfff',physical:'#e8edf2'}[type];p.style.setProperty('--dx',rand(-100,100)+'px');p.style.setProperty('--dy',rand(-75,75)+'px');p.style.animationDelay=(i*12)+'ms';layer.appendChild(p);setTimeout(()=>p.remove(),850)}setTimeout(()=>{proj.remove();ring.remove();actor.classList.remove('hero-lunge','enemy-lunge');target.classList.remove('hit-react');$('#battleScene').classList.remove('scene-shake')},760)}
+function playFx(theme,fromHero=true,heavy=false){const type=themeFx(theme),layer=$('#fxLayer'),actor=$(fromHero?'#heroCombatant':'#enemyCombatant'),target=$(fromHero?'#enemyCombatant':'#heroCombatant');if(fromHero)setBattleSpriteAction('attack');trigger3D(fromHero?viewports.hero:viewports.enemy,(type==='physical'?'attack':'cast'));setTimeout(()=>trigger3D(fromHero?viewports.enemy:viewports.hero,'hit'),150);actor.classList.remove('hero-lunge','enemy-lunge');target.classList.remove('hit-react');$('#battleScene').classList.remove('scene-shake');void actor.offsetWidth;actor.classList.add(fromHero?'hero-lunge':'enemy-lunge');setTimeout(()=>{target.classList.add('hit-react');$('#battleScene').classList.add('scene-shake')},170);const icon={physical:'⚔',fire:'🔥',ice:'❄',lightning:'⚡',dark:'✦',holy:'✧',nature:'☘',astral:'☄'}[type];const proj=document.createElement('div');proj.className=`fx-projectile${fromHero?'':' enemy'}`;proj.textContent=icon;layer.appendChild(proj);if(type==='physical'){const arc=document.createElement('div');arc.className='slash-arc';layer.appendChild(arc);setTimeout(()=>arc.remove(),520)}const ring=document.createElement('div');ring.className='impact-ring';layer.appendChild(ring);for(let i=0;i<(heavy?18:10);i++){const p=document.createElement('div');p.className='fx-particle';p.style.background={fire:'#ff7b45',ice:'#85e8ff',lightning:'#ffe46d',dark:'#bc7bff',holy:'#fff2a8',nature:'#66db8f',astral:'#84bfff',physical:'#e8edf2'}[type];p.style.setProperty('--dx',rand(-100,100)+'px');p.style.setProperty('--dy',rand(-75,75)+'px');p.style.animationDelay=(i*12)+'ms';layer.appendChild(p);setTimeout(()=>p.remove(),850)}setTimeout(()=>{proj.remove();ring.remove();actor.classList.remove('hero-lunge','enemy-lunge');target.classList.remove('hit-react');$('#battleScene').classList.remove('scene-shake')},760)}
 function floatNum(target,value,kind='hit'){const layer=$('#fxLayer'),box=$(target).getBoundingClientRect(),scene=$('#battleScene').getBoundingClientRect(),n=document.createElement('div');n.className=`float-number ${kind}`;n.textContent=(kind==='heal'?'+':'-')+Math.round(Math.abs(value));n.style.left=(box.left-scene.left+box.width/2)+'px';n.style.top=(box.top-scene.top+45)+'px';layer.appendChild(n);setTimeout(()=>n.remove(),900)}
 
 function attackRoll(mod=0,bonus=0){const d=rand(1,20);showD20(d,mod+bonus,'Ataque');return {d,total:d+mod+bonus,crit:d===20,fail:d===1}}
@@ -2483,8 +2507,6 @@ function startGame(){
   $('#combatLog').innerHTML='';
   $('#createScreen').classList.add('hidden');
   $('#gameScreen').classList.remove('hidden');
-  ensure3D();
-  requestAnimationFrame(()=>{viewports.hero?.renderer?.setSize(Math.max(1,$('#hero3D').clientWidth),Math.max(1,$('#hero3D').clientHeight),false);viewports.enemy?.renderer?.setSize(Math.max(1,$('#enemy3D').clientWidth),Math.max(1,$('#enemy3D').clientHeight),false)});
   log(`${state.hero.name} entrou no Abismo. Os primeiros encontros serão de ameaça <b>FRACA</b>.`,'good');
   log(`Você começa com <b class="coin">35 moedas</b> e somente seu <b>conjunto inicial</b>. Novas armaduras serão encontradas conforme suas vitórias aumentarem.`,'shop');
   log(`Ao vencer, escolha entre <b>descansar, lootear ou tratar os ferimentos</b>. Depois o próximo inimigo chega automaticamente.`,'info');
@@ -2549,9 +2571,10 @@ function bind(){
   $('#palettePreset').onchange=()=>{applyPalette($('#palettePreset').value);updatePreview()};
   $('#restoreClassPalette').onclick=()=>{$('#palettePreset').value='branch';applyPalette('branch');updatePreview()};
   $('#randomizeAppearance').onclick=randomizeAppearance;
+  $('#referenceArt')?.addEventListener('change',updatePreview);
   $$('.editor-tab').forEach(btn=>btn.onclick=()=>{$$('.editor-tab').forEach(x=>x.classList.toggle('active',x===btn));$$('.editor-panel').forEach(p=>p.classList.toggle('active',p.dataset.editorPanel===btn.dataset.editorTab))});
   const editorSectionSelect=$('#editorSectionSelect');if(editorSectionSelect)editorSectionSelect.onchange=()=>{$$('.editor-panel').forEach(p=>p.classList.toggle('active',p.dataset.editorPanel===editorSectionSelect.value))};
-  buildRaceAppearance(true);buildBranches();buildWeapons();buildAppearanceOptions(true);ensure3D();updatePreview();buildDice();
+  buildRaceAppearance(true);buildBranches();buildWeapons();buildAppearanceOptions(true);updatePreview();buildDice();
   $('#startBtn').onclick=startGame;$$('[data-act]').forEach(b=>b.onclick=()=>performAction(b.dataset.act));$('#raceUltBtn').onclick=performRaceUltimate;$$('[data-camp]').forEach(b=>b.onclick=()=>postBattleChoice(b.dataset.camp));$$('[data-level-stat]').forEach(b=>b.onclick=()=>spendLevelPoint(b.dataset.levelStat));$$('[data-ult-choice]').forEach(b=>b.onclick=()=>chooseUltimate(b.dataset.ultChoice));$('#confirmLevelUp').onclick=confirmLevelUp;$$('[data-admin]').forEach(b=>b.onclick=()=>{if(b.dataset.admin==='boss')enterFinalBossAdmin();else adminKillBoss()});
   $('#campDialog')?.addEventListener('cancel',e=>e.preventDefault());$('#shopDialog')?.addEventListener('cancel',e=>{e.preventDefault();$('#closeShop')?.click()});$('#adminDialog')?.addEventListener('cancel',e=>{e.preventDefault();$('#closeAdmin')?.click()});$('#bossVictoryDialog')?.addEventListener('cancel',e=>e.preventDefault());
   const adminBtn=$('#adminBtn');if(adminBtn)adminBtn.onclick=()=>$('#adminDialog').showModal();const closeAdmin=$('#closeAdmin');if(closeAdmin)closeAdmin.onclick=()=>$('#adminDialog').close();

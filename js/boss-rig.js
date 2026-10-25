@@ -347,13 +347,226 @@ defBoss('cyclops', k => {
   if (k.wind > .1 || k.atk > .1) rgGlow([90, 120 + strike, 48], 38 + strike, 'rgba(255,190,75,.55)', 25);
 }, [580, 520, 290, 390]);
 
+/* ---------- chefes de masmorra — rigs 3D projetados leves ---------- */
+function humanoidBoss(k, cfg) {
+  const p = k.pal, skin = cfg.skin || p[0], armor = cfg.armor || p[1], trim = cfg.trim || p[2], eye = cfg.eye || p[3];
+  const bob = Math.sin(k.t * 1.7) * 2.2, swing = Math.sin(k.ph) * (k.mv || 0) * 10;
+  const strike = k.atk * 30 + k.wind * 12, bulk = cfg.bulk || 1;
+  const front = [0, 0, 1], plate = cfg.tex || 'plates';
+  rgShadow(88 * bulk, 72);
+  if (cfg.cape) rgPoly([[-34 * bulk, 143 + bob, -24], [34 * bulk, 143 + bob, -24], [55 * bulk, 15, -28], [0, 1, -34], [-55 * bulk, 15, -28]], cfg.cape, { bias: -16, a: .96, veins: [[0, 2], [1, 3]], vc: 'rgba(255,255,255,.12)' });
+  if (cfg.wings) for (const side of [-1, 1]) {
+    rgPoly([[side * 26, 136 + bob, -12], [side * 62, 183 + bob, -20], [side * 98, 165 + bob, -25], [side * 72, 108 + bob, -24], [side * 34, 91 + bob, -18]], cfg.wings, { bias: -10, a: .92, veins: [[0, 2], [0, 3], [0, 4]], vc: 'rgba(255,255,255,.28)' });
+    rgTube([[side * 28, 132 + bob, -10], [side * 58, 164 + bob, -18], [side * 94, 168 + bob, -24]], [6, 4, 1], trim, { bias: -8 });
+  }
+  // Layered skirt, boots, and articulated greaves establish a readable full-body silhouette.
+  rgPoly([[-35 * bulk, 78, 31], [35 * bulk, 78, 31], [48 * bulk, 24, 23], [0, 12, 36], [-48 * bulk, 24, 23]], cfg.skirt || armor, { bias: 3, veins: [[0, 2], [1, 3], [0, 4]], vc: 'rgba(255,255,255,.18)' });
+  for (const side of [-1, 1]) {
+    const lift = Math.max(0, Math.sin(k.ph + (side < 0 ? Math.PI : 0))) * (k.mv || 0) * 10;
+    rgTube([[side * 17, 47, 0], [side * 20, 27, 2], [side * 22, 7 + lift, 12]], [17 * bulk, 13 * bulk, 12 * bulk], skin, { tex: plate, bias: 1 });
+    rgEll([side * 22, 7 + lift, 16], [19 * bulk, 9, 25], cfg.boot || armor, { tex: 'rivets', bias: 3 });
+    rgTube([[side * 31 * bulk, 128 + bob, 2], [side * 44 * bulk, 106 + bob + strike * .3 + swing * .2, 18], [side * (55 * bulk + swing * side * .2), 78 + bob + strike + swing * side * .45, 34]], [19 * bulk, 16 * bulk, 13 * bulk], skin, { tex: plate, bias: 2 });
+    rgEll([side * (56 * bulk + swing * side * .2), 75 + bob + strike + swing * side * .45, 37], [17 * bulk, 16, 17], cfg.glove || armor, { tex: 'rivets', bias: 4 });
+    rgEll([side * 40 * bulk, 136 + bob, 1], [24 * bulk, 19, 25], cfg.pauldron || trim, { tex: 'plates', bias: 4 });
+    if (cfg.spikes) for (let i = 0; i < 2; i++) rgSpike([side * (37 + i * 9) * bulk, 145 + bob, -2], [side * (57 + i * 10) * bulk, 167 + bob + i * 5, -10], 11 - i * 2, trim, { bias: 6 });
+    for (let i = 0; i < 3; i++) rgSpike([side * (17 + i * 7) * bulk, 7 + lift, 31], [side * (19 + i * 8) * bulk, 2 + lift, 43], 6, cfg.claw || trim, { bias: 5 });
+  }
+  rgEll([0, 88 + bob, -2], [44 * bulk, 50, 35], skin, { tex: cfg.bodyTex || plate });
+  rgEll([0, 105 + bob, 28], [43 * bulk, 46, 22], cfg.chest || armor, { tex: cfg.chestTex || 'plates', bias: 3 });
+  rgPoly([[-30 * bulk, 132 + bob, 37], [30 * bulk, 132 + bob, 37], [24 * bulk, 82 + bob, 47], [0, 70 + bob, 50], [-24 * bulk, 82 + bob, 47]], cfg.panel || armor, { bias: 7, veins: [[0, 2], [1, 2], [2, 3], [3, 4], [4, 0]], vc: trim });
+  for (const side of [-1, 1]) {
+    rgTube([[side * 8, 121 + bob, 49], [side * 17, 108 + bob, 51], [side * 8, 95 + bob, 50]], [2.4, 1.8, 2], trim, { bias: 10 });
+    rgEye([side * 13, 166 + bob, 34], 5.6, eye, front, { bias: 12 });
+    rgSpike([side * 13, 151 + bob, 39], [side * 17, 146 + bob, 44], 5, trim, { bias: 9 });
+  }
+  // Chest focus and engraved trim give the armor a focal point without costly particle effects.
+  rgEll([0, 105 + bob, 51], [12, 15, 5], cfg.core || trim, { glow: cfg.core || trim, bias: 9 });
+  rgEll([0, 105 + bob, 56], [5, 8, 2], eye, { bias: 12 });
+  rgEll([0, 157 + bob, 18], [30, 29, 27], cfg.face || skin, { tex: cfg.headTex || plate, bias: 7 });
+  rgEll([0, 146 + bob, 37], [20, 12, 14], cfg.mask || armor, { bias: 9 });
+  if (cfg.helm === 'crown') {
+    rgPoly([[-28, 178 + bob, 29], [28, 178 + bob, 29], [21, 190 + bob, 30], [10, 182 + bob, 30], [0, 199 + bob, 30], [-10, 182 + bob, 30], [-21, 190 + bob, 30]], trim, { bias: 12 });
+    rgEll([0, 179 + bob, 32], [7, 8, 3], eye, { glow: eye, bias: 13 });
+  } else if (cfg.helm === 'horns') {
+    for (const side of [-1, 1]) rgTube([[side * 20, 169 + bob, 15], [side * 37, 190 + bob, 4], [side * 51, 196 + bob, -5]], [8, 5, .5], cfg.horn || trim, { bias: 9, rings: 3 });
+  } else if (cfg.helm === 'hat') {
+    rgEll([0, 184 + bob, 13], [47, 6, 34], cfg.hat || armor, { bias: 9 });
+    rgPoly([[-23, 184 + bob, 12], [23, 184 + bob, 12], [14, 224 + bob, 3], [0, 232 + bob, 1], [-14, 224 + bob, 3]], cfg.hat || armor, { bias: 10 });
+  } else if (cfg.helm === 'mask') {
+    for (const side of [-1, 1]) rgTube([[side * 16, 168 + bob, 20], [side * 24, 183 + bob, 5], [side * 33, 188 + bob, -8]], [7, 4, .4], trim, { bias: 9 });
+  } else {
+    rgEll([0, 177 + bob, 19], [32, 14, 28], cfg.helmColor || armor, { tex: 'rivets', bias: 9 });
+    for (const side of [-1, 1]) rgSpike([side * 19, 177 + bob, 22], [side * 27, 194 + bob, 7], 8, trim, { bias: 10 });
+  }
+  if (cfg.beard) rgTube([[-11, 145 + bob, 38], [0, 130 + bob, 46], [11, 145 + bob, 38]], [6, 9, 6], cfg.beard, { bias: 11 });
+  if (cfg.orbit) {
+    const ring = [];
+    for (let i = 0; i <= 12; i++) { const a = i / 12 * TAU + k.t * .18; ring.push([Math.cos(a) * 73, 156 + bob + Math.sin(a) * 14, -24]); }
+    rgTube(ring, ring.map((_, i) => i === 0 || i === 12 ? 1 : 2), cfg.orbit, { bias: -4, sub: 1 });
+    for (let i = 0; i < 3; i++) { const a = k.t * .7 + i * TAU / 3; rgEll([Math.cos(a) * 73, 156 + bob + Math.sin(a) * 14, -22], [7, 9, 7], cfg.orbit, { glow: cfg.orbit, bias: 6 }); }
+  }
+  // A distinct weapon silhouette is part of each boss identity.
+  const side = 1, wx = 72 * bulk, wz = 42;
+  if (cfg.weapon === 'staff') {
+    rgTube([[wx, 22, wz], [wx + 2, 105 + bob, wz - 4], [wx - 2, 201 + bob, wz - 8]], [5, 4, 3], cfg.handle || '#634c37', { bias: 9 });
+    rgEll([wx - 2, 207 + bob, wz - 8], [12, 15, 10], cfg.focus || trim, { glow: cfg.focus || trim, bias: 12 });
+    rgTube([[wx - 15, 207 + bob, wz - 8], [wx - 4, 221 + bob, wz - 8], [wx + 10, 207 + bob, wz - 8]], [2, 2, 2], trim, { bias: 13 });
+  } else if (cfg.weapon === 'hammer') {
+    rgTube([[wx, 23, wz], [wx + 3, 100 + strike, wz], [wx + 9, 164 + strike, wz - 3]], [7, 6, 5], cfg.handle || '#503b32', { bias: 8 });
+    rgEll([wx + 9, 174 + strike, wz - 3], [25, 20, 19], cfg.weaponColor || trim, { tex: 'cracks', cc: cfg.core || eye, cn: 4, bias: 11 });
+    for (const s of [-1, 1]) rgSpike([wx + 9 + s * 19, 174 + strike, wz - 3], [wx + 9 + s * 28, 174 + strike, wz - 3], 9, trim, { bias: 12 });
+  } else if (cfg.weapon === 'sword') {
+    rgTube([[wx - 4, 32, wz + 5], [wx + 3, 65, wz + 7]], [6, 5], cfg.handle || '#60452f', { bias: 8 });
+    rgTube([[wx - 14, 66, wz + 8], [wx + 15, 66, wz + 8]], [4, 4], trim, { bias: 9 });
+    rgPoly([[wx - 8, 68, wz + 9], [wx + 8, 68, wz + 9], [wx + 17, 146, wz + 4], [wx, 185 + strike, wz + 2], [wx - 17, 146, wz + 4]], cfg.weaponColor || '#d9e2ec', { bias: 10, veins: [[0, 2], [1, 3], [2, 3], [3, 4]], vc: '#ffffff' });
+  } else if (cfg.weapon === 'claw') {
+    for (let i = -1; i <= 1; i++) rgSpike([wx + i * 8, 63, wz + 8], [wx + i * 14, 28, wz + 20], 8, trim, { bias: 8 });
+  }
+  if (cfg.aura) {
+    const ring = [];
+    for (let i = 0; i <= 10; i++) { const a = Math.PI * (i / 10); ring.push([Math.cos(a) * 47, 179 + bob + Math.sin(a) * 18, -19]); }
+    rgTube(ring, ring.map(() => 2.2), cfg.aura, { bias: -5, sub: 1 });
+  }
+  if (k.wind > .05 || k.atk > .05) rgGlow([0, 106 + bob, 56], 32 + strike * .5, cfg.glow || 'rgba(255,190,70,.6)', 24);
+}
+
+const HUMANOID_RIGS = {
+  guardian: { helm: 'helm', weapon: 'sword', bulk: 1.05, skin: '#76559b', armor: '#2a1736', trim: '#d8b0ff', core: '#c99bff', cape: '#241532', aura: '#d8b0ff', spikes: true },
+  lich: { helm: 'crown', weapon: 'staff', skin: '#d8d2b0', face: '#d8d2b0', armor: '#554b60', trim: '#c08aff', core: '#c08aff', cape: '#241a35', orbit: '#c08aff', beard: '#eee7d2', bodyTex: 'cracks' },
+  archmage: { helm: 'hat', weapon: 'staff', skin: '#e0c8a8', armor: '#1d2250', trim: '#ffffff', core: '#9ac8ff', cape: '#273977', focus: '#a8dcff', orbit: '#86baff', beard: '#e8e8f4', skirt: '#252d5d' },
+  frostqueen: { helm: 'crown', weapon: 'staff', skin: '#dce8f4', armor: '#3a6a9a', trim: '#cfeeff', core: '#40e0ff', cape: '#508cb2', wings: '#8bdfff', focus: '#bff7ff', orbit: '#7ad8ff', skirt: '#7eb7d8' },
+  titan: { helm: 'helm', weapon: 'hammer', bulk: 1.28, skin: '#3a2a30', armor: '#1a0e12', trim: '#ff8a4a', core: '#ffb35a', cape: '#351b21', spikes: true, tex: 'cracks', bodyTex: 'cracks', weaponColor: '#66515a', glow: 'rgba(255,120,40,.7)' },
+  pharaoh: { helm: 'crown', weapon: 'sword', skin: '#d8a84a', armor: '#6a4418', trim: '#ffe8a0', core: '#ff3a1a', cape: '#8e6029', skirt: '#be8c3d', weaponColor: '#f0c968', aura: '#ff8a3a' },
+  raijin: { helm: 'horns', weapon: 'claw', skin: '#e8d8a0', armor: '#4a3a10', trim: '#ffe371', core: '#40ffff', cape: '#382e16', wings: '#b29a45', aura: '#ffe371', glow: 'rgba(64,255,255,.65)' },
+  empress: { helm: 'crown', weapon: 'staff', skin: '#efe8ff', armor: '#2a2060', trim: '#ffffff', core: '#ff6ad0', cape: '#6254bd', wings: '#d3bfff', focus: '#ff9ae8', orbit: '#c2b7ff', skirt: '#8a78d4' },
+  shadowking: { helm: 'crown', weapon: 'sword', skin: '#3a2a52', armor: '#1a1030', trim: '#8a50d0', core: '#ff3a6a', cape: '#100919', weaponColor: '#9d79d0', aura: '#c08aff', spikes: true },
+  oni: { helm: 'horns', weapon: 'hammer', bulk: 1.32, skin: '#b8322a', armor: '#2a0a14', trim: '#ffd070', core: '#ff3c8e', cape: '#3b0d18', horn: '#f2d6a2', spikes: true, weaponColor: '#3a3038', glow: 'rgba(255,60,142,.7)' }
+};
+for (const [id, cfg] of Object.entries(HUMANOID_RIGS)) defBoss(id, k => humanoidBoss(k, cfg), [580, 520, 290, 390]);
+
+defBoss('entboss', k => {
+  const [bark, dark, leaf, eye] = k.pal, sway = Math.sin(k.t * 1.2) * 5, slam = k.atk * 24 + k.wind * 12;
+  rgShadow(115, 92);
+  for (const side of [-1, 1]) {
+    const lift = Math.max(0, Math.sin(k.ph + (side < 0 ? Math.PI : 0))) * (k.mv || 0) * 9;
+    rgTube([[side * 23, 61, 0], [side * 30, 34, 4], [side * 35, 8 + lift, 22]], [23, 17, 13], bark, { tex: 'bark' });
+    rgEll([side * 35, 8 + lift, 26], [18, 8, 23], dark, { bias: 3 });
+    rgTube([[side * 33, 130, 0], [side * (48 + slam), 107, 19], [side * (69 + slam), 72 + slam, 40]], [20, 16, 14], bark, { tex: 'bark', bias: 2 });
+    for (let i = -1; i <= 1; i++) rgTube([[side * (69 + slam), 72 + slam, 40], [side * (79 + slam), 55 + i * 10, 48], [side * (86 + slam), 44 + i * 12, 48]], [7, 5, 1], leaf, { bias: 5 });
+  }
+  rgEll([0, 92, -3], [54, 62, 42], bark, { tex: 'bark' });
+  rgEll([0, 95, 34], [40, 45, 20], dark, { tex: 'bark', bias: 2 });
+  rgEll([0, 154, 13], [41, 38, 35], bark, { tex: 'bark', bias: 4 });
+  rgEll([0, 113, 51], [14, 18, 5], '#ffcf5a', { glow: '#ffcf5a', bias: 8 });
+  for (const side of [-1, 1]) {
+    rgEye([side * 15, 158, 40], 6, eye, [0, 0, 1], { bias: 10 });
+    rgTube([[side * 8, 176, 12], [side * 25, 204, 0], [side * 48, 211, -7]], [10, 6, 1], dark, { bias: 3 });
+    rgPoly([[side * 12, 183, 15], [side * 32, 199, 5], [side * 18, 168, 18]], leaf, { bias: 5 });
+  }
+  for (let i = -3; i <= 3; i++) rgSpike([i * 11, 189, 8], [i * 15, 218 + Math.abs(i) * 2, 0], 10, dark, { bias: 7 });
+  if (k.wind > .1 || k.atk > .1) rgGlow([0, 113, 53], 42 + slam, 'rgba(138,255,99,.58)', 20);
+}, [580, 520, 290, 390]);
+
+defBoss('hydra', k => {
+  const [hide, dark, belly, eye] = k.pal, pulse = Math.sin(k.t * 1.8) * 2;
+  rgShadow(120, 92);
+  rgEll([0, 66 + pulse, -5], [58, 40, 72], hide, { tex: 'scales' });
+  rgEll([0, 54, 31], [48, 26, 40], belly, { tex: 'bands', bn: 5, bias: 2 });
+  for (const side of [-1, 1]) {
+    const lift = Math.max(0, Math.sin(k.ph + (side < 0 ? Math.PI : 0))) * (k.mv || 0) * 12;
+    rgTube([[side * 41, 45, -34], [side * 45, 22, -15], [side * 42, 7 + lift, 17]], [24, 17, 13], hide, { tex: 'scales' });
+    rgEll([side * 43, 8 + lift, 23], [18, 8, 24], dark, { bias: 2 });
+  }
+  for (let i = -1; i <= 1; i++) {
+    const hx = i * 39, sway = Math.sin(k.t * 2.1 + i) * 9, hy = 174 + Math.sin(k.t * 2 + i * 1.8) * 4 + (k.atk ? 12 : 0);
+    rgTube([[i * 23, 82, 15], [hx * .8 + sway, 111, 30], [hx + sway, 147, 34], [hx + sway, hy - 12, 37]], [17, 13, 10, 9], hide, { tex: 'scales', rings: 3 });
+    rgEll([hx + sway, hy, 42], [16, 14, 24], hide, { tex: 'scales', bias: 4 });
+    rgEll([hx + sway, hy - 7, 61], [11, 8, 13], dark, { bias: 5 });
+    rgEye([hx + sway - 7, hy + 4, 55], 4, eye, [0, 0, 1], { bias: 8 });
+    rgEye([hx + sway + 7, hy + 4, 55], 4, eye, [0, 0, 1], { bias: 8 });
+    for (const side of [-1, 1]) rgSpike([hx + sway + side * 9, hy + 10, 38], [hx + sway + side * 15, hy + 27, 29], 6, belly, { bias: 7 });
+  }
+  for (let i = -4; i <= 4; i++) rgSpike([i * 12, 84 + pulse, -60 + Math.abs(i) * 3], [i * 13, 106 + pulse, -71 + Math.abs(i) * 3], 9, dark, { bias: 3 });
+  if (k.wind > .1 || k.atk > .1) rgGlow([0, 94, 53], 39 + k.atk * 24, 'rgba(200,255,90,.55)', 20);
+}, [600, 540, 300, 400]);
+
+defBoss('queen', k => {
+  const [hide, dark, silk, eye] = k.pal, pulse = Math.sin(k.t * 2.1) * 2, lunge = k.atk * 14;
+  rgShadow(112, 92);
+  for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
+    const hipX = side * (24 + (i % 2) * 15), hipZ = 6 - Math.floor(i / 2) * 25, kneeX = side * (58 + (i % 2) * 17), footX = side * (83 + (i % 2) * 18);
+    rgTube([[hipX, 93 + pulse, hipZ], [side * 43, 78 + (i - 1.5) * 12, hipZ + 5], [kneeX, 44 + (i - 1.5) * 17, 18], [footX, 12, 32]], [12, 9, 6, 2], hide, { bias: i });
+    rgEll([kneeX, 44 + (i - 1.5) * 17, 18], [7, 7, 7], silk, { bias: 3 });
+  }
+  rgEll([0, 79 + pulse, -18], [42, 42, 51], hide, { tex: 'scales' });
+  rgEll([0, 111 + pulse, 26], [30, 32, 28], hide, { tex: 'plates', bias: 2 });
+  rgEll([0, 138 + pulse, 42], [25, 23, 25], dark, { bias: 4 });
+  for (const side of [-1, 1]) {
+    rgEye([side * 12, 143 + pulse, 61], 6, eye, [0, 0, 1], { bias: 9 });
+    rgTube([[side * 19, 125, 20], [side * (31 + lunge), 100, 44], [side * (45 + lunge), 78, 63]], [11, 9, 7], hide, { bias: 3 });
+    for (let j = 0; j < 3; j++) rgSpike([side * (45 + lunge), 78 + j * 4, 60], [side * (49 + lunge), 58 + j * 8, 68], 5, silk, { bias: 5 });
+  }
+  for (let i = -2; i <= 2; i++) rgSpike([i * 10, 159 + pulse, 31], [i * 12, 180 + pulse + Math.abs(i) * 3, 20], 8, silk, { bias: 6 });
+  const web = [];
+  for (let i = 0; i <= 12; i++) { const a = i / 12 * TAU; web.push([Math.cos(a) * 105, 100 + Math.sin(a) * 18, -26]); }
+  rgTube(web, web.map(() => 1.5), silk, { bias: -6, sub: 1 });
+  if (k.wind > .1 || k.atk > .1) rgGlow([0, 118, 58], 35 + lunge, 'rgba(255,80,130,.55)', 20);
+}, [600, 540, 300, 400]);
+
+defBoss('worm', k => {
+  const [hide, dark, bone, eye] = k.pal, wave = Math.sin(k.t * 2.1) * 13, lunge = k.atk * 35 + k.wind * 14;
+  rgShadow(118, 96);
+  const coil = [[-8, 30, -98], [-55, 24, -67], [-76, 35, -27], [-56, 47, 15], [-8, 52, 27], [40, 67, 8], [57, 99, -8], [38, 131 + wave, 9], [10, 153 + wave, 34]];
+  rgTube(coil, [26, 28, 31, 32, 31, 28, 24, 20, 17], hide, { tex: 'scales', rings: 3, sub: 3 });
+  for (let i = 0; i < 8; i++) {
+    const p = vlerp(coil[i], coil[i + 1], .55);
+    for (const side of [-1, 1]) rgSpike([p[0], p[1] + 10, p[2]], [p[0] + side * 6, p[1] + 26, p[2] - 3], 7, dark, { bias: 2 });
+  }
+  const hx = 8 + lunge * .35, hy = 179 + wave + lunge * .42;
+  rgEll([hx, hy, 42], [26, 21, 30], hide, { tex: 'scales', bias: 5 });
+  rgEll([hx, hy - 11, 65], [21, 9, 13], '#21100b', { bias: 7 });
+  rgEll([hx, hy - 13, 68], [15, 3, 7], '#d84b3d', { bias: 8 });
+  for (const side of [-1, 1]) {
+    rgEye([hx + side * 16, hy + 5, 59], 5, eye, [0, 0, 1], { bias: 9 });
+    rgTube([[hx + side * 17, hy + 13, 38], [hx + side * 28, hy + 30, 24], [hx + side * 36, hy + 35, 8]], [8, 6, 1], bone, { bias: 7 });
+  }
+  for (let i = 0; i < 5; i++) rgSpike([hx - 20 + i * 10, hy + 13, 35], [hx - 22 + i * 11, hy + 30 + (i % 2) * 7, 23], 7, dark, { bias: 8 });
+  if (k.wind > .1 || k.atk > .1) rgGlow([hx, hy - 8, 66], 40 + lunge, 'rgba(255,195,90,.55)', 20);
+}, [600, 540, 300, 400]);
+
+defBoss('kraken', k => {
+  const [hide, dark, glow, eye] = k.pal, pulse = Math.sin(k.t * 1.8) * 4, attack = k.atk * 20 + k.wind * 10;
+  rgShadow(125, 100);
+  for (let sideIndex = 0; sideIndex < 6; sideIndex++) {
+    const side = sideIndex < 3 ? -1 : 1, row = sideIndex % 3, sway = Math.sin(k.t * 1.7 + sideIndex * 1.4) * 12 + attack;
+    const startX = side * (18 + row * 7), endX = side * (75 + row * 22);
+    const pts = [[startX, 58 + pulse, 10], [side * 35, 29 + row * 21, 17], [side * 52, 18 + row * 24, 32], [endX + sway, 45 + row * 27, 50], [endX + sway * 1.2, 76 + row * 20, 62]];
+    rgTube(pts, [17, 13, 9, 5, 1], hide, { bias: 1, dots: glow, rings: 5, sub: 3 });
+    for (let j = 1; j <= 3; j++) {
+      const pt = vlerp(pts[1], pts[3], j / 4);
+      rgEll([pt[0] + side * 7, pt[1] + 5, pt[2] + 3], [3, 5, 3], glow, { glow, bias: 4 });
+    }
+  }
+  rgEll([0, 82 + pulse, -5], [50, 42, 45], hide, { tex: 'scales' });
+  rgEll([0, 104 + pulse, 25], [35, 35, 29], hide, { tex: 'scales', bias: 3 });
+  rgEll([0, 94 + pulse, 49], [24, 15, 10], dark, { bias: 6 });
+  for (const side of [-1, 1]) rgEye([side * 15, 113 + pulse, 46], 7, eye, [0, 0, 1], { round: true, bias: 10 });
+  for (let i = -3; i <= 3; i++) rgSpike([i * 12, 130 + pulse, 8], [i * 15, 154 + pulse + Math.abs(i) * 2, -3], 8, dark, { bias: 5 });
+  if (k.wind > .1 || k.atk > .1) rgGlow([0, 77, 48], 42 + attack, 'rgba(120,255,225,.58)', 22);
+}, [640, 560, 320, 420]);
+
 /* ---- integração com ABISMO_ENEMY_ART ---- */
-const RIG_IDS = {dragao:'dragon', young_dragon:'dragon', infernal_dragon:'dragon', yeti_giant:'yeti_giant', cyclops:'cyclops'};
+const RIG_IDS = {
+  dragao:'dragon', young_dragon:'dragon', infernal_dragon:'dragon', yeti_giant:'yeti_giant', cyclops:'cyclops',
+  guardian:'guardian', ent_anc:'entboss', lorde:'lich', hidra:'hydra', matriarca:'queen', arquimago:'archmage',
+  soberana:'frostqueen', titan:'titan', colosso:'pharaoh', verme:'worm', raijin:'raijin', prisma:'empress',
+  rei_sombras:'shadowking', kraken:'kraken', oni:'oni'
+};
 const A0 = window.ABISMO_ENEMY_ART;
 if (A0 && A0.draw) {
   const orig = A0.draw;
   const rigCache = new Map();
-  const rigInterval = 1 / 20;
+  const rigInterval = 1 / 15;
   const cacheKeyFor = (kind, e, k, rasterScale) => `${kind}|${e.t.r || 40}|${e.state}|${k.phase}|${rasterScale}|${k.pal.join(',')}`;
   function trimRigCache() {
     while (rigCache.size > 12) rigCache.delete(rigCache.keys().next().value);

@@ -79,6 +79,10 @@
   const xpNeed = level => 60 + (level - 14) * 35;
 
   const enemies = [];
+  const separationGrid = new Map();
+  const separationBucketPool = [];
+  const MAX_PARTICLES = 420;
+  const MAX_AMBIENT_PARTICLES = 260;
   // Necromancer companions: up to ten warriors and two weapon-wielding giants.
   const skeletonSummons = [];
   const giantSummons = [];
@@ -786,7 +790,7 @@
     for (let i = 0; i < list.length; i++) { const o = list[i]; if (fn(o) !== false) list[j++] = o; }
     list.length = j;
   }
-  function addParticle(p) { if (particles.length < 600) particles.push(p); }
+  function addParticle(p) { if (particles.length < MAX_PARTICLES) particles.push(p); }
   function burst(x, y, n, o = {}) {
     const L = o.life || .5;
     for (let i = 0; i < n; i++) {
@@ -1811,13 +1815,33 @@
     // inimigos e invocações do necromante
     for (const e of enemies) if (!e.dead) updateEnemy(e, dt);
     updateSummons(dt);
+    for (const bucket of separationGrid.values()) { bucket.length = 0; separationBucketPool.push(bucket); }
+    separationGrid.clear();
+    const separationCell = 96;
+    for (let i = 0; i < enemies.length; i++) {
+      const e = enemies[i];
+      if (e.dead || e.t.speed === 0) continue;
+      const key = Math.floor(e.x / separationCell) + ':' + Math.floor(e.y / separationCell);
+      let bucket = separationGrid.get(key);
+      if (!bucket) { bucket = separationBucketPool.pop() || []; separationGrid.set(key, bucket); }
+      bucket.push(i);
+    }
     for (let i = 0; i < enemies.length; i++) {
       const a = enemies[i]; if (a.dead || a.t.speed === 0) continue;
-      for (let j = i + 1; j < enemies.length; j++) {
-        const b = enemies[j]; if (b.dead || b.t.speed === 0) continue;
-        if (Math.abs(b.x-a.x) > 70 || Math.abs(b.y-a.y) > 70) continue;
-        const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1, min = a.t.r + b.t.r;
-        if (d < min) { const push = (min - d) * .5; a.x -= dx / d * push; a.y -= dy / d * push; b.x += dx / d * push; b.y += dy / d * push; }
+      const cx = Math.floor(a.x / separationCell), cy = Math.floor(a.y / separationCell);
+      for (let ox = -1; ox <= 1; ox++) for (let oy = -1; oy <= 1; oy++) {
+        const bucket = separationGrid.get((cx + ox) + ':' + (cy + oy));
+        if (!bucket) continue;
+        for (const j of bucket) {
+          if (j <= i) continue;
+          const b = enemies[j], dx = b.x - a.x, dy = b.y - a.y;
+          if (Math.abs(dx) > 70 || Math.abs(dy) > 70) continue;
+          const distanceSq = dx * dx + dy * dy, min = a.t.r + b.t.r;
+          if (distanceSq < min * min) {
+            const d = Math.sqrt(distanceSq) || 1, push = (min - d) * .5;
+            a.x -= dx / d * push; a.y -= dy / d * push; b.x += dx / d * push; b.y += dy / d * push;
+          }
+        }
       }
     }
     updateList(enemies, e => {
@@ -1852,7 +1876,7 @@
     // partículas ambientais
     const viewW = camera.width / camera.scale, viewH = camera.height / camera.scale;
     if (Math.random() < dt * 3) addParticle({ x: camera.x + rand(0, viewW), y: camera.y - 10, vx: rand(18, 45), vy: rand(18, 35), life: 6, max: 6, size: rand(1.6, 2.8), color: ['#c9b24a', '#8fb04d', '#d58a48'][(Math.random() * 3) | 0], drag: 0, shrink: false });
-    if (dark > .25 && particles.length < 380 && Math.random() < dt * 9 * dark) {
+    if (dark > .25 && particles.length < MAX_AMBIENT_PARTICLES && Math.random() < dt * 9 * dark) {
       addParticle({ x: camera.x + rand(0, viewW), y: camera.y + rand(0, viewH), vx: 0, vy: 0, life: 6, max: 6, size: 2.4, color: '#e8ff9a', drag: 0, glow: true, shrink: false, wander: true });
     }
     updateList(particles, p => {
@@ -2554,6 +2578,8 @@
   const cust = { name: 'Aventureiro', armor: '#425f69', cape: '#8c3a3a', hair: '#3b2a20', skin: '#d9b99b', eye: '#3a2a1c', glow: '#9fe8ff', style: 1, race: 'humano', cls: 'guerreiro', armorType: 'cota', weapon: 'espada', element: 'fogo', hairStyle: 'curto', beard: 'nenhuma', trim: '#c7a65c', emblem: 'sol', capeStyle: 'longa', scars: 'nenhuma', body: 'medio', boons: [] };
   const cleared = {};
   try { const s = JSON.parse(localStorage.getItem(EXP_KEY) || 'null'); if (s) { Object.assign(cust, s.cust); Object.assign(cleared, s.cleared); } } catch (e) { /* sem storage */ }
+  if(window.ClassSpriteAnimations?.hasClass(cust.cls))cust.referenceArt=false;
+  else if(cust.referenceArt==null)cust.referenceArt=!!window.ReferenceCharacterArt?.hasClass(cust.cls);
   const saveExp = () => { try { localStorage.setItem(EXP_KEY, JSON.stringify({ cust, cleared })); } catch (e) { /* sem storage */ } };
   $('#heroName').textContent = cust.name;
   const shade = (hex, amt) => { const n = parseInt(hex.slice(1), 16), f = v => clamp(v + amt, 0, 255); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
@@ -3169,14 +3195,16 @@
   };
   const CLASSES = {
     guerreiro: { n: 'Guerreiro', w: 'Espada Longa', d: 'Combo de 3 golpes em arco. Habilidade: Redemoinho de lâminas.', hp: 1.1, fo: 1, sp: 1, dm: 1, atk: 1, rng: 1, dc: 1, cost: 20, cd: 4, icon: '✦' },
+    samurai: { n: 'Samurai', w: 'Katana', d: 'Lâmina veloz, armadura segmentada e kasa. Habilidade: corte em arco que atinge os inimigos próximos.', hp: 1.02, fo: .95, sp: 1.12, dm: 1.08, atk: .88, rng: 1.03, dc: 1, cost: 18, cd: 3.5, icon: '✥' },
+    berserker: { n: 'Berserker', w: 'Machado de Guerra', d: 'Guerreiro robusto com elmo de caveira e manto de pele. Habilidade: golpe de fúria em área.', hp: 1.32, fo: .88, sp: .94, dm: 1.16, atk: 1.22, rng: 1.1, dc: 1.12, cost: 24, cd: 5.5, icon: '⚔' },
     mago: { n: 'Mago', w: 'Cajado Arcano', d: 'Raios arcanos à distância. Habilidade: Nova Arcana (explosão em área).', hp: .8, fo: 1.4, sp: 1, dm: 1, atk: 1, rng: 1, dc: 1, cost: 22, cd: 4.5, icon: '✺' },
     arqueiro: { n: 'Arqueiro', w: 'Arco Curto', d: 'Flechas rápidas que perfuram. Habilidade: Leque de 7 flechas.', hp: .9, fo: 1.1, sp: 1.08, dm: 1, atk: 1, rng: 1, dc: 1, cost: 20, cd: 4, icon: '➶' },
     paladino: { n: 'Paladino', w: 'Martelo Sagrado', d: 'Golpes lentos e devastadores. Habilidade: Julgamento (cura + explosão).', hp: 1.3, fo: 1, sp: .96, dm: 1, atk: 1.7, rng: 1.1, dc: 1.7, cost: 25, cd: 6, icon: '☀' },
     druida: { n: 'Druida', w: 'Cajado das Raízes', d: 'Dispara espinhos vivos. Habilidade: Ciclo Vital, cura e fere ao redor.', hp: 1, fo: 1.25, sp: 1, dm: 1.05, atk: 1, rng: 1, dc: 1, cost: 24, cd: 5, icon: '❋' },
     assassino: { n: 'Assassino', w: 'Lâmina Oculta', d: 'Capuz, couro escuro e lâmina de pulso: ataques velozes e Passo Sombrio para eliminar alvos.', hp: .88, fo: .95, sp: 1.18, dm: 1.12, atk: .72, rng: .82, dc: 1.1, cost: 18, cd: 3.2, icon: '✧' },
     ninja: { n: 'Ninja', w: 'Kunai e Katana', d: 'Lança kunais e shurikens. Habilidade: chuva de sete shurikens.', hp: .9, fo: 1, sp: 1.18, dm: 1.08, atk: .78, rng: 1, dc: 1.08, cost: 18, cd: 3.4, icon: '✧' },
-    tanke: { n: 'Tanke', w: 'Baluarte Colossal', d: 'Armadura pesada e golpes poderosos. Bloqueie segurando o botão direito ou B para converter dano em mana.', hp: 1.48, fo: 1.05, sp: .82, dm: 1.12, atk: 1.2, rng: 1.18, dc: 1.3, cost: 18, cd: 5.5, icon: '⬡' },
-    necromancer: { n: 'Necromante', w: 'Adaga Ossária', d: 'Q ergue até 10 guerreiros esqueléticos fortes. Clique esquerdo dispara um raio elétrico; clique direito golpeia com a adaga. R invoca até 2 gigantes esqueletos com martelo ou espada. Todas as invocações têm vida própria e podem morrer.', hp: .92, fo: 1.3, sp: .96, dm: .94, atk: 1, rng: .82, dc: .94, cost: 8, cd: 1.15, icon: '☠' }
+    tanke: { n: 'Tanque', w: 'Baluarte Colossal', d: 'Armadura pesada, manto de pele e escudo. Bloqueie segurando o botão direito ou B para converter dano em mana.', hp: 1.48, fo: 1.05, sp: .82, dm: 1.12, atk: 1.2, rng: 1.18, dc: 1.3, cost: 18, cd: 5.5, icon: '⬡' },
+    necromancer: { n: 'Necromante', w: 'Cajado Ossário', d: 'Q ergue até 10 guerreiros esqueléticos fortes. Clique esquerdo dispara um raio elétrico; clique direito golpeia com o cajado. R invoca até 2 gigantes esqueletos com martelo ou espada. Todas as invocações têm vida própria e podem morrer.', hp: .92, fo: 1.3, sp: .96, dm: .94, atk: 1, rng: .82, dc: .94, cost: 8, cd: 1.15, icon: '☠' }
   };
   const ARMORS = {
     couro: { n: 'Couro de Caçador', hp: .96, speed: 1.08, guard: .06 },
@@ -3209,12 +3237,15 @@
     katars: { n: 'Katars sombrios', cls: 'assassino', damage: 1.18, rate: .92, range: 1.04 },
     garras: { n: 'Garras da sombra', cls: 'assassino', damage: 1.12, rate: 1, range: 1.08 },
     ninja_katana: { n: 'Katana do Ninja', cls: 'ninja', damage: 1.08, rate: 1.06, range: 1.12, weaponType: 'katana' },
+    samurai_katana: { n: 'Katana Samurai', cls: 'samurai', damage: 1.12, rate: 1.1, range: 1.12, weaponType: 'katana' },
+    berserker_axe: { n: 'Machado do Berserker', cls: 'berserker', damage: 1.3, rate: .82, range: 1.16, weaponType: 'axe', large: true },
     tank_escudotorre: { n: 'Escudo-Torre do Sentinela', cls: 'tanke', damage: 1.05, rate: .9, range: 1.12, weaponType: 'shield', shieldModel: 17, large: true },
     tank_bulwark: { n: 'Escudo Colossal do Baluarte', cls: 'tanke', damage: 1.08, rate: .86, range: 1.08, weaponType: 'shield', shieldModel: 18, large: true },
     tank_citadel: { n: 'Escudo da Cidadela', cls: 'tanke', damage: 1.13, rate: .8, range: 1.14, weaponType: 'shield', shieldModel: 20, large: true },
     tank_maul: { n: 'Marreta de Cerco', cls: 'tanke', damage: 1.28, rate: .74, range: 1.2, weaponType: 'hammer', hammerModel: 11, large: true },
     tank_montante: { n: 'Montante Colossal', cls: 'tanke', damage: 1.25, rate: .78, range: 1.25, weaponType: 'sword', swordModel: 24, large: true },
-    necro_dagger: { n: 'Adaga Ossária', cls: 'necromancer', damage: .94, rate: 1.12, range: .88, weaponType: 'dagger' }
+    necro_dagger: { n: 'Adaga Ossária', cls: 'necromancer', damage: .94, rate: 1.12, range: .88, weaponType: 'dagger' },
+    necro_staff: { n: 'Cajado Ossário', cls: 'necromancer', damage: 1.08, rate: .96, range: 1.12, weaponType: 'necrostaff' }
   };
   const ELEMENTS = {
     fogo: { n: 'Fogo', color: '#ff815b', strong: ['skeleton', 'brute', 'lorde', 'titan'] },
@@ -3230,20 +3261,33 @@
   };
   if (!RACES[cust.race]) cust.race = 'humano';
   if (!CLASSES[cust.cls]) cust.cls = 'guerreiro';
-  const defaultWeapon = cls => ({ guerreiro: 'espada', mago: 'cajado', arqueiro: 'arco', paladino: 'martelo', druida: 'totem', assassino: 'hidden_blade', ninja: 'ninja_katana', tanke: 'tank_bulwark', necromancer: 'necro_dagger' }[cls]);
+  const defaultWeapon = cls => ({ guerreiro: 'espada', samurai: 'samurai_katana', berserker: 'berserker_axe', mago: 'cajado', arqueiro: 'arco', paladino: 'martelo', druida: 'totem', assassino: 'hidden_blade', ninja: 'ninja_katana', tanke: 'tank_bulwark', necromancer: 'necro_staff' }[cls]);
   const CLASS_STARTING_LOOK = {
-    guerreiro: { armorType: 'cota', armor: '#425f69', cape: '#8c3a3a', trim: '#c7a65c', style: 1, capeStyle: 'longa', emblem: 'sol' },
+    guerreiro: { armorType: 'placas', armor: '#34383b', cape: '#8c1825', trim: '#b0a99d', style: 1, capeStyle: 'longa', emblem: 'sol' },
+    samurai: { armorType: 'placas', armor: '#342d2b', cape: '#861d25', trim: '#c08b56', style: 5, capeStyle: 'longa', emblem: 'dragao', body: 'medio', weapon: 'samurai_katana' },
+    berserker: { armorType: 'placas', armor: '#4b4036', cape: '#731b22', trim: '#a99578', style: 1, capeStyle: 'esfarrapada', emblem: 'nenhum', body: 'robusto', scars: 'tribal', weapon: 'berserker_axe' },
     mago: { armorType: 'runica', armor: '#3d4d7b', cape: '#352e62', trim: '#b69cff', style: 0, capeStyle: 'longa', emblem: 'runa' },
     arqueiro: { armorType: 'couro', armor: '#3f6b45', cape: '#294738', trim: '#a6c77a', style: 4, capeStyle: 'curta', emblem: 'lua' },
     paladino: { armorType: 'placas', armor: '#b69b55', cape: '#e6dfc9', trim: '#f4cf79', style: 1, capeStyle: 'longa', emblem: 'sol' },
     druida: { armorType: 'runica', armor: '#496a42', cape: '#2f5738', trim: '#a6c77a', style: 0, capeStyle: 'esfarrapada', emblem: 'runa' },
     assassino: { armorType: 'couro', armor: '#4a3025', cape: '#e4e0d6', trim: '#9d2633', style: 0, capeStyle: 'longa', emblem: 'lua', scars: 'guerra' },
     ninja: { armorType: 'couro', armor: '#111318', cape: '#090b0f', trim: '#b52e3b', style: 4, capeStyle: 'curta', emblem: 'nenhum' },
-    tanke: { armorType: 'placas', armor: '#555b66', cape: '#2c3e6b', trim: '#c7a65c', style: 1, capeStyle: 'curta', emblem: 'sol' },
-    necromancer: { armorType: 'runica', armor: '#292432', cape: '#17131f', trim: '#8d63bc', glow: '#b78aff', style: 0, capeStyle: 'longa', emblem: 'runa', scars: 'runas', weapon: 'necro_dagger' }
+    tanke: { armorType: 'placas', armor: '#536878', cape: '#1d3c59', trim: '#d0c7b5', style: 1, capeStyle: 'curta', emblem: 'sol' },
+    necromancer: { armorType: 'runica', armor: '#292432', cape: '#17131f', trim: '#8d63bc', glow: '#b78aff', style: 0, capeStyle: 'longa', emblem: 'runa', scars: 'runas', weapon: 'necro_staff' }
   };
   if (!ARMORS[cust.armorType]) cust.armorType = 'cota';
   if (!WEAPONS[cust.weapon] || WEAPONS[cust.weapon].cls !== cust.cls) cust.weapon = defaultWeapon(cust.cls);
+  if (!cust.classAppearanceRev) {
+    const oldLooks = {
+      guerreiro: { armorType: 'cota', armor: '#425f69', cape: '#8c3a3a', trim: '#c7a65c' },
+      tanke: { armorType: 'placas', armor: '#555b66', cape: '#2c3e6b', trim: '#c7a65c' }
+    };
+    const oldLook=oldLooks[cust.cls];
+    if(oldLook&&Object.keys(oldLook).every(key=>cust[key]===oldLook[key]))Object.assign(cust,CLASS_STARTING_LOOK[cust.cls]);
+    if(cust.cls==='necromancer'&&cust.weapon==='necro_dagger')cust.weapon='necro_staff';
+    cust.classAppearanceRev=1;
+    saveExp();
+  }
   if (!ELEMENTS[cust.element]) cust.element = 'fogo';
   if (!ULTIMATES[cust.ultimate]) cust.ultimate = null;
   const STARTER_BLESSINGS = {
@@ -3493,6 +3537,8 @@
     const weapon = WEAPONS[cust.weapon];
     player.attackCd = (c === 'mago' ? .42 : (c === 'druida' ? .38 : c === 'ninja' ? .36 : .27)) / weapon.rate;
     player.kx -= Math.cos(player.angle) * 70; player.ky -= Math.sin(player.angle) * 70;
+    const attackDur = c === 'mago' ? 0.24 : c === 'druida' ? 0.22 : c === 'ninja' ? 0.17 : 0.2;
+    player.swing = { t: 0, dur: attackDur, angle: player.angle, range: 30, arc: .5, finisher: false, dir: 1, style: 'ranged' };
     if (c === 'mago') pShoot(player.angle, 540, damageOf() * 1.1, 'mago', 0, 1.1 * weapon.range);
     else if (c === 'druida') pShoot(player.angle, 600, damageOf() * .96, 'druida', 0, 1.05 * weapon.range);
     else if (c === 'ninja') {
@@ -3511,8 +3557,11 @@
     if (player.focus < K.cost) { showToast('Foco insuficiente'); return; }
     player.focus -= K.cost; player.skillCd = K.cd; player.invuln = Math.max(player.invuln, .25);
     autoAim();
+    player.swing = { t: 0, dur: .36, angle: player.angle, range: 44, arc: .8, finisher: true, dir: 1, style: 'skill' };
     const d = damageOf(), hitAll = (rad, mul, kb) => { for (const e of enemies) if (!e.dead && Math.hypot(e.x - player.x, e.y - player.y) < rad + e.t.r) damageEnemy(e, d * mul, { kb, skill: true }); };
-    if (cust.cls === 'mago') { ring(player.x, player.y, '#b69cff', 44, 380); burst(player.x, player.y, 26, { color: ['#b69cff', '#fff'], speed: 300, life: .7, size: 3.4, glow: true }); shake(9); sfx('skill'); hitAll(190, 2.2, 640); }
+    if (cust.cls === 'samurai') { player.swing = { t: 0, dur: .34, angle: player.angle, range: 148, arc: Math.PI * .9, finisher: true, dir: 1, style: 'katana' }; player.kx += Math.cos(player.angle) * 135; player.ky += Math.sin(player.angle) * 135; ring(player.x, player.y, '#d6b27a', 27, 180); burst(player.x, player.y, 14, { color: ['#d6b27a', '#f9eee0'], speed: 190, life: .42, size: 2.6 }); sfx('swing'); hitAll(142, 1.9, 510); }
+    else if (cust.cls === 'berserker') { player.swing = { t: 0, dur: .42, angle: player.angle, range: 160, arc: Math.PI * 1.15, finisher: true, dir: -1, style: 'axe' }; player.invuln = Math.max(player.invuln, .48); ring(player.x, player.y, '#a94737', 35, 245); burst(player.x, player.y, 28, { color: ['#b94735', '#d3b58b', '#fff0d0'], speed: 230, life: .58, size: 3.1 }); shake(8); sfx('skill'); hitAll(164, 2.25, 720); }
+    else if (cust.cls === 'mago') { ring(player.x, player.y, '#b69cff', 44, 380); burst(player.x, player.y, 26, { color: ['#b69cff', '#fff'], speed: 300, life: .7, size: 3.4, glow: true }); shake(9); sfx('skill'); hitAll(190, 2.2, 640); }
     else if (cust.cls === 'arqueiro') { for (let k = -3; k <= 3; k++) pShoot(player.angle + k * .13, 760, d * .9, 'arqueiro', 3, .9); sfx('skill'); }
     else if (cust.cls === 'druida') {
       const healAmount = Math.round(maxHpOf() * .18);
@@ -3614,7 +3663,7 @@
   function syncHeroTag() {
     const t = document.querySelector('.hero-title small'); if (t) t.textContent = `${RACES[cust.race].n} ${CLASSES[cust.cls].n}`;
     if (el.hint) el.hint.textContent = cust.cls === 'necromancer'
-      ? 'WASD · mover  |  Clique esquerdo / Espaço · raio elétrico  |  Clique direito · adaga  |  Q · até 10 guerreiros  |  R · até 2 gigantes (martelo/espada)'
+      ? 'WASD · mover  |  Clique esquerdo / Espaço · raio elétrico  |  Clique direito · cajado  |  Q · até 10 guerreiros  |  R · até 2 gigantes (martelo/espada)'
       : cust.cls === 'ninja'
         ? 'WASD · mover  |  Clique esquerdo · kunai  |  Direito · katana  |  Q · habilidade  |  R · ultimate'
         : cust.cls === 'tanke'
@@ -3631,30 +3680,42 @@
     }
     if (el.blockButton) {
       el.blockButton.hidden = cust.cls !== 'tanke';
-      el.blockButton.setAttribute('aria-label', 'Bloquear com mana (Tanke)');
+      el.blockButton.setAttribute('aria-label', 'Bloquear com mana (Tanque)');
       if (cust.cls !== 'tanke') setBlocking(false);
     }
   }
 
   /* ---------- herói: raça, classe e armas ---------- */
   const worldArtCache = new WeakMap();
-  function paintHero(c, x, y, ang, walk) {
+  function paintHero(c, x, y, ang, walk, showReference = false) {
     const cs=cust;
+    const dir=CharacterArt.viewAngle(ang);
+    const swing=player.swing;
+    const swingProgress=swing?Math.max(0,Math.min(1,swing.t/Math.max(.01,swing.dur||.3))):0;
+    const motion=showReference?0:Math.min(1,Math.abs(player.motion??1));
+    const spriteAction=showReference?'idle':swing?'attack':motion>.08?'run':'idle';
+    if(showReference&&cs.referenceArt!==false&&window.ReferenceCharacterArt?.hasClass(cs.cls)){
+      c.save();c.translate(x,y+20);c.scale(.78,.78);
+      const drawn=window.ReferenceCharacterArt.draw(c,cs.cls,0,0,{view:dir.view,flip:dir.flip,height:50,bob:-Math.abs(Math.sin(walk))*1.2*Math.min(1,Math.abs(player.motion??1))});
+      c.restore();if(drawn)return;
+    }
+    if(window.ClassSpriteAnimations?.draw(c,cs.cls,x,y+20,{
+      action:spriteAction,time:visualTime,progress:swingProgress,motion,flip:dir.flip
+    }))return;
     const sig=[cs.race,cs.cls,cs.skin,cs.hair,cs.hairStyle,cs.armor,cs.cape,cs.capeStyle,cs.armorType,cs.weapon,cs.trim,cs.glow,cs.emblem,cs.body,cs.style].join('|');
     let cached=worldArtCache.get(cs);
     if(!cached||cached.sig!==sig){
       const weapon=WEAPONS[cs.weapon]||{};
       const headMap={0:'capuz',1:'elmo',2:'nenhum',3:'coroa',4:'bandana',5:'chapeu'};
-      const head=cs.cls==='necromancer'?'capuz':cs.cls==='ninja'&&cs.style===4?'ninja_mask':cs.cls==='assassino'&&cs.style===0?'assassin_hood_ref':headMap[cs.style]||'nenhum';
-      const look={race:cs.race,cls:cs.cls,skin:cs.skin,hairColor:cs.hair,hairStyle:cs.hairStyle||'curto',beard:cs.beard||'nenhuma',head,capeStyle:cs.capeStyle,capeColor:cs.cape,armorType:cs.armorType,armorColor:cs.armor,trim:cs.trim,glow:cs.glow,eye:cs.eye,weapon:cs.weapon,body:cs.body,emblem:cs.emblem,mark:cs.scars,shoulders:cs.cls==='paladino'||cs.cls==='tanke'?'aco':'nenhum'};
+      const head=cs.cls==='necromancer'?'capuz':cs.cls==='samurai'?'kasa':cs.cls==='berserker'?'skullhelm':cs.cls==='ninja'&&cs.style===4?'ninja_mask':cs.cls==='assassino'&&cs.style===0?'assassin_hood_ref':headMap[cs.style]||'nenhum';
+      const shoulders=cs.cls==='tanke'?'pele':cs.cls==='berserker'?'pelomarrom':cs.cls==='necromancer'?'skull':cs.cls==='samurai'?'lacquer':cs.cls==='paladino'?'aco':'nenhum';
+      const look={race:cs.race,cls:cs.cls,skin:cs.skin,hairColor:cs.hair,hairStyle:cs.hairStyle||'curto',beard:cs.beard||'nenhuma',head,capeStyle:cs.capeStyle,capeColor:cs.cape,armor:cs.cls==='samurai'?'samurai':cs.armorType,armorType:cs.armorType,armorColor:cs.armor,trim:cs.trim,glow:cs.glow,eye:cs.eye,weapon:cs.weapon,body:cs.body,emblem:cs.emblem,mark:cs.scars,shoulders};
       cached={sig,model:CharacterArt.makeModel(look,{race:cs.race,class:cs.cls,weaponKey:cs.weapon,weaponName:weapon.n,weaponType:weapon.weaponType,shieldModel:weapon.shieldModel,hammerModel:weapon.hammerModel,swordModel:weapon.swordModel,large:weapon.large})};worldArtCache.set(cs,cached);
     }
-    const dir=CharacterArt.viewAngle(ang);
     c.save();c.translate(x,y+20);c.scale(.78,.78);
-    const swing=player.swing;
-    const swingProgress=swing?Math.max(0,Math.min(1,swing.t/Math.max(.01,swing.dur||.3))):0;
     const swingWave=swing?Math.sin(swingProgress*Math.PI):0;
-    CharacterArt.draw(c,cached.model,{t:visualTime,ph:walk,mv:Math.min(1,Math.abs(player.motion??1)),view:dir.view,flip:dir.flip,seed:player.level||1,blocking:player.blocking,atkP:swing?1-swingProgress:0,wa:swing?-1.35+swingWave*(swing.dir||1)*2.05:null,reach:swing?11+swingWave*4:null});
+    const bowPull=swing&&['arco','besta'].includes(cached.model.weapon)?Math.sin(swingProgress*Math.PI):0;
+    CharacterArt.draw(c,cached.model,{t:visualTime,ph:walk,mv:Math.min(1,Math.abs(player.motion??1)),view:dir.view,flip:dir.flip,seed:player.level||1,blocking:player.blocking,atkP:swing?1-swingProgress:0,wa:swing?-1.35+swingWave*(swing.dir||1)*2.05:null,reach:swing?11+swingWave*4:null,draw:bowPull,nock:bowPull>.05});
     c.restore();
   }
 
@@ -3696,6 +3757,7 @@
   const panel = $('#customPanel');
   panel.innerHTML = `<div class="cp-card" role="dialog" aria-label="Criação de personagem"><div class="cp-head"><strong>CRIAÇÃO DE PERSONAGEM</strong><button type="button" id="cpClose">Confirmar ✓</button></div><div class="cp-body"><div class="cp-left"><canvas id="cpPreview" width="180" height="200"></canvas><div class="cp-stats" id="cpStats"></div></div><div class="cp-opts"><label>Nome<input id="cpName" maxlength="14" autocomplete="off"></label><div class="cp-row"><span>Raça</span><div class="cards">${Object.keys(RACES).map(k => `<button type="button" class="card" data-race="${k}"><b>${RACES[k].n}</b><small>${RACES[k].d}</small></button>`).join('')}</div></div><div class="cp-row"><span>Classe e arma</span><div class="cards">${Object.keys(CLASSES).map(k => `<button type="button" class="card" data-cls="${k}"><b>${CLASSES[k].n} · ${CLASSES[k].w}</b><small>${CLASSES[k].d}</small></button>`).join('')}</div></div><div class="cp-row"><span>Pele</span><div id="skinSw"></div></div>${Object.keys(PAL).map(k => `<div class="cp-row"><span>${PAL_LABEL[k]}</span><div>${sws(k, PAL[k])}</div></div>`).join('')}<div class="cp-row"><span>Visual da cabeça</span><div>${['Capuz', 'Elmo', 'Cabelo'].map((n, i) => `<button type="button" class="st" data-s="${i}">${n}</button>`).join('')}</div></div></div></div></div>`;
   const cpName = $('#cpName'), cpCtx = $('#cpPreview').getContext('2d');
+  const referenceChoice=document.createElement('label');referenceChoice.className='cp-reference-art';referenceChoice.innerHTML='<input id="cpReferenceArt" type="checkbox"> Mostrar a ficha exata no preview (no jogo, o personagem é animado).';$('#cpPreview').insertAdjacentElement('afterend',referenceChoice);
     panel.querySelector('.cp-opts').insertAdjacentHTML('beforeend', '<div class="cp-row gear-row"><label>Armadura<select id="cpArmor"></select></label><label>Arma<select id="cpWeapon"></select></label><label>Elemento<select id="cpElement"></select></label></div>');
     panel.querySelector('.cp-opts').insertAdjacentHTML('beforeend', `<div class="gear-row detail-row">
     <label>Penteado<select id="cpHairStyle"><option value="curto">Curto</option><option value="longo">Longo</option><option value="moicano">Moicano</option><option value="tranca">Trança</option></select></label>
@@ -3718,7 +3780,7 @@
     c.save(); c.translate(90, 128); c.scale(2.6, 2.6);
     c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(1, 9, 16, 8, 0, 0, TAU); c.fill();
      // The preview should face the player; keep the angle inside the front-view band.
-     paintHero(c, 0, 0, Math.PI / 2 + Math.sin(now / 900) * .22, now / 140);
+     paintHero(c, 0, 0, Math.PI / 2 + Math.sin(now / 900) * .22, now / 140, true);
     c.restore();
     if (!panel.hidden) requestAnimationFrame(drawPreview);
   }
@@ -3734,6 +3796,8 @@
       const field=$('#'+id); if (field) field.value=cust[key] || field.options[0].value;
     }
     cpElement.value = cust.element;
+    const referenceChoice=$('#cpReferenceArt'),hasReferenceArt=!!window.ReferenceCharacterArt?.hasClass(cust.cls);
+    if(referenceChoice){referenceChoice.disabled=!hasReferenceArt;referenceChoice.checked=hasReferenceArt&&cust.referenceArt!==false;}
     cpWeapon.innerHTML = Object.entries(WEAPONS).filter(([, item]) => item.cls === cust.cls).map(([id, item]) => `<option value="${id}">${item.n}</option>`).join('');
     cpWeapon.value=cust.weapon;
     panel.querySelectorAll('[data-blessing]').forEach(b=>{const active=starterBoon(b.dataset.blessing);b.classList.toggle('on',active);b.setAttribute('aria-pressed',String(active));});
@@ -3763,6 +3827,7 @@
       if (previousClass === 'necromancer' && cust.cls !== 'necromancer') { skeletonSummons.length = 0; giantSummons.length = 0; }
       cust.weapon = defaultWeapon(cust.cls);
       Object.assign(cust, CLASS_STARTING_LOOK[cust.cls]);
+      cust.referenceArt=!!window.ReferenceCharacterArt?.hasClass(cust.cls)&&!window.ClassSpriteAnimations?.hasClass(cust.cls);
     }
     else if (b.classList.contains('sw')) cust[b.dataset.k] = b.dataset.c;
     else if (b.classList.contains('st')) cust.style = +b.dataset.s;
@@ -3773,6 +3838,7 @@
   cpArmor.addEventListener('change', () => { cust.armorType = cpArmor.value; player.hp = Math.min(player.hp, maxHpOf()); refreshPanel(); saveExp(); });
   cpWeapon.addEventListener('change', () => { cust.weapon = cpWeapon.value; refreshPanel(); saveExp(); });
   cpElement.addEventListener('change', () => { cust.element = cpElement.value; refreshPanel(); saveExp(); });
+  $('#cpReferenceArt').addEventListener('change', ev => {cust.referenceArt=!!ev.target.checked;refreshPanel();saveExp();});
   for (const [id,key] of [['cpHairStyle','hairStyle'],['cpBeard','beard'],['cpCapeStyle','capeStyle'],['cpBody','body'],['cpEmblem','emblem'],['cpScars','scars']]) {
     $('#'+id).addEventListener('change', ev => {cust[key]=ev.target.value;refreshPanel();saveExp();});
   }
