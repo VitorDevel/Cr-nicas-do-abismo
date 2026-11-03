@@ -389,9 +389,9 @@ function hShoulders(g, st, view) {
   }
 }
 /* ---- cabelo ---- */
-const HAIR_COVER = new Set(['capuz', 'elmo', 'cornos', 'assassin_hood', 'kasa', 'skullhelm']);
+const HAIR_COVER = new Set(['capuz', 'elmo', 'cornos', 'assassin_hood', 'kasa', 'skullhelm', 'vikinghelm']);
 function hHairBack(g, st, view, A) {
-  if (HAIR_COVER.has(st.head)) return; const hs = st.hairStyle, c = st.hair, c2 = st.hairSh, wv = Math.sin(A.t * 2.4) * .8 + A.mv * 1.4, hy = -39;
+  const hs=st.hairStyle;if(HAIR_COVER.has(st.head)&&!(st.head==='kasa'&&hs==='rabo')&&!(st.head==='vikinghelm'&&hs==='tranca'))return; const c = st.hair, c2 = st.hairSh, wv = Math.sin(A.t * 2.4) * .8 + A.mv * 1.4, hy = -39;
   g.fillStyle = c; g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = .9;
   if (hs === 'longo') { const L = view === 'b' ? 18 : 15; g.beginPath(); if (view === 's') { g.moveTo(-7, hy - 4); g.quadraticCurveTo(-11 + wv, hy + 6, -9 + wv * 1.5, hy + L); g.lineTo(-2, hy + L - 3); g.lineTo(-1, hy + 4); g.closePath(); } else { g.moveTo(-8.4, hy - 3); g.quadraticCurveTo(-10.4, hy + 8, -8.8 + wv, hy + L); g.lineTo(8.8 + wv, hy + L); g.quadraticCurveTo(10.4, hy + 8, 8.4, hy - 3); g.closePath(); } g.fill(); g.stroke(); g.fillStyle = c2; g.fillRect(view === 's' ? -8 : -5, hy + 6, 1.4, L - 7); g.fillRect(view === 's' ? -5 : 3, hy + 7, 1.4, L - 8); }
   else if (hs === 'rabo') { g.beginPath(); const dir = view === 's' ? -1 : 1; g.moveTo(dir * 1, hy - 5); g.bezierCurveTo(dir * (8 + wv * 2), hy - 3, dir * (11 + wv * 2), hy + 8, dir * (6 + wv * 3), hy + 15); g.bezierCurveTo(dir * (5 + wv * 3), hy + 8, dir * 4, hy + 2, dir * -1, hy - 2); g.closePath(); g.translate(0, 0); if (view !== 'b') { g.fill(); g.stroke(); } else { g.save(); g.translate(0, 4); g.fill(); g.stroke(); g.restore(); } }
@@ -417,9 +417,10 @@ function hBeard(g, st, view, A) {
   const sx = view === 's' ? 2.4 : 0, wid = view === 's' ? .7 : 1;
   if (bd === 'bigode') { g.beginPath(); g.moveTo(sx - 4.6 * wid, hy + 5); g.quadraticCurveTo(sx - 1.4, hy + 3, sx, hy + 4.6); g.quadraticCurveTo(sx + 1.4, hy + 3, sx + 4.6 * wid, hy + 5); g.quadraticCurveTo(sx + 2.4, hy + 6.6, sx, hy + 5.6); g.quadraticCurveTo(sx - 2.4, hy + 6.6, sx - 4.6 * wid, hy + 5); g.fill(); g.stroke(); return; }
   if (bd === 'cavanhaque') { g.beginPath(); g.moveTo(sx - 2.4, hy + 6.6); g.quadraticCurveTo(sx, hy + 5, sx + 2.4, hy + 6.6); g.quadraticCurveTo(sx + 2.8, hy + 11, sx, hy + 13); g.quadraticCurveTo(sx - 2.8, hy + 11, sx - 2.4, hy + 6.6); g.fill(); g.stroke(); g.beginPath(); g.moveTo(sx - 4, hy + 5); g.quadraticCurveTo(sx, hy + 3.4, sx + 4, hy + 5); g.quadraticCurveTo(sx, hy + 5.6, sx - 4, hy + 5); g.fill(); return; }
-  const L = bd === 'longa' ? 15 : 8.4, sw = Math.sin(A.t * 2.4) * .6 + A.mv * .8;
+  const L = bd === 'longa' ? 15 : bd === 'tranca' ? 12.5 : 8.4, sw = Math.sin(A.t * 2.4) * .6 + A.mv * .8;
   g.beginPath(); g.moveTo(sx - 8 * wid, hy + 1); g.quadraticCurveTo(sx - 9 * wid, hy + 8, sx - 6 * wid, hy + 8 + L * .5); g.quadraticCurveTo(sx - 2 + sw, hy + 8 + L, sx + sw, hy + 9 + L); g.quadraticCurveTo(sx + 2 + sw, hy + 8 + L, sx + 6 * wid, hy + 8 + L * .5); g.quadraticCurveTo(sx + 9 * wid, hy + 8, sx + 8 * wid, hy + 1); g.quadraticCurveTo(sx + 4, hy + 3.6, sx, hy + 3.4); g.quadraticCurveTo(sx - 4, hy + 3.6, sx - 8 * wid, hy + 1); g.closePath(); g.fill(); g.stroke();
   g.strokeStyle = c2; g.lineWidth = .8; for (let i = -2; i <= 2; i++) { g.beginPath(); g.moveTo(sx + i * 2, hy + 6); g.quadraticCurveTo(sx + i * 2.2, hy + 8 + L * .5, sx + i * 1.2 + sw, hy + 7 + L); g.stroke(); }
+  if(bd==='tranca'){g.strokeStyle=st.hairHi;g.lineWidth=1.1;for(let i=0;i<5;i++){const y=hy+8+i*2.2;g.beginPath();g.moveTo(sx-3,y);g.lineTo(sx+2.8,y+2);g.moveTo(sx+3,y);g.lineTo(sx-2.8,y+2);g.stroke();}g.fillStyle='#c4a96c';g.fillRect(sx-2.6,hy+18,5.2,1.5);}
   g.fillStyle = st.hairHi; g.beginPath(); g.ellipse(sx - 2.4, hy + 8, 2.2, 1, -.4, 0, TAU); g.fill();
   g.fillStyle = st.skin; g.beginPath(); g.ellipse(sx, hy + 5.4, 2.4 * wid, 1, 0, 0, TAU); g.fill(); g.fillStyle = '#7a3a3a'; g.fillRect(sx - 1.2 * wid, hy + 5.2, 2.4 * wid, .8);
 }
@@ -563,6 +564,24 @@ function hHeadgear(g, st, view, A) {
     g.strokeStyle=lit;g.lineWidth=.8;g.beginPath();
     if(!side&&!back){g.moveTo(-14,hy-1);g.quadraticCurveTo(0,hy-3,14,hy-1);g.moveTo(-7,hy-7);g.lineTo(0,hy-10);g.lineTo(7,hy-7);g.stroke();g.fillStyle=st.tr;g.beginPath();g.moveTo(0,hy-8);g.lineTo(2.8,hy-5);g.lineTo(0,hy-2.2);g.lineTo(-2.8,hy-5);g.closePath();g.fill()}
     else{g.moveTo(cx-7,hy-7);g.lineTo(cx+1,hy-10);g.lineTo(cx+8,hy-3);g.stroke()}
+  }
+  else if (kd === 'vikinghelm') {
+    const iron='#59616a',dark='#252b31',edge='#171b20',lit='#c0a66c';
+    g.fillStyle=iron;g.strokeStyle=edge;g.lineWidth=1;
+    g.beginPath();
+    if(back){g.moveTo(-9,hy+7);g.lineTo(-10,hy-5);g.quadraticCurveTo(0,hy-15,10,hy-5);g.lineTo(9,hy+7);g.quadraticCurveTo(0,hy+10,-9,hy+7);}
+    else if(side){g.moveTo(cx-8,hy+7);g.lineTo(cx-9,hy-5);g.quadraticCurveTo(cx-5,hy-12,cx+3,hy-10);g.lineTo(cx+10,hy-3);g.lineTo(cx+8,hy+6);g.lineTo(cx+2,hy+9);g.closePath();}
+    else{g.moveTo(-9,hy+6);g.lineTo(-10,hy-4);g.quadraticCurveTo(-9,hy-12,0,hy-13);g.quadraticCurveTo(9,hy-12,10,hy-4);g.lineTo(9,hy+6);g.quadraticCurveTo(0,hy+10,-9,hy+6);}
+    g.fill();g.stroke();
+    g.strokeStyle=lit;g.lineWidth=.8;g.beginPath();
+    if(!back){g.moveTo(side?cx-8:-8,hy-3);g.quadraticCurveTo(side?cx:0,hy-7,side?cx+8:8,hy-3);g.stroke();g.fillStyle=dark;g.beginPath();if(side){g.moveTo(cx-2,hy-2);g.lineTo(cx+7,hy-1);g.lineTo(cx+8,hy+3);g.lineTo(cx,hy+2);g.closePath();}else{g.moveTo(-7,hy-2);g.lineTo(7,hy-2);g.lineTo(6,hy+3);g.lineTo(-6,hy+3);g.closePath();}g.fill();g.fillStyle='#e2bc72';g.beginPath();g.arc(side?cx+4:0,hy-6,1.4,0,TAU);g.fill();}
+    // Curved ivory horns give the heavy fighter an unmistakable Viking profile.
+    g.strokeStyle='#e2d3ad';g.lineWidth=2.8;g.lineCap='round';g.beginPath();
+    if(side&&!back){g.moveTo(cx+6,hy-5);g.quadraticCurveTo(cx+15,hy-11,cx+14,hy-17);g.quadraticCurveTo(cx+12,hy-22,cx+9,hy-23);}
+    else if(!back){for(const sd of [-1,1]){g.moveTo(sd*8,hy-5);g.quadraticCurveTo(sd*15,hy-9,sd*15,hy-16);g.quadraticCurveTo(sd*14,hy-21,sd*10,hy-22);}}
+    else{for(const sd of [-1,1]){g.moveTo(sd*8,hy-4);g.quadraticCurveTo(sd*16,hy-8,sd*15,hy-15);}}
+    g.stroke();g.strokeStyle='#fff3d2';g.lineWidth=.8;g.beginPath();
+    if(side&&!back){g.moveTo(cx+13,hy-16);g.lineTo(cx+9,hy-23);}else if(!back){g.moveTo(-14,hy-15);g.lineTo(-10,hy-22);g.moveTo(14,hy-15);g.lineTo(10,hy-22);}g.stroke();
   }
   else if (kd === 'skullhelm') {
     const bone='#d6c7a8', boneHi='#f0e7ce', boneDk='#88755d', red='#8e2925';
@@ -799,6 +818,18 @@ function hWeapon(g, st, kind, A, hand) {
     default: break;
   }
 }
+function hSamuraiMask(g, st, view) {
+  if(st.class!=='samurai')return;
+  const hy=-39,cx=view==='s'?1.2:0;
+  g.save();g.lineJoin='round';g.lineWidth=.8;g.strokeStyle='#301519';g.fillStyle='#76232a';g.beginPath();
+  if(view==='b'){g.strokeStyle='#d3a45f';g.lineWidth=.9;g.beginPath();g.moveTo(-6,hy+2);g.lineTo(0,hy+5);g.lineTo(6,hy+2);g.stroke();g.restore();return;}
+  if(view==='s'){g.moveTo(cx-5,hy+1);g.lineTo(cx+6,hy+1);g.lineTo(cx+5,hy+7);g.lineTo(cx+1,hy+10);g.lineTo(cx-4,hy+7);g.closePath();}
+  else{g.moveTo(-6,hy+1);g.lineTo(6,hy+1);g.lineTo(5,hy+7);g.lineTo(2,hy+10);g.lineTo(-2,hy+10);g.lineTo(-5,hy+7);g.closePath();}
+  g.fill();g.stroke();g.fillStyle='#d3a45f';g.strokeStyle='#3d1a1b';g.lineWidth=.6;
+  if(view==='s'){g.beginPath();g.moveTo(cx+2,hy+2);g.lineTo(cx+8,hy+4);g.lineTo(cx+4,hy+6);g.closePath();g.fill();g.stroke();g.beginPath();g.arc(cx+3,hy+2,1.1,0,TAU);g.fill();}
+  else{for(const sd of [-1,1]){g.beginPath();g.moveTo(sd*2,hy+2);g.lineTo(sd*8,hy+4);g.lineTo(sd*3,hy+6);g.closePath();g.fill();g.stroke();g.beginPath();g.arc(sd*3.2,hy+2.2,1.05,0,TAU);g.fill();}}
+  g.strokeStyle='#e7c77c';g.lineWidth=.7;g.beginPath();if(view==='s'){g.moveTo(cx-2,hy+7);g.lineTo(cx+3,hy+7);}else{g.moveTo(-2,hy+7);g.lineTo(2,hy+7);}g.stroke();g.restore();
+}
 const DUAL_WEAPONS = new Set(['daggers', 'katars', 'kunai']);
 /* ============================================================
    FIGURA COMPLETA
@@ -823,19 +854,19 @@ function drawHumanoid(g, o, A) {
     const hf = hArm(g, st, view, A2, false);
     if (DUAL_WEAPONS.has(wk) || HIDDEN) weaponAt(hf, A.wa != null ? Math.PI - (wa != null ? wa : 0) + .4 : Math.PI - restPose - .5, true);
     hShoulders(g, st, view); hCape(g, st, view, A, true);
-    hHead(g, st, view, A); hMark(g, st, view); hHairFront(g, st, view, A); hBeard(g, st, view, A); hFoxEars(g, st, view, A); hHeadgear(g, st, view, A);
+    hHead(g, st, view, A); hMark(g, st, view); hHairFront(g, st, view, A); hBeard(g, st, view, A); hFoxEars(g, st, view, A); hHeadgear(g, st, view, A); hSamuraiMask(g,st,view);
     const h = hArm(g, st, view, A2, true); weaponAt(h, wa != null ? wa : restPose, false); g.fillStyle = st.skin;
   } else if (view === 'b') {
     const h = { x: 10.2 * st.bw, y: -16 }; hTail(g, st, view, A);
     if (wa == null && !HIDDEN) { const sh = hArm(g, st, view, A2, true); g.save(); g.translate(sh.x, sh.y); g.rotate(restPose); hWeapon(g, st, wk, A2, sh); g.restore(); }
     hLegs(g, st, view, A); hTorso(g, st, view, A); hAccents(g, st, view, A); const hfb = hArm(g, st, view, A2, false); if (HIDDEN && hidAtk) weaponAt(hfb, 0, true); if (wa != null) { const hh = hArm(g, st, view, A2, true); weaponAt(hh, wa, false); } else hArm(g, st, view, A2, true);
-    hShoulders(g, st, view); hCape(g, st, view, A, false); hHead(g, st, view, A); hHairFront(g, st, view, A); hHairBack(g, st, view, A); hFoxEars(g, st, view, A); hHeadgear(g, st, view, A);
+    hShoulders(g, st, view); hCape(g, st, view, A, false); hHead(g, st, view, A); hHairFront(g, st, view, A); hHairBack(g, st, view, A); hFoxEars(g, st, view, A); hHeadgear(g, st, view, A); hSamuraiMask(g,st,view);
   } else {
     hTail(g, st, view, A); hCape(g, st, view, A, false); hHairBack(g, st, view, A);
     const hf = hArm(g, st, view, A2, false); if (DUAL_WEAPONS.has(wk) || HIDDEN) weaponAt(hf, A.wa != null ? (wa != null ? wa - .9 : 0) : restPose + .9, true);
     hLegs(g, st, view, A); hTorso(g, st, view, A); hAccents(g, st, view, A);
     const h = hArm(g, st, view, A2, true); weaponAt(h, wa != null ? wa : restPose + .55, false); hShoulders(g, st, view);
-    hHead(g, st, view, A); hMark(g, st, view); hHairFront(g, st, view, A); hBeard(g, st, view, A); hFoxEars(g, st, view, A); hHeadgear(g, st, view, A);
+    hHead(g, st, view, A); hMark(g, st, view); hHairFront(g, st, view, A); hBeard(g, st, view, A); hFoxEars(g, st, view, A); hHeadgear(g, st, view, A); hSamuraiMask(g,st,view);
   }
   g.restore();
 }

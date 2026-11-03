@@ -109,7 +109,7 @@ function paintPoiGround(g, c) {
       for (let i = 0; i < 12; i++) { const a = i * TAU / 12; g.beginPath(); g.moveTo(Math.cos(a) * 20, Math.sin(a) * 14); g.lineTo(Math.cos(a) * 84, Math.sin(a) * 58); g.stroke(); }
       for (const k of [30, 56, 80]) { g.beginPath(); g.ellipse(0, 0, k, k * .69, 0, 0, TAU); g.stroke(); }
     } else if (p.type === 'dungeon' || p.type === 'abyss') {
-      const col = p.dungeon.acc;
+      const col = p.dungeon?.acc || '#ff3c8e';
       g.fillStyle = 'rgba(10,10,16,.45)'; g.beginPath(); g.ellipse(0, 20, 210, 120, 0, 0, TAU); g.fill();
       g.fillStyle = '#56564e'; g.beginPath(); g.ellipse(0, 20, 190, 106, 0, 0, TAU); g.fill();
       g.fillStyle = '#6f6f64'; g.beginPath(); g.ellipse(0, 20, 176, 98, 0, 0, TAU); g.fill();

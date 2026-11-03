@@ -65,7 +65,7 @@
   const player = {
     x: SPAWN.x, y: SPAWN.y, angle: -Math.PI / 2, kx: 0, ky: 0,
     hp: 100, focus: 65, stamina: 100, level: 15, xp: 0, coins: 500, potions: 3, kills: 0,
-    healthRanks: 0, staminaRanks: 0, manaRanks: 0, ultimateCd: 0, ultimateTime: 0,
+    healthRanks: 0, staminaRanks: 0, manaRanks: 0, ultimateCd: 0, ultimateTime: 0, rageTime: 0, guardTime: 0,
     attackCd: 0, combo: 0, comboTimer: 0, dashT: 0, dashCd: 0, dashX: 0, dashY: -1, skillCd: 0,
     invuln: 0, flash: 0, hurt: 0, walk: 0, stepDist: 0, aimLock: 0,
     swing: null, spin: null, blocking: false, dead: false, deadT: 0, motion: 0, facing: -Math.PI / 2,
@@ -75,7 +75,7 @@
   const maxHpOf = () => Math.round((100 + player.healthRanks * 24) * hpMul());
   const maxFocusOf = () => Math.round((65 + player.manaRanks * 20) * foMul());
   const maxStaminaOf = () => 100 + player.staminaRanks * 25;
-  const damageOf = () => Math.round((24 + (player.relics?.fury || 0) * 5) * dmMul() * (player.ultimateTime > 0 && cust.ultimate === 'tempestade' ? 1.5 : 1) * (player.buff > 0 ? 1.18 : 1));
+  const damageOf = () => Math.round((24 + (player.relics?.fury || 0) * 5) * dmMul() * (player.ultimateTime > 0 ? 1.25 : 1) * (player.rageTime > 0 ? 1.28 : 1) * (player.buff > 0 ? 1.18 : 1));
   const xpNeed = level => 60 + (level - 14) * 35;
 
   const enemies = [];
@@ -106,6 +106,8 @@
   let attackHeld = false;
   let spawnTimer = 1;
   let wave = 1, waveTimer = 0, finalBossActive = false, mimicBossTimer = rand(105, 185);
+  const defeatedBiomeGiants = new Set();
+  let biomeGiantCooldown = 8;
   let saveTimer = 4;
   let targetEnemy = null;
   let muted = false;
@@ -134,7 +136,7 @@
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         level: player.level, xp: Math.floor(player.xp), coins: player.coins, potions: player.potions, kills: player.kills,
         healthRanks: player.healthRanks, staminaRanks: player.staminaRanks, manaRanks: player.manaRanks, stamina: player.stamina,
-        wave, waveTimer, pendingLevelChoices, relics: player.relics,
+        wave, waveTimer, pendingLevelChoices, relics: player.relics, defeatedBiomeGiants: [...defeatedBiomeGiants],
         companions: companions.map(n => ({ role: n.role, seed: n.seed, x: Math.round(n.x), y: Math.round(n.y) })),
         stage: quest.stage, progress: quest.progress, x: Math.round(dun ? ow.x : player.x), y: Math.round(dun ? ow.y : player.y), time: clockMinutes()
       }));
@@ -151,9 +153,10 @@
       player.staminaRanks = clamp(Math.floor(num(s.staminaRanks, 0)), 0, 99);
       player.manaRanks = clamp(Math.floor(num(s.manaRanks, Math.floor((player.level - 15) / 5))), 0, 99);
        player.stamina = clamp(num(s.stamina, maxStaminaOf()), 0, maxStaminaOf());
-       if (s.relics && typeof s.relics === 'object') for (const [id, value] of Object.entries(s.relics)) if (['fury','haste','arcana','vampire','cryo','storm','venom','magnet','ward','boneVolley','crystalShards','firebrand'].includes(id)) player.relics[id] = clamp(Math.floor(num(value, 0)), 0, 15);
+       if (s.relics && typeof s.relics === 'object') for (const [id, value] of Object.entries(s.relics)) if (['fury','haste','arcana','vampire','cryo','storm','venom','magnet','ward','boneVolley','crystalShards','firebrand','ironhide','executioner','quickstep','focuswell','deadeye','treasure'].includes(id)) player.relics[id] = clamp(Math.floor(num(value, 0)), 0, 15);
       wave = clamp(Math.floor(num(s.wave, 1)), 1, 999999);
       waveTimer = Math.max(0, num(s.waveTimer, 0));
+      defeatedBiomeGiants.clear(); if (Array.isArray(s.defeatedBiomeGiants)) for (const id of s.defeatedBiomeGiants) if (typeof id === 'string') defeatedBiomeGiants.add(id);
        if (Array.isArray(s.pendingLevelChoices)) pendingLevelChoices.push(...s.pendingLevelChoices.filter(c => c && Number.isFinite(c.rank) && typeof c.statChosen === 'boolean'));
        if (Array.isArray(s.companions)) for (const saved of s.companions) {
          const n = homeNpcs.find(candidate => candidate.role === saved.role && candidate.seed === saved.seed)
@@ -900,9 +903,9 @@
     const t = TYPES[type];
     const elite = type !== 'dummy' && !t.boss && wave >= 3 && Math.random() < Math.min(.33, .06 + wave * .017);
     const scale = 1 + Math.pow(Math.max(0, wave - 1), 1.19) * .18;
-    const m = type === 'dummy' ? 1 : (t.boss ? 1 + wave * .075 : 1.25 + (rankOf() - 1) * .045) * scale * (elite ? 2.35 : 1);
+    const m = type === 'dummy' ? 1 : (t.boss ? 1 + wave * .075 : 1.33 + (rankOf() - 1) * .045) * scale * (elite ? 2.35 : 1);
     const e = {
-      type, t, x, y, hp: t.hp * m, maxHp: t.hp * m, dmgMul: Math.min(5.5, (1 + (wave - 1) * .105) * (elite ? 1.55 : 1)), kx: 0, ky: 0, lx: 0, ly: 0,
+      type, t, x, y, hp: t.hp * m, maxHp: t.hp * m, dmgMul: Math.min(5.5, (1 + (wave - 1) * .115) * (elite ? 1.55 : 1)), kx: 0, ky: 0, lx: 0, ly: 0,
       state: 'idle', timer: rand(.4, 2), hit: 0, face: rand(0, TAU), home: { x, y }, wander: { x, y }, burn: 0, burnTick: 0, slow: 0,
       bob: rand(0, 6), atkDone: false, pattern: 0, charge: false, lastHit: -99, dead: false,
       elite, element: t.element, burn: 0, poison: 0, freeze: 0, stun: 0, mark: 0, effectsClock: 0,
@@ -910,6 +913,7 @@
       strafe: Math.random() > .5 ? 1 : -1, healCd: rand(5,8), dmgMulBase: 1
     };
     enemies.push(e);
+    if(t.boss){const intro=BOSS_INTROS[type]||[t.name,'Uma criatura colossal surge para defender seu território.'];showCutscene(intro[0],intro[1],'CINEMÁTICA · CHEFE');}
     if (elite) e.speech = '✦ ELITE ✦', e.speechT = 2;
     return e;
   }
@@ -945,7 +949,7 @@
     return false;
   }
   function trySpawnMimicBoss() {
-    if(finalBossActive||dun||enemies.some(e=>!e.dead&&e.type==='mimic_boss'))return false;
+    if(finalBossActive||dun||enemies.some(e=>!e.dead&&e.t.boss))return false;
     for(let i=0;i<18;i++){
       const a=rand(0,TAU),d=rand(340,500),x=player.x+Math.cos(a)*d,y=player.y+Math.sin(a)*d;
       if(!validSpawn(x,y))continue;
@@ -977,7 +981,7 @@
     player.effectTick = .55;
     const raw = (player.burn > 0 ? 3.2 + wave * .25 : 0) + (player.poison > 0 ? 2.1 + wave * .22 : 0);
     if (raw > 0) {
-      const dmg = Math.max(1, Math.ceil(raw * (1 - ARMORS[cust.armorType].guard) * (starterBoon('shield') ? .85 : 1) * (1 - (player.relics.ward || 0) * .055)));
+      const dmg = Math.max(1, Math.ceil(raw * (1 - ARMORS[cust.armorType].guard) * (starterBoon('shield') ? .85 : 1) * (1 - (player.relics.ward || 0) * .055) * (1 - Math.min(.36, (player.relics.ironhide || 0) * .03)) * (player.guardTime > 0 ? .5 : 1)));
       player.hp -= dmg; floatText(player.x, player.y - 36, `-${dmg} DoT`, '#f4a66d', 12);
       if (player.hp <= 0) die();
     }
@@ -993,7 +997,7 @@
   }
   function hurtPlayer(amount, fromX, fromY, heavy = false, element = null) {
     if (player.dead || player.invuln > 0 || inSafeZone(player.x, player.y)) return;
-    let dmg = Math.max(1, Math.round(amount * (1 - ARMORS[cust.armorType].guard) * (starterBoon('shield') ? .85 : 1) * (1 - (player.relics.ward || 0) * .055) * (player.curse > 0 ? 1.25 : 1) * rand(.9, 1.1)));
+    let dmg = Math.max(1, Math.round(amount * (1 - ARMORS[cust.armorType].guard) * (starterBoon('shield') ? .85 : 1) * (1 - (player.relics.ward || 0) * .055) * (1 - Math.min(.36, (player.relics.ironhide || 0) * .03)) * (player.guardTime > 0 ? .5 : 1) * (player.curse > 0 ? 1.25 : 1) * rand(.9, 1.1)));
     if (cust.cls === 'tanke' && player.blocking && player.focus > 0) {
       player.focus = Math.max(0, player.focus - dmg);
       floatText(player.x, player.y - 43, `-${dmg} MANA`, '#8fe8ff', 15);
@@ -1208,7 +1212,7 @@
     const t = e.t;
     player.kills++;
     burst(e.x, e.y, t.boss ? 50 : 20, { color: [t.color, '#ffffff', '#f4cf79'], speed: t.boss ? 340 : 220, life: .7, size: 3.4, drag: 4, glow: true });
-    const total = Math.round(rand(t.coin[0], t.coin[1]));
+    const total = Math.round(rand(t.coin[0], t.coin[1]) * (1 + (player.relics.treasure || 0) * .08));
     const n = Math.min(t.boss ? 14 : 6, Math.max(1, Math.ceil(total / 5)));
     for (let i = 0; i < n; i++) dropLoot(e.x, e.y, 'coin', Math.max(1, Math.round(total / n)));
     if (isRegular(e) && Math.random() < .14) dropLoot(e.x, e.y, 'potion', 1);
@@ -1238,6 +1242,7 @@
     } else if (quest.stage === 3 && e.type === 'boss') completeQuest();
     else if (e.type === 'boss') showBanner('GUARDIÃO DERROTADO', 'Ele retornará em alguns minutos');
 
+    if(e.biomeGuardian){defeatedBiomeGiants.add(e.biomeGuardian);saveGame();showBanner('GUARDIÃO DO BIOMA DERROTADO','A região está segura, por enquanto.');}
     if (e.type === 'dummy') delayed.push({ t: 1.8, fn: () => spawnEnemy('dummy', 1260 + Math.random() * 460, 880 + Math.random() * 380) });
     if (e.type === 'boss') delayed.push({ t: 240, fn: () => { if (quest.stage >= 4) { spawnBoss(); showToast('O Guardião do Abismo retornou...'); } } });
   }
@@ -1279,7 +1284,13 @@
     {id:'ward',n:'Pele Endurecida',icon:'⬡',d:'Reduz todo o dano recebido em 5,5%.',rar:'RARO'},
     {id:'boneVolley',n:'Aljava Ossária',icon:'☠',d:'Cada ataque dispara um osso perfurante adicional.',rar:'RARO'},
     {id:'crystalShards',n:'Fragmentos Orbitais',icon:'✦',d:'Cada ataque lança três estilhaços em leque.',rar:'ÉPICO'},
-    {id:'firebrand',n:'Marca Ígnea',icon:'✹',d:'Cada ataque dispara uma bola de fogo explosiva.',rar:'ÉPICO'}
+    {id:'firebrand',n:'Marca Ígnea',icon:'✹',d:'Cada ataque dispara uma bola de fogo explosiva.',rar:'ÉPICO'},
+    {id:'ironhide',n:'Pele de Ferro',icon:'⬡',d:'Reduz o dano recebido em 3% por nível.',rar:'RARO'},
+    {id:'executioner',n:'Algoz de Gigantes',icon:'⚒',d:'Causa 4% a mais de dano contra chefes por nível.',rar:'ÉPICO'},
+    {id:'quickstep',n:'Ritmo de Batalha',icon:'➶',d:'Aumenta a velocidade dos ataques em 3,5% por nível.',rar:'RARO'},
+    {id:'focuswell',n:'Poço Arcano',icon:'✦',d:'Recupera 1,2 de foco adicional por segundo por nível.',rar:'RARO'},
+    {id:'deadeye',n:'Olho de Águia',icon:'◎',d:'Aumenta a chance de crítico em 3,5% por nível.',rar:'ÉPICO'},
+    {id:'treasure',n:'Saqueador',icon:'◈',d:'Encontra 8% mais moedas por nível.',rar:'COMUM'}
   ];
   function rollOffers(pending) {
     if (Array.isArray(pending.offers) && pending.offers.length === 3) return pending.offers;
@@ -1298,7 +1309,7 @@
     paused = true; el.levelPanel.hidden = false;
     if (pending.rank === 5 && pending.statChosen && !cust.ultimate) {
       el.levelPanelTitle.textContent = 'ESCOLHA SUA ULTIMATE';
-      el.levelChoices.innerHTML = Object.entries(ULTIMATES).map(([id, ult]) => `<button class="level-choice ultimate-choice" type="button" data-ultimate="${id}"><span class="choice-icon">${ult.icon}</span><strong>${ult.name}</strong><small>${ult.description}</small></button>`).join('');
+      const ult=CLASS_ULTIMATES[cust.cls]; el.levelChoices.innerHTML = '<button class="level-choice ultimate-choice" type="button" data-ultimate="'+ult.id+'"><span class="choice-icon">'+ult.icon+'</span><strong>'+ult.name+'</strong><small>'+ult.description+'</small></button>';
       return;
     }
     el.levelPanelTitle.textContent = `NÍVEL ${pending.rank} · 3 PODERES ALEATÓRIOS`;
@@ -1319,9 +1330,10 @@
       pending.statChosen = true;
       if (pending.rank !== 5 || cust.ultimate) pendingLevelChoices.shift();
     } else if (button.dataset.ultimate && pending.rank === 5 && pending.statChosen && !cust.ultimate) {
+      if (button.dataset.ultimate !== CLASS_ULTIMATES[cust.cls].id) return;
       cust.ultimate = button.dataset.ultimate; saveExp(); pendingLevelChoices.shift();
-      showToast(`Ultimate desbloqueada: ${ULTIMATES[cust.ultimate].name}`);
-    } else return;
+      showToast('Ultimate desbloqueada: ' + CLASS_ULTIMATES[cust.cls].name);
+    }
     saveGame(); renderLevelChoice();
   });
   function completeQuest() {
@@ -1337,10 +1349,7 @@
     showBanner('MISSÃO CONCLUÍDA', r ? `+${r.xp} XP · +${r.coins} moedas${r.potions ? ` · +${r.potions} poção` : ''}` : '');
     quest.stage = Math.min(quests.length - 1, quest.stage + 1);
     quest.progress = 0;
-    if (guardianAwakens) {
-      spawnBoss();
-      showCutscene('O GUARDIÃO DESPERTA', 'As ruínas estremecem. Uma presença antiga abriu os olhos no coração da floresta.', 'CAPÍTULO I · O PRIMEIRO SELO');
-    }
+    if (guardianAwakens) spawnBoss();
     el.worldMessage.textContent = 'Purifique todas as masmorras · Abismo por Abismo.';
     saveGame();
   }
@@ -1415,10 +1424,11 @@
     const element = ELEMENTS[elementId];
     const resistance = ELEMENT_RESIST[enemyElement(e)]?.[elementId] ?? 1;
     const empowered = element.strong.includes(e.type) || resistance > 1.05;
-    const crit = Math.random() < .12 + (player.relics.fury || 0) * .015;
+    const crit = Math.random() < Math.min(.48, .12 + (player.relics.fury || 0) * .015 + (player.relics.deadeye || 0) * .035);
     const exposed = e.mark > 0 ? 1.28 + (player.relics.arcana || 0) * .06 : 1;
     const physical = o.pureElement ? 0 : base * .70, elemental = base * (o.pureElement ? 1 : .30) * resistance;
-    const dmg = Math.max(1, Math.round((physical + elemental) * exposed * rand(.91, 1.09) * (crit ? 1.75 : 1) * (empowered ? 1.13 : 1)));
+    const bossBonus = e.t.boss ? 1 + Math.min(.48, (player.relics.executioner || 0) * .04) : 1;
+    const dmg = Math.max(1, Math.round((physical + elemental) * exposed * rand(.91, 1.09) * (crit ? 1.75 : 1) * (empowered ? 1.13 : 1) * bossBonus));
     e.hp -= dmg; e.hit = .17; e.lastHit = gameTime;
     applyEnemyEffect(e, elementId, (1.7 + (player.relics.arcana || 0) * .14), o.skill ? 1.5 : 1);
     if (elementId === 'natureza') player.hp = Math.min(maxHpOf(), player.hp + .8 + (player.relics.vampire || 0) * .5);
@@ -1507,28 +1517,41 @@
     }
   }
   function useUltimate() {
-    if (player.dead || paused) return;
-    if (cust.cls === 'necromancer') { summonGiantSkeleton(); return; }
-    if (!cust.ultimate) { showToast('Desbloqueie uma ultimate no nível 5'); return; }
-    if (player.ultimateCd > 0) { showToast(`Ultimate: ${Math.ceil(player.ultimateCd)} s`); return; }
-    player.ultimateCd = 40;
-    if (cust.ultimate === 'tempestade') {
-      player.ultimateTime = 8;
-      ring(player.x, player.y, '#c4a2ff', 44, 400);
-      burst(player.x, player.y, 36, { color: ['#c4a2ff', '#fff'], speed: 320, life: .8, size: 4, glow: true });
-      showBanner('TEMPESTADE ASTRAL', 'Poder amplificado');
-    } else if (cust.ultimate === 'guardiao') {
-      player.hp = Math.min(maxHpOf(), player.hp + Math.round(maxHpOf() * .6));
-      player.invuln = Math.max(player.invuln, 3);
-      ring(player.x, player.y, '#9fe8b5', 48, 360);
-      burst(player.x, player.y, 30, { color: ['#9fe8b5', '#fff4c4'], speed: 250, life: .8, size: 3.5, glow: true });
-      showBanner('BASTIÃO IMORTAL', 'Vida restaurada · dano bloqueado');
-    } else {
-      ring(player.x, player.y, ELEMENTS[cust.element].color, 64, 520);
-      for (const e of enemies) if (!e.dead && Math.hypot(e.x - player.x, e.y - player.y) < 300 + e.t.r) damageEnemy(e, damageOf() * 4.5, { kb: 760, skill: true });
-      shake(18); showBanner('CATACLISMO', 'A terra treme sob sua força');
+    if(player.dead||paused)return;
+    if(cust.cls==='necromancer'){summonGiantSkeleton();return;}
+    if(!cust.ultimate){showToast('Desbloqueie sua ultimate no nível 5');return;}
+    if(player.ultimateCd>0){showToast('Ultimate: '+Math.ceil(player.ultimateCd)+' s');return;}
+    const ultimate=CLASS_ULTIMATES[cust.cls],id=ultimate.id;player.ultimateCd=42;
+    const burstUltimate=(radius,multiplier,kb=600)=>{for(const e of enemies)if(!e.dead&&Math.hypot(e.x-player.x,e.y-player.y)<radius+e.t.r)damageEnemy(e,damageOf()*multiplier,{kb,skill:true,finisher:true});};
+    if(id==='warrior_cataclysm'){
+      ring(player.x,player.y,ELEMENTS[cust.element].color,68,560);burstUltimate(310,4.4,820);shake(18);
+    }else if(id==='samurai_blade'){
+      player.ultimateTime=7;player.invuln=Math.max(player.invuln,.7);player.swing={t:0,dur:.55,angle:player.angle,range:270,arc:Math.PI*1.6,finisher:true,dir:1,style:'katana'};
+      ring(player.x,player.y,'#e6b866',42,350);burstUltimate(255,3.4,640);burst(player.x,player.y,34,{color:['#e6b866','#fff3d4'],speed:310,life:.7,size:3.5,glow:true});
+    }else if(id==='berserker_rage'){
+      player.rageTime=9;player.ultimateTime=9;player.hp=Math.min(maxHpOf(),player.hp+Math.round(maxHpOf()*.2));ring(player.x,player.y,'#d84b35',54,410);burstUltimate(225,2.4,700);burst(player.x,player.y,38,{color:['#d84b35','#ffbd6b'],speed:300,life:.7,size:3.5});
+    }else if(id==='mage_singularity'){
+      ring(player.x,player.y,'#c4a2ff',52,440);burstUltimate(360,3.8,700);for(const e of enemies)if(!e.dead&&Math.hypot(e.x-player.x,e.y-player.y)<380)e.mark=Math.max(e.mark,4);burst(player.x,player.y,40,{color:['#c4a2ff','#fff'],speed:320,life:.8,size:4,glow:true});
+    }else if(id==='archer_starfire'){
+      for(const e of enemies)if(!e.dead&&Math.hypot(e.x-player.x,e.y-player.y)<720){const a=Math.atan2(e.y-player.y,e.x-player.x);for(let k=-1;k<=1;k++)pShoot(a+k*.055,880,damageOf()*.95,'arqueiro',5,1.2);}
+      ring(player.x,player.y,'#ffe68b',36,300);burst(player.x,player.y,28,{color:['#fff4c4','#ffe36d'],speed:250,life:.65,size:3,glow:true});
+    }else if(id==='paladin_aegis'){
+      const heal=Math.round(maxHpOf()*.55);player.hp=Math.min(maxHpOf(),player.hp+heal);player.guardTime=4;player.invuln=Math.max(player.invuln,1.3);ring(player.x,player.y,'#ffe28a',58,440);burstUltimate(230,2.7,750);burst(player.x,player.y,34,{color:['#fff4c4','#ffe28a'],speed:280,life:.7,size:3.5,glow:true});
+    }else if(id==='druid_ancient'){
+      const heal=Math.round(maxHpOf()*.4);player.hp=Math.min(maxHpOf(),player.hp+heal);ring(player.x,player.y,'#8ee28b',60,460);
+      for(const e of enemies)if(!e.dead&&Math.hypot(e.x-player.x,e.y-player.y)<380){damageEnemy(e,damageOf()*3.2,{kb:360,skill:true,element:'natureza'});e.poison=Math.max(e.poison,5);}
+      burst(player.x,player.y,38,{color:['#8ee28b','#d7ffc8'],speed:285,life:.8,size:3.6,glow:true});
+    }else if(id==='assassin_execution'){
+      let target=null,bd=Infinity;for(const e of enemies){const dist=Math.hypot(e.x-player.x,e.y-player.y);if(!e.dead&&dist<bd){target=e;bd=dist;}}
+      if(target){target.mark=Math.max(target.mark,6);const a=Math.atan2(target.y-player.y,target.x-player.x);player.dashX=Math.cos(a);player.dashY=Math.sin(a);player.dashT=.24;player.invuln=Math.max(player.invuln,.5);damageEnemy(target,damageOf()*6.2,{kb:900,skill:true,finisher:true});}
+      ring(player.x,player.y,'#9c63de',42,350);burst(player.x,player.y,28,{color:['#c4a2ff','#fff'],speed:260,life:.6,size:3,glow:true});
+    }else if(id==='ninja_shadow'){
+      player.ultimateTime=6;player.invuln=Math.max(player.invuln,1.2);for(let k=0;k<24;k++)pShoot(k*TAU/24,740,damageOf()*.72,'shuriken',0,1.15);
+      ring(player.x,player.y,'#d9e7ee',46,390);burst(player.x,player.y,32,{color:['#d9e7ee','#b52e3b'],speed:280,life:.7,size:3.2});
+    }else if(id==='tank_fortress'){
+      player.guardTime=7;player.invuln=Math.max(player.invuln,2.2);const heal=Math.round(maxHpOf()*.3);player.hp=Math.min(maxHpOf(),player.hp+heal);ring(player.x,player.y,'#9fe8ff',68,500);burstUltimate(260,2.1,920);burst(player.x,player.y,38,{color:['#d9f5ff','#7cdcff'],speed:290,life:.75,size:3.6,glow:true});
     }
-    sfx('skill'); saveGame();
+    showBanner(ultimate.name.toUpperCase(),ultimate.description);sfx('skill');saveGame();
   }
   function dash() {
     if (player.dead || player.dashCd > 0 || paused) return;
@@ -1709,6 +1732,8 @@
     player.skillCd = Math.max(0, player.skillCd - dt);
     player.ultimateCd = Math.max(0, player.ultimateCd - dt);
     player.ultimateTime = Math.max(0, player.ultimateTime - dt);
+    player.rageTime = Math.max(0, player.rageTime - dt);
+    player.guardTime = Math.max(0, player.guardTime - dt);
     player.invuln = Math.max(0, player.invuln - dt);
     player.flash = Math.max(0, player.flash - dt);
     player.hurt = Math.max(0, player.hurt - dt);
@@ -1750,7 +1775,7 @@
           const wanted = Math.atan2(dy, dx);
           player.angle += Math.atan2(Math.sin(wanted-player.angle), Math.cos(wanted-player.angle)) * Math.min(1,dt * 18);
         }
-        let speed = 235 * spMul() * (1 + (player.relics.haste || 0) * .055) * (player.ultimateTime > 0 && cust.ultimate === 'tempestade' ? 1.12 : 1);
+        let speed = 235 * spMul() * (1 + (player.relics.haste || 0) * .055) * (player.ultimateTime > 0 ? 1.1 : 1);
         if (roadDist(player.x, player.y) < 44) speed *= 1.1;
         if (water) speed *= .62;
         if (player.chill > 0) speed *= .68;
@@ -1783,7 +1808,7 @@
         }
       }
       // regeneração
-      player.focus = Math.min(maxFocusOf(), player.focus + (3 + (player.relics.arcana || 0) * .65) * dt);
+      player.focus = Math.min(maxFocusOf(), player.focus + (3 + (player.relics.arcana || 0) * .65 + (player.relics.focuswell || 0) * 1.2) * dt);
       player.stamina = Math.min(maxStaminaOf(), player.stamina + (12 + player.staminaRanks * 3) * dt);
       if (inSafeZone(player.x, player.y)) {
         player.hp = Math.min(maxHpOf(), player.hp + 7 * dt);
@@ -1854,6 +1879,7 @@
       if(mimicBossTimer<=0){mimicBossTimer=rand(145,245);trySpawnMimicBoss();}
     }
     if (!dun && !finalBossActive) {
+      updateBiomeGiant(rawDt);
       waveTimer += rawDt;
       if (waveTimer >= 38) {
         waveTimer -= 38;
@@ -2541,7 +2567,7 @@
     el.healButton.classList.toggle('cooling', player.potions <= 0);
     el.ultimateButton.hidden = !cust.ultimate && cust.cls !== 'necromancer';
     el.ultimateButton.classList.toggle('cooling', player.ultimateCd > 0 || (cust.cls === 'necromancer' && giantSummons.length >= 2));
-    el.ultimateButton.setAttribute('aria-label', cust.cls === 'necromancer' ? 'Invocar gigante esqueleto (R)' : cust.ultimate ? `Usar ultimate: ${ULTIMATES[cust.ultimate].name}` : 'Ultimate bloqueada até o nível 5');
+    el.ultimateButton.setAttribute('aria-label', cust.cls === 'necromancer' ? 'Invocar gigante esqueleto (R)' : cust.ultimate ? 'Usar ultimate: ' + CLASS_ULTIMATES[cust.cls].name : 'Ultimate bloqueada até o nível 5');
 
     // alvo
     const boss = enemies.find(e => e.t.boss && !e.dead && (e.finalBoss || e.state !== 'idle'));
@@ -2578,8 +2604,7 @@
   const cust = { name: 'Aventureiro', armor: '#425f69', cape: '#8c3a3a', hair: '#3b2a20', skin: '#d9b99b', eye: '#3a2a1c', glow: '#9fe8ff', style: 1, race: 'humano', cls: 'guerreiro', armorType: 'cota', weapon: 'espada', element: 'fogo', hairStyle: 'curto', beard: 'nenhuma', trim: '#c7a65c', emblem: 'sol', capeStyle: 'longa', scars: 'nenhuma', body: 'medio', boons: [] };
   const cleared = {};
   try { const s = JSON.parse(localStorage.getItem(EXP_KEY) || 'null'); if (s) { Object.assign(cust, s.cust); Object.assign(cleared, s.cleared); } } catch (e) { /* sem storage */ }
-  if(window.ClassSpriteAnimations?.hasClass(cust.cls))cust.referenceArt=false;
-  else if(cust.referenceArt==null)cust.referenceArt=!!window.ReferenceCharacterArt?.hasClass(cust.cls);
+  if(cust.referenceArt==null)cust.referenceArt=false;
   const saveExp = () => { try { localStorage.setItem(EXP_KEY, JSON.stringify({ cust, cleared })); } catch (e) { /* sem storage */ } };
   $('#heroName').textContent = cust.name;
   const shade = (hex, amt) => { const n = parseInt(hex.slice(1), 16), f = v => clamp(v + amt, 0, 255); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
@@ -2596,12 +2621,20 @@
     titan: { name: 'TITÃ DA FORJA', hp: 1800, r: 42, speed: 88, dmg: 34, reach: 160, trigger: 120, windup: 1.1, recover: 1.1, lunge: 0, nova: true, aggro: 900, xp: 1200, coin: [400, 400], hostile: true, boss: true, color: '#ff8a4a' },
     yeti_giant: { name: 'YETI COLOSSAL', hp: 2600, r: 58, speed: 64, dmg: 44, reach: 164, trigger: 138, windup: 1.05, recover: 1.15, lunge: 460, nova: true, aggro: 940, xp: 1800, coin: [420, 480], hostile: true, boss: true, element: 'gelo', color: '#d8eef5', pal: ['#e3f5fb', '#718b9b', '#d1eaff', '#8bfcff'] },
     ice_titan: { name: 'TITÃ GLACIAL', hp: 3400, r: 66, speed: 58, dmg: 52, reach: 184, trigger: 154, windup: 1.2, recover: 1.3, lunge: 420, nova: true, aggro: 980, xp: 2400, coin: [520, 620], hostile: true, boss: true, element: 'gelo', color: '#a8e5f2', pal: ['#c8f2f5', '#4f899b', '#a6efff', '#e7ffff'], artId: 'yeti_giant' },
-    cyclops: { name: 'CICLOPE, O DE UM OLHO', hp: 3200, r: 62, speed: 70, dmg: 50, reach: 188, trigger: 160, windup: 1.2, recover: 1.3, lunge: 560, nova: true, aggro: 960, xp: 2100, coin: [480, 560], hostile: true, boss: true, element: 'arcano', color: '#a9a96c', pal: ['#8e9b69', '#3c4938', '#c6b47d', '#ffd867'] }
+    cyclops: { name: 'CICLOPE, O DE UM OLHO', hp: 3200, r: 62, speed: 70, dmg: 50, reach: 188, trigger: 160, windup: 1.2, recover: 1.3, lunge: 560, nova: true, aggro: 960, xp: 2100, coin: [480, 560], hostile: true, boss: true, element: 'arcano', color: '#a9a96c', pal: ['#8e9b69', '#3c4938', '#c6b47d', '#ffd867'] },
+    tree_sentinel: { name: 'SENTINELA-ÁRVORE', hp: 3000, r: 62, speed: 56, dmg: 48, reach: 176, trigger: 150, windup: 1.2, recover: 1.35, lunge: 0, nova: true, aggro: 980, xp: 2200, coin: [500, 580], hostile: true, boss: true, element: 'natureza', color: '#55774a', pal: ['#73533a', '#332b23', '#5b984c', '#f1d28b'], artId: 'entboss' },
+    dune_colossus: { name: 'COLOSSO DAS DUNAS', hp: 3300, r: 62, speed: 66, dmg: 51, reach: 190, trigger: 160, windup: 1.2, recover: 1.35, lunge: 420, nova: true, aggro: 980, xp: 2300, coin: [520, 620], hostile: true, boss: true, element: 'fogo', color: '#c29a58', pal: ['#d8a84a', '#6a4418', '#ffe8a0', '#ff3a1a'], artId: 'pharaoh' },
+    marsh_hydra: { name: 'HIDRA DO PÂNTANO', hp: 3100, r: 62, speed: 58, dmg: 47, reach: 170, trigger: 150, windup: 1.1, recover: 1.3, lunge: 0, nova: true, aggro: 960, xp: 2200, coin: [500, 590], hostile: true, boss: true, element: 'natureza', color: '#4c9271', pal: ['#4a9c70', '#193c35', '#98ed9a', '#f4d977'], artId: 'hydra' },
+    bone_colossus: { name: 'COLOSSO OSSÁRIO', hp: 3200, r: 64, speed: 62, dmg: 50, reach: 180, trigger: 155, windup: 1.2, recover: 1.35, lunge: 0, nova: true, aggro: 980, xp: 2300, coin: [520, 620], hostile: true, boss: true, element: 'arcano', color: '#c5b796', pal: ['#d8d2b0', '#554b60', '#c08aff', '#eee7d2'], artId: 'lich' },
+    flame_titan: { name: 'TITÃ DAS CHAMAS', hp: 3500, r: 68, speed: 58, dmg: 55, reach: 196, trigger: 165, windup: 1.2, recover: 1.4, lunge: 420, nova: true, aggro: 1000, xp: 2500, coin: [560, 660], hostile: true, boss: true, element: 'fogo', color: '#e76538', pal: ['#4a2f36', '#1a0e12', '#ff8a4a', '#ffb35a'], artId: 'titan' },
+    storm_titan: { name: 'TITÃ DA TEMPESTADE', hp: 3300, r: 64, speed: 62, dmg: 52, reach: 185, trigger: 160, windup: 1.15, recover: 1.35, lunge: 430, nova: true, aggro: 980, xp: 2400, coin: [540, 640], hostile: true, boss: true, element: 'raio', color: '#ffe371', pal: ['#ffe371', '#4a3a10', '#ffffff', '#40ffff'], artId: 'raijin' },
+    crystal_golem: { name: 'GOLEM DE CRISTAL', hp: 3600, r: 68, speed: 52, dmg: 56, reach: 198, trigger: 165, windup: 1.25, recover: 1.4, lunge: 0, nova: true, aggro: 1000, xp: 2600, coin: [580, 700], hostile: true, boss: true, element: 'arcano', color: '#8fe9ef', pal: ['#a7f2f2', '#315c7a', '#d7ffff', '#c89bff'], artId: 'crystalgolem' },
+    astral_colossus: { name: 'COLOSSO ASTRAL', hp: 3400, r: 64, speed: 58, dmg: 52, reach: 188, trigger: 160, windup: 1.2, recover: 1.35, lunge: 0, nova: true, aggro: 980, xp: 2500, coin: [560, 660], hostile: true, boss: true, element: 'arcano', color: '#9a83d5', pal: ['#8fb8ff', '#1d2250', '#ffffff', '#c4a2ff'], artId: 'archmage' }
   });
   const BIOME_MOBS = {
     forest:['wolf','spider','slime','stag','thornling','dryad','mossbeast','direboar'],
-    frost:['wraith','icegolem','frostling','snowstalker','mage','wolf','yeti_giant','ice_titan'],
-    dunes:['harpy','sandscorpion','scarab','duneraider','brute','mimic','hyena','cyclops'],
+    frost:['wraith','icegolem','frostling','snowstalker','mage','wolf'],
+    dunes:['harpy','sandscorpion','scarab','duneraider','brute','mimic','hyena'],
     marsh:['spider','slime','boglurker','plagueshroom','shaman','mossbeast','mirewitch'],
     ash:['skeleton','wraith','nightstalker','graveknight','guardian','bat','bonearcher'],
     volcano:['cultist','brute','emberling','lavagolem','pyromancer','guardian','flamewisp'],
@@ -2610,6 +2643,48 @@
     arcane:['mage','astraleye','voidwalker','shardmage','guardian','wraith','mirewitch']
   };
   const PLAYABLE_BIOME = { meadow: 'forest', jungle: 'forest', canyon: 'dunes', mountain: 'frost', coast: 'marsh', abyss: 'ash' };
+  const BIOME_GUARDIANS = {
+    forest:{id:'forest_sentinel',type:'tree_sentinel',name:'Sentinela das Raízes'},
+    frost:{id:'frost_yeti',type:'yeti_giant',name:'Yeti da Geada Eterna'},
+    dunes:{id:'dune_colossus',type:'dune_colossus',name:'Colosso das Dunas'},
+    marsh:{id:'marsh_hydra',type:'marsh_hydra',name:'Hidra do Pântano'},
+    ash:{id:'bone_colossus',type:'bone_colossus',name:'Colosso Ossário'},
+    volcano:{id:'flame_titan',type:'flame_titan',name:'Titã das Chamas'},
+    storm:{id:'storm_titan',type:'storm_titan',name:'Titã da Tempestade'},
+    crystal:{id:'crystal_golem',type:'crystal_golem',name:'Golem de Cristal'},
+    arcane:{id:'astral_colossus',type:'astral_colossus',name:'Colosso Astral'}
+  };
+  const BOSS_INTROS = {
+    boss:['GUARDIÃO DO ABISMO','Uma presença ancestral desperta e bloqueia seu caminho.'],
+    lorde:['LORDE OSSÁRIO','O senhor das catacumbas se ergue entre os túmulos.'],
+    devorador_astral:['DEVORADOR ASTRAL','Uma criatura do vazio emerge no templo.'],mae_cinzas:['MÃE DAS CINZAS','O coração da forja desperta sua guardiã.'],tempestade:['SENHOR DA TEMPESTADE','O trovão ganha forma e desce do céu.'],celestial_vulture:['ABUTRE CELESTIAL','Uma sombra alada cobre a arena.'],
+    matriarca:['MATRIARCA VENENOSA','A teia estremece quando sua dona desce das sombras.'],
+    arquimago:['ARQUIMAGO ASTRAL','O tecido da realidade se rasga diante do mago.'],
+    titan:['TITÃ DA FORJA','A forja ruge e seu antigo campeão desperta.'],
+    yeti_giant:['YETI COLOSSAL','A neve se parte sob o guardião das montanhas.'],
+    ice_titan:['TITÃ GLACIAL','Uma massa de gelo antigo bloqueia o caminho.'],
+    cyclops:['CÍCLOPE','O gigante de um olho ergue sua arma.'],
+    mimic_boss:['MÍMICO LENDÁRIO','O tesouro se abre e revela seus dentes.'],
+    oni:['O ONI DO ABISMO','Os últimos selos se partem e algo colossal atravessa a fenda.'],
+    ent_anc:['ANCIÃO DAS RAÍZES','A floresta desperta seu protetor mais antigo.'],
+    hidra:['HIDRA DA CISTERNA','A água se agita quando a hidra emerge.'],
+    prisma:['IMPERATRIZ DOS CRISTAIS','O palácio se acende em mil reflexos.'],
+    soberana:['SOBERANA DA GEADA','A rainha do inverno surge entre cristais de gelo.'],
+    colosso:['FARAÓ ESCORPIÃO','A areia se abre para revelar o soberano enterrado.'],
+    verme:['VERME DAS PROFUNDEZAS','O chão desaba quando a criatura subterrânea emerge.'],
+    raijin:['RAIJIN, SENHOR DA TEMPESTADE','O trovão ganha forma e desce do céu.'],
+    rei_sombras:['REI DAS SOMBRAS','A escuridão se ergue diante de seu trono.'],
+    kraken:['KRAKEN ANCIÃO','Tentáculos gigantes rompem o chão inundado.'],
+    dragao:['DRAGÃO ANCIÃO','O dragão abre suas asas e faz a arena tremer.'],
+    tree_sentinel:['SENTINELA DAS RAÍZES','A floresta inteira se ergue para defender seu coração antigo.'],
+    dune_colossus:['COLOSSO DAS DUNAS','A areia se transforma numa muralha viva diante de você.'],
+    marsh_hydra:['HIDRA DO PÂNTANO','Várias cabeças rompem a água escura e cercam a margem.'],
+    bone_colossus:['COLOSSO OSSÁRIO','Os restos dos antigos se juntam numa criatura colossal.'],
+    flame_titan:['TITÃ DAS CHAMAS','A lava sobe e forma um gigante incandescente.'],
+    storm_titan:['TITÃ DA TEMPESTADE','Um raio atinge o solo. Uma armadura colossal se levanta.'],
+    crystal_golem:['GOLEM DE CRISTAL','Os cristais ressoam e se unem num guardião facetado.'],
+    astral_colossus:['COLOSSO ASTRAL','A magia do céu se condensa num gigante de luz.']
+  };
   for (const [id, source] of Object.entries(window.ABISMO_PARTIAL_CATALOG || {})) {
     if (source.boss || id === 'dummy') continue;
     const biome = PLAYABLE_BIOME[source.biome] || source.biome;
@@ -2702,6 +2777,16 @@
     // Later waves unlock the rarer threats of THAT biome, not random mobs from elsewhere.
     const access=wave<3?Math.min(3,pool.length):wave<7?Math.min(5,pool.length):pool.length;
     return pool[Math.floor(Math.random()*access)];
+  }
+  function updateBiomeGiant(dt) {
+    if(dun||finalBossActive||player.dead||gameTime<48)return;
+    biomeGiantCooldown-=dt;if(biomeGiantCooldown>0)return;biomeGiantCooldown=8;
+    const rawBiome=biomeAt(player.x,player.y),biome=PLAYABLE_BIOME[rawBiome]||rawBiome,guardian=BIOME_GUARDIANS[biome];
+    if(!guardian||defeatedBiomeGiants.has(guardian.id)||enemies.some(e=>!e.dead&&e.biomeGuardian))return;
+    if(enemies.some(e=>!e.dead&&e.t.boss))return;
+    let spot=null;for(let i=0;i<28;i++){const a=rand(0,TAU),d=rand(500,660),x=player.x+Math.cos(a)*d,y=player.y+Math.sin(a)*d;if(validSpawn(x,y)&&(PLAYABLE_BIOME[biomeAt(x,y)]||biomeAt(x,y))===biome){spot={x,y};break;}}
+    if(!spot)return;const enemy=spawnEnemy(guardian.type,spot.x,spot.y);enemy.biomeGuardian=guardian.id;targetEnemy=enemy;
+    ring(spot.x,spot.y,enemy.t.color,54,390);shake(12);sfx('slam');showBanner(guardian.name.toUpperCase(),'Um gigante ancestral surgiu neste bioma.');
   }
 
   /* ---------- projéteis ---------- */
@@ -2809,7 +2894,6 @@
     oni.finalBoss=true;oni.emerging=4;oni.summonTimer=10;oni.state='idle';oni.face=Math.atan2(player.y-y,player.x-x);
     targetEnemy=oni;ring(x,y,'#9d54d8',60,430);shake(18);sfx('slam');
     showBanner('O ABISMO SE ABRIU','O Oni do Abismo está emergindo.');
-    showCutscene('O ONI DO ABISMO', 'Os últimos selos se partem. Do outro lado da fenda, algo que conhece seu nome começa a atravessar.', 'CINEMÁTICA · O FIM SE APROXIMA');
   }
   function campaignTarget(){
     if(dun)return questTarget();
@@ -3194,16 +3278,16 @@
     draconato: { n: 'Draconato', d: 'Escamas ancestrais. +18% vida e resistência, com passo mais pesado.', hp: 1.18, sp: .94, fo: .96, dm: 1.08, xp: 1, skin: ['#a75b49','#4e7897','#56815c','#444650'] }
   };
   const CLASSES = {
-    guerreiro: { n: 'Guerreiro', w: 'Espada Longa', d: 'Combo de 3 golpes em arco. Habilidade: Redemoinho de lâminas.', hp: 1.1, fo: 1, sp: 1, dm: 1, atk: 1, rng: 1, dc: 1, cost: 20, cd: 4, icon: '✦' },
-    samurai: { n: 'Samurai', w: 'Katana', d: 'Lâmina veloz, armadura segmentada e kasa. Habilidade: corte em arco que atinge os inimigos próximos.', hp: 1.02, fo: .95, sp: 1.12, dm: 1.08, atk: .88, rng: 1.03, dc: 1, cost: 18, cd: 3.5, icon: '✥' },
-    berserker: { n: 'Berserker', w: 'Machado de Guerra', d: 'Guerreiro robusto com elmo de caveira e manto de pele. Habilidade: golpe de fúria em área.', hp: 1.32, fo: .88, sp: .94, dm: 1.16, atk: 1.22, rng: 1.1, dc: 1.12, cost: 24, cd: 5.5, icon: '⚔' },
-    mago: { n: 'Mago', w: 'Cajado Arcano', d: 'Raios arcanos à distância. Habilidade: Nova Arcana (explosão em área).', hp: .8, fo: 1.4, sp: 1, dm: 1, atk: 1, rng: 1, dc: 1, cost: 22, cd: 4.5, icon: '✺' },
-    arqueiro: { n: 'Arqueiro', w: 'Arco Curto', d: 'Flechas rápidas que perfuram. Habilidade: Leque de 7 flechas.', hp: .9, fo: 1.1, sp: 1.08, dm: 1, atk: 1, rng: 1, dc: 1, cost: 20, cd: 4, icon: '➶' },
-    paladino: { n: 'Paladino', w: 'Martelo Sagrado', d: 'Golpes lentos e devastadores. Habilidade: Julgamento (cura + explosão).', hp: 1.3, fo: 1, sp: .96, dm: 1, atk: 1.7, rng: 1.1, dc: 1.7, cost: 25, cd: 6, icon: '☀' },
-    druida: { n: 'Druida', w: 'Cajado das Raízes', d: 'Dispara espinhos vivos. Habilidade: Ciclo Vital, cura e fere ao redor.', hp: 1, fo: 1.25, sp: 1, dm: 1.05, atk: 1, rng: 1, dc: 1, cost: 24, cd: 5, icon: '❋' },
-    assassino: { n: 'Assassino', w: 'Lâmina Oculta', d: 'Capuz, couro escuro e lâmina de pulso: ataques velozes e Passo Sombrio para eliminar alvos.', hp: .88, fo: .95, sp: 1.18, dm: 1.12, atk: .72, rng: .82, dc: 1.1, cost: 18, cd: 3.2, icon: '✧' },
-    ninja: { n: 'Ninja', w: 'Kunai e Katana', d: 'Lança kunais e shurikens. Habilidade: chuva de sete shurikens.', hp: .9, fo: 1, sp: 1.18, dm: 1.08, atk: .78, rng: 1, dc: 1.08, cost: 18, cd: 3.4, icon: '✧' },
-    tanke: { n: 'Tanque', w: 'Baluarte Colossal', d: 'Armadura pesada, manto de pele e escudo. Bloqueie segurando o botão direito ou B para converter dano em mana.', hp: 1.48, fo: 1.05, sp: .82, dm: 1.12, atk: 1.2, rng: 1.18, dc: 1.3, cost: 18, cd: 5.5, icon: '⬡' },
+    guerreiro: { n: 'Guerreiro', w: 'Espada Longa', d: 'Combo de 3 golpes em arco. Habilidade: Redemoinho de lâminas.', qName: 'Redemoinho de Lâminas', qDesc: 'Gira com a espada e derruba os inimigos próximos.', hp: 1.1, fo: 1, sp: 1, dm: 1, atk: 1, rng: 1, dc: 1, cost: 20, cd: 4, icon: '✦' },
+    samurai: { n: 'Samurai', w: 'Katana', d: 'Armadura lamelar, kasa, máscara menpō e katana. Q: avanço Iaijutsu em linha.', qName: 'Iaijutsu', qDesc: 'Avança com um corte preciso que atravessa os inimigos.', hp: 1.02, fo: .95, sp: 1.12, dm: 1.08, atk: .88, rng: 1.03, dc: 1, cost: 18, cd: 3.5, icon: '✥' },
+    berserker: { n: 'Berserker', w: 'Machado de Guerra', d: 'Viking de elmo com chifres, barba trançada, pele e machado de batalha. Q: Fúria Nórdica.', qName: 'Fúria Nórdica', qDesc: 'Entra em frenesi, atacando mais rápido e causando mais dano por alguns segundos.', hp: 1.32, fo: .88, sp: .94, dm: 1.16, atk: 1.22, rng: 1.1, dc: 1.12, cost: 24, cd: 5.5, icon: '⚔' },
+    mago: { n: 'Mago', w: 'Cajado Arcano', d: 'Raios arcanos à distância. Q: Nova Arcana explode ao seu redor.', qName: 'Nova Arcana', qDesc: 'Libera uma explosão arcana ao redor do mago.', hp: .8, fo: 1.4, sp: 1, dm: 1, atk: 1, rng: 1, dc: 1, cost: 22, cd: 4.5, icon: '✺' },
+    arqueiro: { n: 'Arqueiro', w: 'Arco Curto', d: 'Flechas rápidas que perfuram. Q: dispara uma salva perfurante.', qName: 'Salva Perfurante', qDesc: 'Dispara cinco flechas pesadas em leque, atravessando vários alvos.', hp: .9, fo: 1.1, sp: 1.08, dm: 1, atk: 1, rng: 1, dc: 1, cost: 20, cd: 4, icon: '➶' },
+    paladino: { n: 'Paladino', w: 'Martelo Sagrado', d: 'Golpes lentos e devastadores. Q: Julgamento sagrado em cone.', qName: 'Julgamento', qDesc: 'Esmaga os inimigos à frente e recupera parte da vida.', hp: 1.3, fo: 1, sp: .96, dm: 1, atk: 1.7, rng: 1.1, dc: 1.7, cost: 25, cd: 6, icon: '☀' },
+    druida: { n: 'Druida', w: 'Cajado das Raízes', d: 'Dispara espinhos vivos. Q: raízes prendem e envenenam inimigos próximos.', qName: 'Raízes Prendentes', qDesc: 'Enraíza e fere inimigos próximos com magia da natureza.', hp: 1, fo: 1.25, sp: 1, dm: 1.05, atk: 1, rng: 1, dc: 1, cost: 24, cd: 5, icon: '❋' },
+    assassino: { n: 'Assassino', w: 'Lâmina Oculta', d: 'Capuz, couro escuro e lâmina de pulso. Q: investida pelas sombras contra o alvo mais próximo.', qName: 'Passo Sombrio', qDesc: 'Fecha distância e aplica uma marca mortal no alvo mais próximo.', hp: .88, fo: .95, sp: 1.18, dm: 1.12, atk: .72, rng: .82, dc: 1.1, cost: 18, cd: 3.2, icon: '✧' },
+    ninja: { n: 'Ninja', w: 'Kunai e Katana', d: 'Lança kunais e shurikens. Q: desaparece numa nuvem de fumaça e lança shurikens.', qName: 'Nuvem de Fumaça', qDesc: 'Desaparece por um instante e lança shurikens ao redor.', hp: .9, fo: 1, sp: 1.18, dm: 1.08, atk: .78, rng: 1, dc: 1.08, cost: 18, cd: 3.4, icon: '✧' },
+    tanke: { n: 'Tanque', w: 'Baluarte Colossal', d: 'Armadura pesada e escudo. Q: levanta uma guarda de ferro que reduz dano e repele inimigos.', qName: 'Guarda de Ferro', qDesc: 'Reduz o dano recebido e repele inimigos próximos.', hp: 1.48, fo: 1.05, sp: .82, dm: 1.12, atk: 1.2, rng: 1.18, dc: 1.3, cost: 18, cd: 5.5, icon: '⬡' },
     necromancer: { n: 'Necromante', w: 'Cajado Ossário', d: 'Q ergue até 10 guerreiros esqueléticos fortes. Clique esquerdo dispara um raio elétrico; clique direito golpeia com o cajado. R invoca até 2 gigantes esqueletos com martelo ou espada. Todas as invocações têm vida própria e podem morrer.', hp: .92, fo: 1.3, sp: .96, dm: .94, atk: 1, rng: .82, dc: .94, cost: 8, cd: 1.15, icon: '☠' }
   };
   const ARMORS = {
@@ -3259,13 +3343,27 @@
     guardiao: { name: 'Bastião Imortal', icon: '⬡', description: 'Recupera 60% da vida e bloqueia dano por 3 segundos.' },
     cataclismo: { name: 'Cataclismo', icon: '✹', description: 'Desfere uma explosão elemental devastadora ao redor.' }
   };
+  const CLASS_ULTIMATES = {
+    guerreiro:{id:'warrior_cataclysm',name:'Ruptura Sísmica',icon:'✹',description:'Esmaga todos os inimigos ao redor com uma onda devastadora.'},
+    samurai:{id:'samurai_blade',name:'Corte dos Oito Ventos',icon:'✥',description:'Executa um corte espiritual e ganha velocidade por 7 segundos.'},
+    berserker:{id:'berserker_rage',name:'Fúria do Valhalla',icon:'⚔',description:'Entra em frenesi, causando mais dano e atacando mais rápido por 9 segundos.'},
+    mago:{id:'mage_singularity',name:'Singularidade Astral',icon:'✺',description:'Detona uma singularidade que fere todos os inimigos próximos.'},
+    arqueiro:{id:'archer_starfire',name:'Chuva Estelar',icon:'➶',description:'Marca os inimigos e dispara uma salva de flechas celestes.'},
+    paladino:{id:'paladin_aegis',name:'Égide Solar',icon:'☀',description:'Recupera vida, bloqueia dano e explode em luz sagrada.'},
+    druida:{id:'druid_ancient',name:'Coração da Floresta',icon:'❋',description:'Cura profundamente e libera uma onda de raízes envenenadas.'},
+    assassino:{id:'assassin_execution',name:'Execução Sombria',icon:'✧',description:'Marca e desfere um golpe devastador no alvo mais próximo.'},
+    ninja:{id:'ninja_shadow',name:'Mil Sombras',icon:'✧',description:'Lança uma tempestade de lâminas e acelera seus ataques.'},
+    tanke:{id:'tank_fortress',name:'Fortaleza Inabalável',icon:'⬡',description:'Ergue uma guarda quase impenetrável e derruba os inimigos ao redor.'},
+    necromancer:{id:'necromancer_giant',name:'Exército dos Mortos',icon:'☠',description:'Invoca um gigante esqueleto de guerra.'}
+  };
+  for (const value of Object.values(CLASS_ULTIMATES)) ULTIMATES[value.id] = value;
   if (!RACES[cust.race]) cust.race = 'humano';
   if (!CLASSES[cust.cls]) cust.cls = 'guerreiro';
   const defaultWeapon = cls => ({ guerreiro: 'espada', samurai: 'samurai_katana', berserker: 'berserker_axe', mago: 'cajado', arqueiro: 'arco', paladino: 'martelo', druida: 'totem', assassino: 'hidden_blade', ninja: 'ninja_katana', tanke: 'tank_bulwark', necromancer: 'necro_staff' }[cls]);
   const CLASS_STARTING_LOOK = {
     guerreiro: { armorType: 'placas', armor: '#34383b', cape: '#8c1825', trim: '#b0a99d', style: 1, capeStyle: 'longa', emblem: 'sol' },
-    samurai: { armorType: 'placas', armor: '#342d2b', cape: '#861d25', trim: '#c08b56', style: 5, capeStyle: 'longa', emblem: 'dragao', body: 'medio', weapon: 'samurai_katana' },
-    berserker: { armorType: 'placas', armor: '#4b4036', cape: '#731b22', trim: '#a99578', style: 1, capeStyle: 'esfarrapada', emblem: 'nenhum', body: 'robusto', scars: 'tribal', weapon: 'berserker_axe' },
+    samurai: { armorType: 'placas', armor: '#431d27', cape: '#8f1727', trim: '#d3a45f', style: 5, capeStyle: 'curta', emblem: 'dragao', body: 'medio', hairStyle: 'rabo', beard: 'nenhuma', weapon: 'samurai_katana' },
+    berserker: { armorType: 'placas', armor: '#49372b', cape: '#59301f', trim: '#c4a96c', style: 1, capeStyle: 'esfarrapada', emblem: 'runa', body: 'robusto', scars: 'tribal', hairStyle: 'tranca', beard: 'tranca', weapon: 'berserker_axe' },
     mago: { armorType: 'runica', armor: '#3d4d7b', cape: '#352e62', trim: '#b69cff', style: 0, capeStyle: 'longa', emblem: 'runa' },
     arqueiro: { armorType: 'couro', armor: '#3f6b45', cape: '#294738', trim: '#a6c77a', style: 4, capeStyle: 'curta', emblem: 'lua' },
     paladino: { armorType: 'placas', armor: '#b69b55', cape: '#e6dfc9', trim: '#f4cf79', style: 1, capeStyle: 'longa', emblem: 'sol' },
@@ -3277,15 +3375,17 @@
   };
   if (!ARMORS[cust.armorType]) cust.armorType = 'cota';
   if (!WEAPONS[cust.weapon] || WEAPONS[cust.weapon].cls !== cust.cls) cust.weapon = defaultWeapon(cust.cls);
-  if (!cust.classAppearanceRev) {
+  if ((cust.classAppearanceRev || 0) < 2) {
     const oldLooks = {
       guerreiro: { armorType: 'cota', armor: '#425f69', cape: '#8c3a3a', trim: '#c7a65c' },
-      tanke: { armorType: 'placas', armor: '#555b66', cape: '#2c3e6b', trim: '#c7a65c' }
+      tanke: { armorType: 'placas', armor: '#555b66', cape: '#2c3e6b', trim: '#c7a65c' },
+      samurai: { armorType: 'placas', armor: '#342d2b', cape: '#861d25', trim: '#c08b56' },
+      berserker: { armorType: 'placas', armor: '#4b4036', cape: '#731b22', trim: '#a99578' }
     };
     const oldLook=oldLooks[cust.cls];
     if(oldLook&&Object.keys(oldLook).every(key=>cust[key]===oldLook[key]))Object.assign(cust,CLASS_STARTING_LOOK[cust.cls]);
     if(cust.cls==='necromancer'&&cust.weapon==='necro_dagger')cust.weapon='necro_staff';
-    cust.classAppearanceRev=1;
+    cust.classAppearanceRev=2;
     saveExp();
   }
   if (!ELEMENTS[cust.element]) cust.element = 'fogo';
@@ -3305,7 +3405,7 @@
   const dmMul = () => RACES[cust.race].dm * CLASSES[cust.cls].dm * WEAPONS[cust.weapon].damage * (starterBoon('fury') ? 1.15 : 1) * (player.relics.mimicWeapon ? 1.28 : 1);
   const spMul = () => RACES[cust.race].sp * CLASSES[cust.cls].sp * ARMORS[cust.armorType].speed * (starterBoon('stride') ? 1.12 : 1);
   const xpMul = () => RACES[cust.race].xp;
-  const atkMul = () => CLASSES[cust.cls].atk * WEAPONS[cust.weapon].rate, rangeMul = () => CLASSES[cust.cls].rng * WEAPONS[cust.weapon].range, dmgClass = () => CLASSES[cust.cls].dc;
+  const atkMul = () => CLASSES[cust.cls].atk * WEAPONS[cust.weapon].rate / (1 + (player.relics.quickstep || 0) * .035) / (player.ultimateTime > 0 || player.rageTime > 0 ? 1.18 : 1), rangeMul = () => CLASSES[cust.cls].rng * WEAPONS[cust.weapon].range, dmgClass = () => CLASSES[cust.cls].dc;
 
   const pShots = [];
   function pShoot(a, spd, dmg, kind, pierce, life) {
@@ -3535,7 +3635,7 @@
     if (player.dead || player.attackCd > 0 || paused) return true;
     if (c !== 'ninja') autoAim();
     const weapon = WEAPONS[cust.weapon];
-    player.attackCd = (c === 'mago' ? .42 : (c === 'druida' ? .38 : c === 'ninja' ? .36 : .27)) / weapon.rate;
+    player.attackCd = (c === 'mago' ? .42 : (c === 'druida' ? .38 : c === 'ninja' ? .36 : .27)) / weapon.rate / (1 + (player.relics.quickstep || 0) * .035) / (player.ultimateTime > 0 || player.rageTime > 0 ? 1.18 : 1);
     player.kx -= Math.cos(player.angle) * 70; player.ky -= Math.sin(player.angle) * 70;
     const attackDur = c === 'mago' ? 0.24 : c === 'druida' ? 0.22 : c === 'ninja' ? 0.17 : 0.2;
     player.swing = { t: 0, dur: attackDur, angle: player.angle, range: 30, arc: .5, finisher: false, dir: 1, style: 'ranged' };
@@ -3551,40 +3651,45 @@
     sfx('swing'); return true;
   }
   function classSkill() {
-    const K = CLASSES[cust.cls];
-    if (cust.cls === 'necromancer') { summonWarriorSkeleton(); return; }
-    if (player.skillCd > 0) return;
-    if (player.focus < K.cost) { showToast('Foco insuficiente'); return; }
-    player.focus -= K.cost; player.skillCd = K.cd; player.invuln = Math.max(player.invuln, .25);
-    autoAim();
-    player.swing = { t: 0, dur: .36, angle: player.angle, range: 44, arc: .8, finisher: true, dir: 1, style: 'skill' };
-    const d = damageOf(), hitAll = (rad, mul, kb) => { for (const e of enemies) if (!e.dead && Math.hypot(e.x - player.x, e.y - player.y) < rad + e.t.r) damageEnemy(e, d * mul, { kb, skill: true }); };
-    if (cust.cls === 'samurai') { player.swing = { t: 0, dur: .34, angle: player.angle, range: 148, arc: Math.PI * .9, finisher: true, dir: 1, style: 'katana' }; player.kx += Math.cos(player.angle) * 135; player.ky += Math.sin(player.angle) * 135; ring(player.x, player.y, '#d6b27a', 27, 180); burst(player.x, player.y, 14, { color: ['#d6b27a', '#f9eee0'], speed: 190, life: .42, size: 2.6 }); sfx('swing'); hitAll(142, 1.9, 510); }
-    else if (cust.cls === 'berserker') { player.swing = { t: 0, dur: .42, angle: player.angle, range: 160, arc: Math.PI * 1.15, finisher: true, dir: -1, style: 'axe' }; player.invuln = Math.max(player.invuln, .48); ring(player.x, player.y, '#a94737', 35, 245); burst(player.x, player.y, 28, { color: ['#b94735', '#d3b58b', '#fff0d0'], speed: 230, life: .58, size: 3.1 }); shake(8); sfx('skill'); hitAll(164, 2.25, 720); }
-    else if (cust.cls === 'mago') { ring(player.x, player.y, '#b69cff', 44, 380); burst(player.x, player.y, 26, { color: ['#b69cff', '#fff'], speed: 300, life: .7, size: 3.4, glow: true }); shake(9); sfx('skill'); hitAll(190, 2.2, 640); }
-    else if (cust.cls === 'arqueiro') { for (let k = -3; k <= 3; k++) pShoot(player.angle + k * .13, 760, d * .9, 'arqueiro', 3, .9); sfx('skill'); }
-    else if (cust.cls === 'druida') {
-      const healAmount = Math.round(maxHpOf() * .18);
-      player.hp = Math.min(maxHpOf(), player.hp + healAmount);
-      floatText(player.x, player.y - 34, `+${healAmount}`, '#9fe8b5', 18);
-      ring(player.x, player.y, '#8ee28b', 42, 330); burst(player.x, player.y, 24, { color: ['#8ee28b', '#d7ffc8'], speed: 240, life: .7, size: 3, glow: true });
-      sfx('skill'); hitAll(165, 1.55, 520);
-    }
-    else if (cust.cls === 'ninja') {
-      for (let k = -3; k <= 3; k++) pShoot(player.angle + k * .12, 780, d * .72, 'shuriken', 0, 1.1);
-      ring(player.x, player.y, '#d9e7ee', 24, 170); sfx('skill');
-    }
-    else if (cust.cls === 'assassino') {
-      player.dashX = Math.cos(player.angle); player.dashY = Math.sin(player.angle); player.dashT = .16;
-      player.invuln = Math.max(player.invuln, .5); burst(player.x, player.y, 18, { color: ['#c4a2ff', '#fff'], speed: 210, life: .45, size: 3, glow: true });
-      for (const e of enemies) {
-        if (e.dead) continue;
-        const dx = e.x - player.x, dy = e.y - player.y, dist = Math.hypot(dx, dy);
-        if (dist < 205 + e.t.r && angDiff(Math.atan2(dy, dx), player.angle) < .62) damageEnemy(e, d * 2.05, { kb: 480, skill: true, finisher: true });
-      }
-      shake(8); sfx('skill');
-    }
-    else { const h = Math.round(maxHpOf() * .28); player.hp = Math.min(maxHpOf(), player.hp + h); floatText(player.x, player.y - 34, `+${h}`, '#9fe8b5', 18); ring(player.x, player.y, '#ffe28a', 40, 330); burst(player.x, player.y, 24, { color: ['#ffe28a', '#fff4c4'], speed: 260, life: .8, size: 3.4, glow: true }); shake(10); sfx('level'); hitAll(150, 1.7, 620); }
+    const K=CLASSES[cust.cls];
+    if(cust.cls==='necromancer'){summonWarriorSkeleton();return;}
+    if(player.skillCd>0)return;
+    if(player.focus<K.cost){showToast('Foco insuficiente');return;}
+    player.focus-=K.cost;player.skillCd=K.cd;autoAim();
+    const d=damageOf();
+    const hitAll=(rad,mul,kb)=>{for(const e of enemies)if(!e.dead&&Math.hypot(e.x-player.x,e.y-player.y)<rad+e.t.r)damageEnemy(e,d*mul,{kb,skill:true});};
+    if(cust.cls==='samurai'){
+      player.swing={t:0,dur:.3,angle:player.angle,range:210,arc:.45,finisher:true,dir:1,style:'katana'};
+      player.dashX=Math.cos(player.angle);player.dashY=Math.sin(player.angle);player.dashT=.23;player.invuln=Math.max(player.invuln,.34);
+      ring(player.x,player.y,'#e6b866',25,185);burst(player.x,player.y,18,{color:['#e6b866','#fff3d4'],speed:230,life:.42,size:2.8});sfx('swing');
+      for(const e of enemies)if(!e.dead){const dx=e.x-player.x,dy=e.y-player.y,dist=Math.hypot(dx,dy);if(dist<230+e.t.r&&angDiff(Math.atan2(dy,dx),player.angle)<.34)damageEnemy(e,d*2.25,{kb:360,skill:true,finisher:true});}
+    }else if(cust.cls==='berserker'){
+      player.rageTime=6.5;player.invuln=Math.max(player.invuln,.3);player.swing={t:0,dur:.42,angle:player.angle,range:120,arc:Math.PI*1.2,finisher:true,dir:-1,style:'axe'};
+      ring(player.x,player.y,'#ba5035',30,205);burst(player.x,player.y,24,{color:['#b94735','#d3b58b','#fff0d0'],speed:215,life:.55,size:3.1});shake(7);sfx('skill');hitAll(118,.9,420);
+    }else if(cust.cls==='mago'){
+      player.swing={t:0,dur:.38,angle:player.angle,range:50,arc:TAU,finisher:true,dir:1,style:'skill'};
+      ring(player.x,player.y,'#b69cff',44,380);burst(player.x,player.y,26,{color:['#b69cff','#fff'],speed:300,life:.7,size:3.4,glow:true});shake(8);sfx('skill');hitAll(190,2.2,640);
+    }else if(cust.cls==='arqueiro'){
+      player.swing={t:0,dur:.25,angle:player.angle,range:40,arc:.4,finisher:true,dir:1,style:'ranged'};
+      for(let k=-2;k<=2;k++)pShoot(player.angle+k*.09,940,d*1.12,'arqueiro',6,1.1);sfx('skill');
+    }else if(cust.cls==='paladino'){
+      player.swing={t:0,dur:.45,angle:player.angle,range:150,arc:Math.PI*.72,finisher:true,dir:1,style:'hammer'};
+      let hits=0;for(const e of enemies)if(!e.dead){const dx=e.x-player.x,dy=e.y-player.y,dist=Math.hypot(dx,dy);if(dist<160+e.t.r&&angDiff(Math.atan2(dy,dx),player.angle)<Math.PI*.42){damageEnemy(e,d*1.8,{kb:560,skill:true});hits++;}}
+      const heal=Math.round(maxHpOf()*(hits?Math.min(.22,.08+hits*.025):.04));player.hp=Math.min(maxHpOf(),player.hp+heal);floatText(player.x,player.y-34,'+'+heal,'#ffe28a',18);ring(player.x,player.y,'#ffe28a',30,245);burst(player.x,player.y,18,{color:['#fff4c4','#ffe28a'],speed:230,life:.55,size:3,glow:true});sfx('skill');
+    }else if(cust.cls==='druida'){
+      let rooted=0;for(const e of enemies)if(!e.dead&&Math.hypot(e.x-player.x,e.y-player.y)<175+e.t.r){damageEnemy(e,d*1.4,{kb:180,skill:true,element:'natureza'});e.slow=Math.max(e.slow,2.4);e.poison=Math.max(e.poison,2.8);rooted++;}
+      const heal=Math.round(maxHpOf()*.08);player.hp=Math.min(maxHpOf(),player.hp+heal);floatText(player.x,player.y-34,'+'+heal,'#9fe8b5',17);ring(player.x,player.y,'#8ee28b',36,300);burst(player.x,player.y,22,{color:['#8ee28b','#d7ffc8'],speed:220,life:.65,size:3,glow:true});sfx(rooted?'skill':'level');
+    }else if(cust.cls==='assassino'){
+      let target=null,bd=510;for(const e of enemies){const dist=Math.hypot(e.x-player.x,e.y-player.y);if(!e.dead&&dist<bd){target=e;bd=dist;}}
+      if(target){const a=Math.atan2(target.y-player.y,target.x-player.x);player.dashX=Math.cos(a);player.dashY=Math.sin(a);player.dashT=.2;player.invuln=Math.max(player.invuln,.42);target.mark=Math.max(target.mark,4);damageEnemy(target,d*2.5,{kb:360,skill:true,finisher:true});}
+      burst(player.x,player.y,18,{color:['#c4a2ff','#fff'],speed:210,life:.45,size:3,glow:true});sfx('skill');
+    }else if(cust.cls==='ninja'){
+      player.invuln=Math.max(player.invuln,.55);player.dashX=Math.cos(player.angle);player.dashY=Math.sin(player.angle);player.dashT=.17;
+      for(let k=0;k<10;k++)pShoot(player.angle+k*TAU/10,690,d*.58,'shuriken',0,1.05);
+      ring(player.x,player.y,'#d9e7ee',27,200);burst(player.x,player.y,20,{color:['#d9e7ee','#b52e3b'],speed:210,life:.42,size:2.8});sfx('skill');
+    }else if(cust.cls==='tanke'){
+      player.guardTime=4.5;player.invuln=Math.max(player.invuln,.2);player.spin={t:0,dur:.5};ring(player.x,player.y,'#9fe8ff',38,290);burst(player.x,player.y,22,{color:['#d9f5ff','#7cdcff'],speed:195,life:.5,size:3,glow:true});sfx('skill');hitAll(145,1.25,690);
+    }else{player.invuln=Math.max(player.invuln,.3);ring(player.x,player.y,'#8ee0ff',36,330);hitAll(130,1.8,520);sfx('skill');}
   }
   function updatePShots(dt) {
     updateList(pShots, s => {
@@ -3670,13 +3775,14 @@
           ? 'WASD · mover  |  Clique esquerdo · atacar  |  Segure direito ou B · bloquear com mana  |  Q · habilidade  |  R · ultimate'
           : 'WASD · mover  |  Clique esquerdo · atacar  |  Q · habilidade  |  R · ultimate';
     const sp = el.skillButton.querySelector('span'); if (sp) sp.textContent = CLASSES[cust.cls].icon;
-    el.skillButton.setAttribute('aria-label', cust.cls === 'necromancer' ? 'Erguer esqueleto guerreiro (Q, máximo 10)' : 'Habilidade: ' + CLASSES[cust.cls].n);
+    el.skillButton.setAttribute('aria-label', cust.cls === 'necromancer' ? 'Erguer esqueleto guerreiro (Q, máximo 10)' : 'Q · ' + (CLASSES[cust.cls].qName || CLASSES[cust.cls].n) + ': ' + (CLASSES[cust.cls].qDesc || CLASSES[cust.cls].d));
+    el.skillButton.title = cust.cls === 'necromancer' ? 'Q · Erguer esqueleto guerreiro' : 'Q · ' + (CLASSES[cust.cls].qName || CLASSES[cust.cls].n);
     const attackSmall = el.attackButton?.querySelector('small');
     if (attackSmall) attackSmall.textContent = cust.cls === 'necromancer' ? 'RAIO' : 'ATACAR';
     if (el.ultimateButton) {
       const u = el.ultimateButton.querySelector('span'), label = el.ultimateButton.querySelector('small');
       if (cust.cls === 'necromancer') { if (u) u.textContent = '⚒'; if (label) label.textContent = 'R'; el.ultimateButton.title = 'Invocar gigante esqueleto (R, máximo 2)'; }
-      else { if (u) u.textContent = '✦'; if (label) label.textContent = 'R'; el.ultimateButton.title = 'Ultimate'; }
+      else { const ult=CLASS_ULTIMATES[cust.cls]; if (u) u.textContent=ult.icon; if (label) label.textContent='R'; el.ultimateButton.title='R · '+ult.name+': '+ult.description; }
     }
     if (el.blockButton) {
       el.blockButton.hidden = cust.cls !== 'tanke';
@@ -3693,21 +3799,17 @@
     const swing=player.swing;
     const swingProgress=swing?Math.max(0,Math.min(1,swing.t/Math.max(.01,swing.dur||.3))):0;
     const motion=showReference?0:Math.min(1,Math.abs(player.motion??1));
-    const spriteAction=showReference?'idle':swing?'attack':motion>.08?'run':'idle';
     if(showReference&&cs.referenceArt!==false&&window.ReferenceCharacterArt?.hasClass(cs.cls)){
       c.save();c.translate(x,y+20);c.scale(.78,.78);
       const drawn=window.ReferenceCharacterArt.draw(c,cs.cls,0,0,{view:dir.view,flip:dir.flip,height:50,bob:-Math.abs(Math.sin(walk))*1.2*Math.min(1,Math.abs(player.motion??1))});
       c.restore();if(drawn)return;
     }
-    if(window.ClassSpriteAnimations?.draw(c,cs.cls,x,y+20,{
-      action:spriteAction,time:visualTime,progress:swingProgress,motion,flip:dir.flip
-    }))return;
-    const sig=[cs.race,cs.cls,cs.skin,cs.hair,cs.hairStyle,cs.armor,cs.cape,cs.capeStyle,cs.armorType,cs.weapon,cs.trim,cs.glow,cs.emblem,cs.body,cs.style].join('|');
+    const sig=[cs.race,cs.cls,cs.skin,cs.hair,cs.hairStyle,cs.beard,cs.armor,cs.cape,cs.capeStyle,cs.armorType,cs.weapon,cs.trim,cs.glow,cs.emblem,cs.body,cs.style,cs.scars].join('|');
     let cached=worldArtCache.get(cs);
     if(!cached||cached.sig!==sig){
       const weapon=WEAPONS[cs.weapon]||{};
       const headMap={0:'capuz',1:'elmo',2:'nenhum',3:'coroa',4:'bandana',5:'chapeu'};
-      const head=cs.cls==='necromancer'?'capuz':cs.cls==='samurai'?'kasa':cs.cls==='berserker'?'skullhelm':cs.cls==='ninja'&&cs.style===4?'ninja_mask':cs.cls==='assassino'&&cs.style===0?'assassin_hood_ref':headMap[cs.style]||'nenhum';
+      const head=cs.cls==='necromancer'?'capuz':cs.cls==='samurai'?'kasa':cs.cls==='berserker'?'vikinghelm':cs.cls==='ninja'&&cs.style===4?'ninja_mask':cs.cls==='assassino'&&cs.style===0?'assassin_hood_ref':headMap[cs.style]||'nenhum';
       const shoulders=cs.cls==='tanke'?'pele':cs.cls==='berserker'?'pelomarrom':cs.cls==='necromancer'?'skull':cs.cls==='samurai'?'lacquer':cs.cls==='paladino'?'aco':'nenhum';
       const look={race:cs.race,cls:cs.cls,skin:cs.skin,hairColor:cs.hair,hairStyle:cs.hairStyle||'curto',beard:cs.beard||'nenhuma',head,capeStyle:cs.capeStyle,capeColor:cs.cape,armor:cs.cls==='samurai'?'samurai':cs.armorType,armorType:cs.armorType,armorColor:cs.armor,trim:cs.trim,glow:cs.glow,eye:cs.eye,weapon:cs.weapon,body:cs.body,emblem:cs.emblem,mark:cs.scars,shoulders};
       cached={sig,model:CharacterArt.makeModel(look,{race:cs.race,class:cs.cls,weaponKey:cs.weapon,weaponName:weapon.n,weaponType:weapon.weaponType,shieldModel:weapon.shieldModel,hammerModel:weapon.hammerModel,swordModel:weapon.swordModel,large:weapon.large})};worldArtCache.set(cs,cached);
@@ -3827,7 +3929,7 @@
       if (previousClass === 'necromancer' && cust.cls !== 'necromancer') { skeletonSummons.length = 0; giantSummons.length = 0; }
       cust.weapon = defaultWeapon(cust.cls);
       Object.assign(cust, CLASS_STARTING_LOOK[cust.cls]);
-      cust.referenceArt=!!window.ReferenceCharacterArt?.hasClass(cust.cls)&&!window.ClassSpriteAnimations?.hasClass(cust.cls);
+      cust.referenceArt=false;
     }
     else if (b.classList.contains('sw')) cust[b.dataset.k] = b.dataset.c;
     else if (b.classList.contains('st')) cust.style = +b.dataset.s;
@@ -4060,8 +4162,8 @@
   }
   function restartToCreation(){
     if(dun){enemies.length=0;solids.length=0;solids.push(...owSolids);owSolids=[];owEnemies=[];world.width=OW.w;world.height=OW.h;dun=null;ow=null;}
-    for(const key of Object.keys(cleared))delete cleared[key];
-    Object.assign(player,{x:SPAWN.x,y:SPAWN.y,angle:-Math.PI/2,hp:100,focus:65,stamina:100,level:15,xp:0,coins:500,potions:3,kills:0,healthRanks:0,staminaRanks:0,manaRanks:0,ultimateCd:0,ultimateTime:0,attackCd:0,combo:0,comboTimer:0,charge:0,dashT:0,dashCd:0,skillCd:0,invuln:2,flash:0,hurt:0,walk:0,stepDist:0,aimLock:0,dead:false,deadT:0,burn:0,poison:0,chill:0,shock:0,curse:0,buff:0,kx:0,ky:0,relics:{},motion:0,swing:null,spin:null});
+    for(const key of Object.keys(cleared))delete cleared[key]; defeatedBiomeGiants.clear();
+    Object.assign(player,{x:SPAWN.x,y:SPAWN.y,angle:-Math.PI/2,hp:100,focus:65,stamina:100,level:15,xp:0,coins:500,potions:3,kills:0,healthRanks:0,staminaRanks:0,manaRanks:0,ultimateCd:0,ultimateTime:0,rageTime:0,guardTime:0,attackCd:0,combo:0,comboTimer:0,charge:0,dashT:0,dashCd:0,skillCd:0,invuln:2,flash:0,hurt:0,walk:0,stepDist:0,aimLock:0,dead:false,deadT:0,burn:0,poison:0,chill:0,shock:0,curse:0,buff:0,kx:0,ky:0,relics:{},motion:0,swing:null,spin:null});
      companions.length=0;for(const n of homeNpcs){n.hired=false;n.companion=false;}
     skeletonSummons.length=0;giantSummons.length=0;
      quest.stage=0;quest.progress=0;wave=1;waveTimer=0;spawnTimer=1;finalBossActive=false;mimicBossTimer=rand(105,185);delete player.legendaryWeapon;gameTime=0;biomeExposure=0;fadeSt=null;splash=null;portalCd=0;

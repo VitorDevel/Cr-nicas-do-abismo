@@ -57,8 +57,7 @@ const DUNGEONS = [
   { id: 'observatorio', name: 'Observatório Glacial', sub: 'O frio preserva os segredos', x: 11500, y: 1900, biome: 'frost', theme: 'ice', boss: 'soberana', mix: ['frostling', 'icegolem', 'snowstalker', 'banshee', 'icemage', 'yeti'], acc: '#9de8ff', floor: '#465b68', wall: '#1b2935', rooms: 7 },
   { id: 'colosso', name: 'Colosso das Dunas', sub: 'A areia se ergue contra você', x: 15800, y: 9800, biome: 'dunes', theme: 'sand', boss: 'colosso', mix: ['scorpion', 'scarab', 'raider', 'mummy', 'sandwisp', 'naja'], acc: '#ffbd69', floor: '#8a6a44', wall: '#44301e', rooms: 7 }
 ];
-const ONI_DUNGEON = { id: 'abismo', name: 'Coração do Abismo', sub: 'Onde todas as coisas terminam', x: 9000, y: 6600, biome: 'abyss', theme: 'oni', boss: 'oni', mix: ['voidspawn', 'oniguard', 'abyssbat'], acc: '#ff3c8e', floor: '#2a1838', wall: '#0e0816', rooms: 0, final: true };
-const DUNGEON_BY_ID = {}; for (const d of DUNGEONS) DUNGEON_BY_ID[d.id] = d; DUNGEON_BY_ID.abismo = ONI_DUNGEON;
+const DUNGEON_BY_ID = {}; for (const d of DUNGEONS) DUNGEON_BY_ID[d.id] = d;
 const FIELD_BOSS = { id: 'guardian', x: 7700, y: 7900, r: 260 };
 
 /* ---------- aldeias ---------- */

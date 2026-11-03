@@ -33,7 +33,7 @@ const poiById = {};
 function addPoi(p) { POIS.push(p); poiById[p.id] = p; return p; }
 for (const v of VILLAGES) addPoi({ id: 'v_' + v.id, type: 'village', x: v.x, y: v.y, name: v.name, village: v, wp: true, r: 560 });
 for (const d of DUNGEONS) addPoi({ id: 'd_' + d.id, type: 'dungeon', x: d.x, y: d.y, name: d.name, dungeon: d, wp: true, r: 320 });
-addPoi({ id: 'abismo', type: 'abyss', x: ABYSS.x, y: ABYSS.y, name: 'Fenda do Abismo', dungeon: ONI_DUNGEON, r: 520 });
+addPoi({ id: 'abismo', type: 'abyss', x: ABYSS.x, y: ABYSS.y, name: 'Fenda do Abismo', r: 520 });
 addPoi({ id: 'arena_guardian', type: 'arena', x: FIELD_BOSS.x, y: FIELD_BOSS.y, name: 'Arena do Guardião', r: 320 });
 
 /* ---------- geração dos campos de terreno ---------- */

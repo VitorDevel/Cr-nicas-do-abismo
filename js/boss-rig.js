@@ -555,13 +555,92 @@ defBoss('kraken', k => {
   if (k.wind > .1 || k.atk > .1) rgGlow([0, 77, 48], 42 + attack, 'rgba(120,255,225,.58)', 22);
 }, [640, 560, 320, 420]);
 
+defBoss('crystalgolem', k => {
+  const [crystal, dark, shine, core] = k.pal, pulse = Math.sin(k.t * 2.2) * 3;
+  const step = Math.sin(k.ph) * (k.mv || 0) * 13, smash = k.atk * 30 + k.wind * 14;
+  rgShadow(122, 92);
+  for (const side of [-1, 1]) {
+    const lift = Math.max(0, Math.sin(k.ph + (side < 0 ? Math.PI : 0))) * (k.mv || 0) * 12;
+    rgTube([[side*25,58,0],[side*29,31,-1],[side*30,10+lift,18]],[22,17,13],dark,{tex:'cracks',cc:shine});
+    rgEll([side*30,8+lift,23],[18,9,22],crystal,{tex:'cracks',cc:shine,bias:3});
+    for(let i=-1;i<=1;i++)rgSpike([side*30+i*7,8+lift,34],[side*32+i*9,2+lift,50],6,shine,{bias:5});
+    rgEll([side*40,130+pulse,0],[28,27,30],dark,{tex:'cracks',cc:shine,bias:3});
+    rgTube([[side*40,130+pulse,0],[side*50,99+pulse+smash*.5,18],[side*57,66+smash,34]],[22,18,15],crystal,{tex:'cracks',cc:shine,bias:5});
+    rgEll([side*57,63+smash,37],[18,16,20],dark,{tex:'cracks',cc:shine,bias:7});
+    for(let i=-1;i<=1;i++)rgSpike([side*57+i*8,61+smash,49],[side*59+i*10,56+smash,62],5,shine,{bias:9});
+  }
+  rgEll([0,87+pulse,-2],[56,60,43],dark,{tex:'cracks',cc:shine,cn:13});
+  rgPoly([[-37,112+pulse,39],[0,137+pulse,45],[37,112+pulse,39],[27,67,46],[0,51,48],[-27,67,46]],crystal,{bias:5,veins:[[0,3],[1,4],[2,3],[2,4]],vc:shine,lw:2});
+  rgEll([0,91+pulse,49],[23,26,8],core,{glow:core,bias:10});
+  rgEll([0,151+pulse,15],[36,31,32],crystal,{tex:'cracks',cc:shine,bias:7});
+  rgPoly([[-31,156+pulse,32],[-19,178+pulse,27],[0,164+pulse,38],[19,178+pulse,27],[31,156+pulse,32],[17,141+pulse,42],[0,147+pulse,48],[-17,141+pulse,42]],dark,{bias:9,veins:[[0,2],[1,2],[2,4],[3,4]],vc:shine});
+  rgEll([0,151+pulse,47],[18,14,12],shine,{glow:core,bias:11});
+  rgEll([0,145+pulse,57],[12,4,5],dark,{bias:12});
+  for(const side of [-1,1])rgEye([side*8,154+pulse,58],4,core,[0,0,1],{glow:core,bias:13});
+  for(let i=-2;i<=2;i++)rgSpike([i*11,176+pulse,18],[i*15,198+pulse+Math.abs(i)*2,10],8,shine,{bias:9});
+  if(k.wind>.1||k.atk>.1)rgGlow([0,91,58],42+smash,'rgba(150,245,255,.65)',25);
+}, [600, 560, 300, 420]);
+
+defBoss('mimic', k => {
+  const [wood, dark, gold, eye] = k.pal, open = Math.max(k.atk, k.wind*.8, .08+Math.sin(k.t*2)*.04), bob = Math.sin(k.t*2)*2;
+  rgShadow(105,76);
+  rgEll([0,47+bob,-2],[57,35,42],dark,{tex:'bark'});
+  rgPoly([[-53,53+bob,34],[53,53+bob,34],[48,92+bob,20],[-48,92+bob,20]],wood,{bias:4,veins:[[0,2],[1,3]],vc:gold});
+  rgEll([0,64+bob,34],[47,24,13],wood,{tex:'bands',bn:5,bias:5});
+  rgEll([0,89+bob-open*10,29],[47,12,23],dark,{bias:6,pit:-open*.2});
+  rgEll([0,69+bob+open*18,43],[46,10,19],wood,{bias:8,pit:open*.32});
+  for(let i=-5;i<=5;i++){rgSpike([i*8,72+bob+open*12,58],[i*8,62+bob+open*12,61],3,'#fff1d0',{bias:11});rgSpike([i*8,78+bob-open*7,58],[i*8,88+bob-open*7,60],3,'#fff1d0',{bias:11});}
+  rgEll([0,53+bob,54],[10,8,6],gold,{glow:gold,bias:12});
+  for(const side of [-1,1]){rgTube([[side*38,58+bob,5],[side*70,50+bob,8],[side*82,24+bob,22]],[12,9,1],wood,{bias:4});rgEll([side*82,22+bob,23],[7,7,7],eye,{glow:eye,bias:8});}
+  if(k.wind>.1||k.atk>.1)rgGlow([0,67,58],28+open*20,'rgba(255,210,80,.7)',18);
+}, [520, 420, 260, 320]);
+
+defBoss('vulture', k => {
+  const [feather,dark,gold,eye] = k.pal, flap=Math.sin(k.t*(k.mv?5:2)+k.ph*.2)*.24+k.wind*.3-k.atk*.15, bob=Math.sin(k.t*2)*3;
+  rgShadow(132,88);
+  for(const side of [-1,1]){
+    const lift=Math.max(0,Math.sin(k.ph+(side<0?Math.PI:0)))*(k.mv||0)*12;
+    const shoulder=[side*18,111+bob,0], elbow=[side*(70+flap*24),142+bob+flap*18,0], tip=[side*(148+flap*34),126+bob+flap*52,-5];
+    rgPoly([shoulder,elbow,tip,[side*114,73+bob+flap*25,8],[side*45,82+bob,14]],feather,{bias:-2,veins:[[0,2],[1,3]],vc:gold,a:.95});
+    rgTube([shoulder,elbow,tip],[13,8,2],dark,{bias:2});
+    for(let i=0;i<5;i++){const x=side*(49+i*19);rgPoly([[x,111+bob,8],[x+side*8,94+bob-i*2,8],[x+side*20,44+bob-i*5,8],[x-side*3,83+bob,7]],i%2?feather:dark,{bias:1,veins:[[0,2]],vc:gold});}
+    rgTube([[side*28,79,0],[side*33,48,4],[side*34,13+lift,22]],[14,11,8],dark,{bias:2});
+    rgEll([side*34,9+lift,25],[12,7,17],gold,{bias:4});
+    for(let i=-1;i<=1;i++)rgSpike([side*34+i*5,9+lift,35],[side*34+i*6,2+lift,47],4,gold,{bias:6});
+  }
+  rgEll([0,84+bob,-6],[38,40,37],dark,{tex:'feather',bias:1});
+  rgEll([0,96+bob,24],[29,34,27],feather,{tex:'feather',bias:4});
+  rgTube([[0,109+bob,23],[0,133+bob,40],[0,153+bob,51]],[18,15,12],feather,{bias:4});
+  rgEll([0,156+bob,58],[20,17,20],dark,{bias:7});
+  rgEll([0,151+bob,76],[10,7,12],gold,{bias:9});
+  rgSpike([0,153+bob,89],[0,147+bob,110],7,gold,{bias:11});
+  for(const side of [-1,1]){rgEye([side*12,162+bob,70],5,eye,[0,0,1],{glow:eye,bias:12});rgSpike([side*14,168+bob,56],[side*29,182+bob,43],6,gold,{bias:9});}
+  if(k.wind>.1||k.atk>.1)rgGlow([0,141,66],28+k.atk*18,'rgba(255,215,110,.55)',18);
+}, [640, 520, 320, 390]);
+
 /* ---- integração com ABISMO_ENEMY_ART ---- */
 const RIG_IDS = {
-  dragao:'dragon', young_dragon:'dragon', infernal_dragon:'dragon', yeti_giant:'yeti_giant', cyclops:'cyclops',
-  guardian:'guardian', ent_anc:'entboss', lorde:'lich', hidra:'hydra', matriarca:'queen', arquimago:'archmage',
-  soberana:'frostqueen', titan:'titan', colosso:'pharaoh', verme:'worm', raijin:'raijin', prisma:'empress',
-  rei_sombras:'shadowking', kraken:'kraken', oni:'oni'
+  dragao:'dragon', young_dragon:'dragon', infernal_dragon:'dragon', dragon:'dragon',
+  yeti_giant:'yeti_giant', ice_titan:'titan', cyclops:'cyclops', tree_sentinel:'entboss',
+  dune_colossus:'pharaoh', marsh_hydra:'hydra', bone_colossus:'lich', flame_titan:'titan',
+  storm_titan:'raijin', crystal_golem:'crystalgolem', astral_colossus:'archmage',
+  guardian:'guardian', boss:'guardian', ent_anc:'entboss', forest_lord:'entboss',
+  lorde:'lich', hidra:'hydra', matriarca:'queen', thorn_queen:'queen', arquimago:'archmage',
+  soberana:'frostqueen', ice_archon:'frostqueen', titan:'titan', mae_cinzas:'titan', red_guardian:'titan',
+  colosso:'pharaoh', verme:'worm', raijin:'raijin', tempestade:'raijin', lightning_lord:'raijin',
+  prisma:'empress', rei_sombras:'shadowking', kraken:'kraken', devorador_astral:'kraken',
+  astral_devourer:'kraken', oni:'oni', mimic_boss:'mimic', celestial_vulture:'vulture', vulture:'vulture'
 };
+function fallbackBossRig(e) {
+  const t=e.t||{}, key=String(t.artId||'');
+  if(BOSS_DRAW[key])return key;
+  if(t.element==='gelo')return 'yeti_giant';
+  if(t.element==='fogo')return 'titan';
+  if(t.element==='natureza')return 'entboss';
+  if(t.element==='raio')return 'raijin';
+  if(t.element==='arcano')return 'archmage';
+  return 'guardian';
+}
 const A0 = window.ABISMO_ENEMY_ART;
 if (A0 && A0.draw) {
   const orig = A0.draw;
@@ -572,14 +651,14 @@ if (A0 && A0.draw) {
     while (rigCache.size > 12) rigCache.delete(rigCache.keys().next().value);
   }
   A0.draw = function (ctx, e, now) {
-    const kind = e && e.t && RIG_IDS[e.type];
+    const kind = e && e.t && (RIG_IDS[e.artOverride] || RIG_IDS[e.type] || RIG_IDS[e.t.artId] || (e.t.boss ? fallbackBossRig(e) : null));
     if (!kind || !BOSS_DRAW[kind]) return orig(ctx, e, now);
     if (kind === 'dragon' && !e.t.boss) return orig(ctx, e, now);
     const t = e.t, r = t.r || 40, moving = e.state === 'chase' || e.state === 'attack';
     const pal = (t.pal && t.pal.length >= 4) ? t.pal : ['#c0402a', '#4a1008', '#ffd070', '#ffe030'];
     const wind = e.state === 'windup' ? Math.max(0, 1 - (e.timer || 0) / (e.maxTimer || 1)) : 0;
     const k = { t: now, ph: now * (moving ? 9 : 3) + (e.bob || 0), mv: moving ? 1 : 0, atk: e.state === 'attack' ? 1 : 0, wind, hurt: e.hit || 0, R: r, pal, el: t.el || 'fogo', kind, seed: ((e.bob || 1) * 1000) | 0, z: 0, type: t, ang: e.face || 0, phase: e.bossPhase || 0, enraged: (e.bossPhase || 0) >= 2 };
-    const box = kind === 'dragon' ? [520, 430, 260, 320] : (kind === 'yeti_giant' ? [560, 500, 280, 370] : [580, 520, 290, 390]);
+    const box = kind === 'dragon' ? [520, 430, 260, 320] : (kind === 'yeti_giant' || kind === 'crystalgolem' ? [600, 560, 300, 420] : (kind === 'vulture' ? [640, 520, 320, 390] : [580, 520, 290, 390]));
     const rasterScale = 1.5;
     const cacheKey = cacheKeyFor(kind, e, k, rasterScale);
     let cached = rigCache.get(cacheKey);

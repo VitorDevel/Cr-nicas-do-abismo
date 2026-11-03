@@ -657,7 +657,7 @@ function buildAppearanceOptions(reset=false){
   const cls=getClass().name,branch=getBranchName(),profile=appearanceProfiles[cls],sel=$('#armorStyle'),previous=sel.value;
   const refChoice=$('#referenceArtChoice'),refInput=$('#referenceArt'),hasReferenceArt=!!window.ReferenceCharacterArt?.hasClass(cls,branch);
   if(refChoice)refChoice.hidden=!hasReferenceArt;
-  if(refInput){refInput.disabled=!hasReferenceArt;if(reset)refInput.checked=hasReferenceArt&&!window.ClassSpriteAnimations?.hasClass(cls)}
+  if(refInput){refInput.disabled=!hasReferenceArt;if(reset)refInput.checked=false}
   sel.innerHTML=profile.styles.map(([v,n])=>`<option value="${v}">${n}</option>`).join('');
   if(!reset&&profile.styles.some(x=>x[0]===previous))sel.value=previous;
   else sel.value=profile.styles[0][0];
@@ -674,8 +674,14 @@ let battleSpriteAction='idle',battleSpriteActionStart=0;
 function setBattleSpriteAction(action='attack'){
  battleSpriteAction=action;battleSpriteActionStart=performance.now()/1000;
 }
-function animateCharacterSprite(host,className,{battle=false}={}){
- const canvas=host?.querySelector('.class-sprite-animation');if(!canvas||!window.ClassSpriteAnimations?.hasClass(className))return false;
+function animatedCharacterModel(character={},weaponName='',meta={}){
+ const race=meta.race||'Humano',item=weaponCatalog.find(x=>x.id===meta.weaponId)||{};
+ return window.CharacterArt.makeModel({...character,skin:raceSkinColor(race,character.skinTone),hairColor:character.hairColor||'#3b2a20',glow:character.auraColor||'#9fe8ff',armorColor:character.armorColor||'#536878',trim:character.accentColor||'#c7a65c',capeColor:character.secondaryColor||'#8c3a3a'},{...item,...meta,weaponName});
+}
+function animateCharacterRig(host,{battle=false,character=null,meta={},weaponName=''}={}){
+ const canvas=host?.querySelector('.animated-character');
+ const artModel=character&&window.CharacterArt?animatedCharacterModel(character,weaponName,meta):null;
+ if(!canvas||!artModel)return false;
  const g=canvas.getContext('2d');if(!g)return false;
  const frame=now=>{
   if(!canvas.isConnected)return;
@@ -684,12 +690,13 @@ function animateCharacterSprite(host,className,{battle=false}={}){
   const dpr=Math.min(window.devicePixelRatio||1,1.5),w=Math.round(box.width*dpr),h=Math.round(box.height*dpr);
   if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}
   g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,box.width,box.height);
-  const time=now/1000,age=time-battleSpriteActionStart;
-  const action=battle&&battleSpriteAction==='attack'&&age<.48?'attack':'idle';
-  const progress=action==='attack'?Math.max(0,Math.min(.999,age/.48)):0;
-  const scale=Math.min((box.height-18)/68,(box.width-20)/52);
+  const time=now/1000,age=time-battleSpriteActionStart,attackWindow=.62;
+  const action=battle&&battleSpriteAction==='attack'&&age<attackWindow?'attack':'idle';
+  const progress=action==='attack'?Math.max(0,Math.min(.999,age/attackWindow)):0;
+  const scale=Math.min((box.height-18)/48,(box.width-20)/38);
   g.save();g.translate(box.width/2,box.height-8);g.scale(scale,scale);
-  window.ClassSpriteAnimations.draw(g,className,0,0,{action,time,progress,height:68});
+  const swingWave=Math.sin(progress*Math.PI);
+  window.CharacterArt.draw(g,artModel,{t:time,ph:time*3.2,mv:0,view:'f',seed:artModel.seed||1,atkP:action==='attack'?1-progress:0,wa:action==='attack'?-1.35+swingWave*2.05:null});
   g.restore();requestAnimationFrame(frame);
  };
  requestAnimationFrame(frame);return true;
@@ -697,7 +704,7 @@ function animateCharacterSprite(host,className,{battle=false}={}){
 function characterSVG(c,weaponName='',meta={}){
  const referenceSrc=window.ReferenceCharacterArt?.urlForClass(meta.class,meta.branch);
  if(referenceSrc&&c.referenceArt!==false)return `<img class="character-art-sprite concept-character-art" src="${referenceSrc}" alt="" aria-hidden="true">`;
- if(window.ClassSpriteAnimations?.hasClass(meta.class))return '<canvas class="class-sprite-animation" aria-hidden="true"></canvas>';
+ if(window.CharacterArt)return '<canvas class="animated-character" aria-hidden="true"></canvas>';
  const race=meta.race||'Humano';
  const item=weaponCatalog.find(x=>x.id===meta.weaponId)||{};
  const look=CharacterArt.makeModel({...c,skin:raceSkinColor(race,c.skinTone),hairColor:c.hairColor||'#3b2a20',glow:c.auraColor||'#9fe8ff',armorColor:c.armorColor||'#536878',trim:c.accentColor||'#c7a65c',capeColor:c.secondaryColor||'#8c3a3a'}, {...item,...meta,weaponName});
@@ -2343,7 +2350,7 @@ function renderBattle3D(h,e,w,a){
 function updatePreview(){
  $('#creatorTotalWins').textContent=state.totalWins||0;
  const r=getRace(),c=getClass(),b=getBranch(),w=selectedWeapon(),cu=custom(),branch=getBranchName(),meta={race:r.name,class:c.name,branch,large:r.large};
- const armor=selectedArmorFromCreator();meta.equippedArmorId=armor?.id||'';meta.equippedArmor=armor?.name||'';meta.armorId=armor?.id||'';meta.weaponId=w?.id||'';meta.weaponType=w?.weaponType||'';meta.shieldModel=w?.shieldModel||'';meta.hammerModel=w?.hammerModel||'';meta.swordModel=w?.swordModel||'';const ok3d=false;$('#creatorFallback').innerHTML=characterSVG(cu,w?.name||'',meta);animateCharacterSprite($('#creatorFallback'),meta.class);$('#creator3DWrap').classList.toggle('fallback',!ok3d);
+ const armor=selectedArmorFromCreator();meta.equippedArmorId=armor?.id||'';meta.equippedArmor=armor?.name||'';meta.armorId=armor?.id||'';meta.weaponId=w?.id||'';meta.weaponType=w?.weaponType||'';meta.shieldModel=w?.shieldModel||'';meta.hammerModel=w?.hammerModel||'';meta.swordModel=w?.swordModel||'';const ok3d=false;$('#creatorFallback').innerHTML=characterSVG(cu,w?.name||'',meta);animateCharacterRig($('#creatorFallback'),{character:cu,meta,weaponName:w?.name||''});$('#creator3DWrap').classList.toggle('fallback',!ok3d);
  $('#previewTitle').textContent=`${r.name} ${c.name} • ${branch}`;$('#previewMeta').textContent=`${cu.gender==='feminino'?'Feminino':'Masculino'} • ${cu.bodyType} • ${cu.heightType} • ${w.name} • ${w.rarity} • +${w.bonus} dano • ${armor?.name||'Sem armadura'}`;$('#previewDetail').textContent=`${b.desc} Passiva racial: ${r.passive}. O conjunto acima é seu equipamento inicial; novos conjuntos serão descobertos durante a progressão.`;const rl=raceLore[r.name]||raceLore.Humano;$('#raceAppearanceNote').innerHTML=`<b>${rl.title}</b> — ${rl.text} <span class="race-card-traits">${rl.tags.map(t=>`<i>${t}</i>`).join('')}</span>`;$('#appearanceSummary').innerHTML=`<span class="appearance-pill gear-preview-tag">🛡 ${armor?.name||'Sem armadura'}</span><span class="appearance-pill gear-preview-tag">${armor?.bonusTitle||'Bônus defensivo'}</span><span class="appearance-pill">${appearanceProfiles[c.name].styles.find(x=>x[0]===cu.armorStyle)?.[1]||'Equipamento da classe'}</span><span class="appearance-pill">${{aco:'Aço temperado',acoNegro:'Aço negro',couro:'Couro',tecido:'Tecido',arcano:'Liga arcana',dourado:'Metal dourado'}[cu.material]||cu.material}</span><span class="appearance-pill">${cu.palettePreset==='custom'?'Paleta personalizada':cu.palettePreset==='class'?'Cores clássicas':cu.palettePreset==='veteran'?'Veterano':'Cores da ramificação'}</span><span class="appearance-pill">⚔ ${w.name}</span><span class="appearance-pill gear-preview-tag">Modelo único #${w.signature||'—'}</span>`;updatePaletteStrip()
 }
 
@@ -2354,7 +2361,7 @@ function effectiveArmor(h=state.hero){const base=armorCatalog.find(a=>a.id===h.a
 function recomputeMaxima(h,healDiff=false){const a=effectiveArmor(h);const oldHp=h.maxHp||1,oldMana=h.maxMana||1;h.maxHp=h.baseMaxHp+(a.hp||0);h.maxMana=h.baseMaxMana+(a.mana||0);h.maxStam=h.baseMaxStam+(a.stam||0);if(healDiff){h.hp=Math.min(h.maxHp,h.hp+(h.maxHp-oldHp));h.mana=Math.min(h.maxMana,h.mana+(h.maxMana-oldMana));}h.arm=baseArmorForHero(h)}
 
 function createHero(){const r=getRace(),c=getClass(),b=getBranch(),w=selectedWeapon(),cu=custom(),armor=armorCatalog.find(a=>a.id===starterArmorId(c.name,r.large))||compatibleArmorSets()[0]||null,legend=getUnlockedLegendary();const inventoryWeapons=[w.id];if(legend&&!inventoryWeapons.includes(legend.id))inventoryWeapons.push(legend.id);const h={name:$('#heroName').value.trim()||'Adventurer',race:r.name,large:r.large,class:c.name,branch:getBranchName(),theme:b.theme,passive:r.passive,custom:cu,baseMaxHp:r.hp+c.hp,baseMaxMana:r.mana+c.mana,baseMaxStam:r.stam+c.stam,baseArm:r.arm+c.arm,pow:r.pow+c.pow,mag:r.mag+c.mag,dex:r.dex+c.dex,weaponId:w.id,armorId:armor?.id||null,weaponUpgrades:{},armorUpgrades:{},inventoryWeapons,inventoryArmors:armor?[armor.id]:[],pots:{life:2,mana:2,stamina:2},coins:35,wins:0,xp:0,attributePoints:0,basicDamageBonus:0,pendingAttributePoints:{life:0,mana:0,stamina:0,damage:0},ult:0,ultUnlocked:false,ultChoice:'',shield:0,evasion:0,poisonResist:0,bossDefeated:!!legend,legendaryWeaponId:legend?.id||'',totalWinsAtCreation:state.totalWins,level:1,status:{},maxHp:0,maxMana:0,maxStam:0,arm:0,hp:0,mana:0,stam:0};recomputeMaxima(h);h.hp=h.maxHp;h.mana=h.maxMana;h.stam=h.maxStam;return h}
-function createEnemy(){const tier=currentTier(),src=state.forcedEnemy||((state.hero?.wins||0)>=14?enemies.strong.find(x=>x.kind==='oni'):pick(enemies[tier]));state.forcedEnemy=null;const hp=Math.round(src.hp*(src.kind==='oni'?1:1.15)),dmg=Math.round(src.dmg*(src.kind==='oni'?1:1.1)),armor=src.armor+(src.kind==='oni'?0:1);if(state.hero){state.hero.status.iceGuard=0;state.hero.status.lowHpArmorReady=true;state.hero.status.fear=0;state.hero.status.fearCooldown=0;if(armorHas(state.hero,'startShield'))state.hero.shield+=armorValue(state.hero,'startShield')}return {...src,tier,maxHp:hp,hp,status:{poisonTurns:0,poisonDmg:0,burnTurns:0,burnDmg:0,trapTurns:0,slowTurns:0},dmg,armor}}
+function createEnemy(){const tier=currentTier(),forced=state.forcedEnemy?.kind==='oni'?null:state.forcedEnemy;state.forcedEnemy=null;const pool=enemies[tier].filter(x=>x.kind!=='oni'),src=forced||pick(pool);const hp=Math.round(src.hp*1.19),dmg=Math.round(src.dmg*1.13),armor=src.armor+1;if(state.hero){state.hero.status.iceGuard=0;state.hero.status.lowHpArmorReady=true;state.hero.status.fear=0;state.hero.status.fearCooldown=0;if(armorHas(state.hero,'startShield'))state.hero.shield+=armorValue(state.hero,'startShield')}return {...src,tier,maxHp:hp,hp,status:{poisonTurns:0,poisonDmg:0,burnTurns:0,burnDmg:0,trapTurns:0,slowTurns:0},dmg,armor}}
 function skillsFor(h){return branches[h.class][h.branch].skills}
 function resourceFor(h){return ['Mago','Clérigo','Paladino'].includes(h.class)||(h.branch==='Guardião Arcano')?'mana':'stam'}
 function tierProgressText(){const w=state.hero.wins;if(w<5)return `Faixa atual: FRACA. Inimigos médios começam na 5ª vitória.`;if(w<12)return `Faixa atual: MÉDIA. Inimigos fortes começam na 12ª vitória.`;return `Faixa atual: FORTE. Agora aparecem elites e chefes menores.`}
@@ -2365,7 +2372,7 @@ function render(){
  $('#heroTitle').textContent=h.name;$('#heroMeta').textContent=`${h.race} • ${h.class} • ${h.branch} • ARM ${h.arm}`;$('#levelBadge').textContent=`Nível ${h.level}`;$('#xpBadge').textContent=`XP ${h.xp}/${xpToNextLevel(h.level)}`;$('#coinsBadge').innerHTML=`💰 ${h.coins}`;$('#winsBadge').textContent=`Vitórias da run ${h.wins}`;$('#totalWinsBadge').textContent=`🏆 Total ${state.totalWins}`;
  $('#enemyTitle').textContent=e.name;$('#enemyMeta').textContent=`${e.type} • ${e.area} • ARM ${e.armor}`;$('#tierBadge').textContent=ti.name;$('#turnBadge').textContent=`Turno ${state.turn}`;$('#sceneHeroName').textContent=h.name;$('#sceneHeroMeta').textContent=`${h.race} • ${h.class} • ${h.branch}`;$('#sceneEnemyName').textContent=e.name;$('#sceneEnemyMeta').textContent=`Ameaça ${ti.name} • ${e.type}`;
  $('#heroGear').innerHTML=`Arma: <b>${w.name}</b> +${w.bonus}${w.upgrade?` (+${w.upgrade} melhoria)`:''}<br>Armadura: <b>${a.name}</b> • ARM total ${h.arm}`;$('#enemyLore').textContent=e.lore;$('#basicAttackBtn').innerHTML=`${basicAttackName(h,w)}<span class="action-sub">8 stamina • +${h.basicDamageBonus||0} dano de level up</span>`;
- $('#hero3DFallback').innerHTML=characterSVG({...h.custom,referenceArt:false},w.name,h);animateCharacterSprite($('#hero3DFallback'),h.class,{battle:true});$('#enemy3DFallback').innerHTML=enemySVG(e.kind,e.tier);$('#enemyFrame').classList.toggle('oni-boss',e.kind==='oni');renderBattle3D(h,e,w,a);
+ $('#hero3DFallback').innerHTML=characterSVG({...h.custom,referenceArt:false},w.name,h);animateCharacterRig($('#hero3DFallback'),{battle:true,character:{...(h.custom||{}),referenceArt:false},meta:h,weaponName:w?.name||''});$('#enemy3DFallback').innerHTML=enemySVG(e.kind,e.tier);$('#enemyFrame').classList.toggle('oni-boss',e.kind==='oni');renderBattle3D(h,e,w,a);
  setBar('#hpMini','Vida',h.hp,h.maxHp);setBar('#manaMini','Mana',h.mana,h.maxMana);setBar('#stamMini','Stamina',h.stam,h.maxStam);setBar('#enemyMini','Vida',e.hp,e.maxHp);setBar('#ultMini','Suprema',h.ult,100);
  const sk=skillsFor(h),relicSkill=relicSkillFor(h),raceUlt=raceUltimateFor(h);$('#skill1Btn').innerHTML=`${sk[0]}<span class="action-sub">${resourceFor(h)==='mana'?'12 mana':'12 stamina'}</span>`;$('#skill2Btn').innerHTML=`${sk[1]}<span class="action-sub">${resourceFor(h)==='mana'?'18 mana':'18 stamina'}</span>`;$('#weaponSkillBtn').innerHTML=relicSkill?`${relicSkill.name}<span class="action-sub">${relicSkill.cost} mana • arma elemental</span>`:'';$('#weaponSkillBtn').classList.toggle('hidden',!relicSkill);$('#ultBtn').innerHTML=`${sk[2]||'Suprema de Classe'}<span class="action-sub">100 Suprema • ${h.ultChoice==='class'?'escolhida':'bloqueada'}</span>`;$('#ultBtn').classList.toggle('hidden',!h.ultUnlocked||h.ultChoice!=='class');$('#ultBtn').disabled=!h.ultUnlocked||h.ult<100;$('#raceUltBtn').innerHTML=`${raceUlt.name}<span class="action-sub">100 Suprema • ${h.ultChoice==='race'?'escolhida':'bloqueada'}</span>`;$('#raceUltBtn').classList.toggle('hidden',!h.ultUnlocked||h.ultChoice!=='race');$('#raceUltBtn').disabled=!h.ultUnlocked||h.ult<100;$('#progressHint').textContent=tierProgressText()
 }
@@ -2482,19 +2489,8 @@ function d20Effect(d,min,max){return min+Math.floor((d-1)*(max-min+1)/20)}
 window.rollDie=rollDie;
 
 
-function enterFinalBossAdmin(){
- const h=state.hero;if(!h)return;
- if($('#campDialog').open)$('#campDialog').close();
- if($('#pathDialog').open)$('#pathDialog').close();
- if($('#adminDialog').open)$('#adminDialog').close();
- h.wins=14;h.level=heroLevel();h.hp=h.maxHp;h.mana=h.maxMana;h.stam=h.maxStam;h.ult=100;h.bossDefeated=!!h.bossDefeated;state.pendingEncounter=false;state.nextShopWin=Infinity;state.forcedEnemy={...enemies.strong.find(x=>x.kind==='oni')};state.enemy=createEnemy();state.turn=1;state.round=15;disableCombat(false);log('🛠 <b>ADMIN:</b> Boss Final carregado diretamente para teste.','info');render();
-}
-function adminKillBoss(){
- const h=state.hero;if(!h)return;if($('#adminDialog').open)$('#adminDialog').close();
- h.wins=14;h.level=heroLevel();state.pendingEncounter=false;state.nextShopWin=Infinity;
- if(!state.enemy||state.enemy.kind!=='oni'){state.forcedEnemy={...enemies.strong.find(x=>x.kind==='oni')};state.enemy=createEnemy();state.turn=1;state.round=15}
- state.enemy.hp=0;log('☠️ <b>ADMIN TESTE:</b> HP do Boss Final reduzido a zero.','bad');victory();
-}
+function enterFinalBossAdmin(){if($('#adminDialog').open)$('#adminDialog').close();log('👹 O Oni agora só pode ser enfrentado no mundo aberto.','info');window.location.href='open-world.html'}
+function adminKillBoss(){enterFinalBossAdmin()}
 
 function startGame(){
   state.hero=createHero();

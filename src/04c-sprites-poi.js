@@ -83,7 +83,7 @@ SPR.fence = (g, s, v, r) => { g.fillStyle = 'rgba(8,10,16,.25)'; ell(g, 0, 2, s 
 SPR.cart = (g, s, v, r) => { shadowE(g, s * 1.0, s * .26); g.fillStyle = '#6a4a2a'; g.beginPath(); g.moveTo(-s * .8, -s * .4); g.lineTo(s * .8, -s * .4); g.lineTo(s * .65, -s * .95); g.lineTo(-s * .65, -s * .95); g.fill(); g.fillStyle = '#8a6a3e'; g.fillRect(-s * .8, -s * .45, s * 1.6, s * .12); g.fillStyle = '#e0b84a'; for (let i = 0; i < 5; i++) ell(g, -s * .5 + i * s * .25, -s * .98, s * .16, s * .09); g.fillStyle = '#3a2814'; for (const x of [-s * .45, s * .45]) { circ(g, x, -s * .22, s * .28); g.fillStyle = '#6a4a2a'; circ(g, x, -s * .22, s * .2); g.fillStyle = '#3a2814'; circ(g, x, -s * .22, s * .06); } g.strokeStyle = '#4a3220'; g.lineWidth = 3; g.beginPath(); g.moveTo(-s * .8, -s * .5); g.lineTo(-s * 1.4, -s * .1); g.stroke(); };
 SPR.haybale = (g, s, v, r) => { shadowE(g, s * .8, s * .2); g.fillStyle = grad(g, 0, -s * .9, 0, 0, ['#f0d070', '#d4aa3a']); g.beginPath(); g.roundRect(-s * .7, -s * .85, s * 1.4, s * .85, 4); g.fill(); g.strokeStyle = '#8a6a1a'; g.lineWidth = 1.5; for (const x of [-.4, .4]) { g.beginPath(); g.moveTo(s * x, -s * .85); g.lineTo(s * x, 0); g.stroke(); } g.strokeStyle = 'rgba(140,100,20,.6)'; g.lineWidth = 1; for (let i = 0; i < 12; i++) { const x = -s * .65 + r() * s * 1.3; g.beginPath(); g.moveTo(x, -s * .8 + r() * 6); g.lineTo(x + (r() - .5) * 6, -r() * s * .5); g.stroke(); } };
 SPR.dgate = (g, s, v, r) => {
-  const d = v === 99 ? ONI_DUNGEON : (DUNGEONS[v] || DUNGEONS[0]), col = d.acc, wall = v === 99 ? '#2a2038' : '#6a6a70', w = s * 1.1;
+  const d = DUNGEONS[v] || DUNGEONS[0], col = v === 99 ? '#ff3c8e' : d.acc, wall = v === 99 ? '#2a2038' : '#6a6a70', w = s * 1.1;
   shadowE(g, w * 1.3, s * .4, .4);
   poly(g, [[-w * 1.15, 0], [-w * 1.15, -s * 1.5], [-w * .75, -s * 1.9], [w * .75, -s * 1.9], [w * 1.15, -s * 1.5], [w * 1.15, 0]], wall, '#08080e', 1.6);
   poly(g, [[0, 0], [w * 1.15, 0], [w * 1.15, -s * 1.5], [w * .75, -s * 1.9], [0, -s * 1.9]], 'rgba(0,0,0,.25)');
@@ -133,8 +133,8 @@ function buildPoiObjects() {
       // pontos de NPC em volta da praça (sem casa)
       v.plaza = []; for (let i = 0; i < 8; i++) { const a = i / 8 * TAU + .4; v.plaza.push({ x: cx + Math.cos(a) * 104, y: cy + Math.sin(a) * 74 + 24 }); }
     } else if (p.type === 'dungeon' || p.type === 'abyss') {
-      const d = p.dungeon, b = d.biome, idx = p.type === 'abyss' ? 99 : DUNGEONS.indexOf(d), s = p.type === 'abyss' ? 70 : 52;
-      add({ k: 'dgate', v: idx, x: p.x, y: p.y + 40, s, cr: s * 1.2 + 6, rect: [s * 2.3, s * .5], b, dungeon: d.id, noShadow: true });
+      const d = p.dungeon || { id: 'abismo', biome: 'abyss', acc: '#ff3c8e' }, b = d.biome, idx = p.type === 'abyss' ? 99 : DUNGEONS.indexOf(d), s = p.type === 'abyss' ? 70 : 52;
+      add({ k: 'dgate', v: idx, x: p.x, y: p.y + 40, s, cr: s * 1.2 + 6, rect: [s * 2.3, s * .5], b, dungeon: p.dungeon ? d.id : null, noShadow: true });
       if (p.type === 'abyss') { add({ k: 'oniseal', v: 0, x: p.x, y: p.y + 190, s: 120, b, flat: true }); for (let i = 0; i < 8; i++) { const a = i / 8 * TAU + .2; add({ k: 'voidspire', v: 0, x: p.x + Math.cos(a) * 360, y: p.y + Math.sin(a) * 250 + 40, s: 54, cr: 16, b }); } }
       else { const decoK = { forest: 'torchpost', ash: 'torchpost', volcano: 'torchpost', frost: 'snowrock', jungle: 'torchpost', dunes: 'obelisk', arcane: 'monolith', crystal: 'crystalcluster', marsh: 'torchpost', canyon: 'torchpost', mountain: 'torchpost', storm: 'rod', coast: 'torchpost', meadow: 'torchpost', abyss: 'voidspire' }[b] || 'torchpost';
         for (const sx of [-1, 1]) add({ k: decoK, v: 0, x: p.x + sx * 128, y: p.y + 72, s: 26, cr: 8, b });

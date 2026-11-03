@@ -1,9 +1,5 @@
-# Playable class animation frames
+# Character animation
 
-Each class has eight PNG frames in `idle/`, `run/`, and `attack/`. PNGs have transparent backgrounds and are loaded by `js/class-sprite-animations.js`.
+Playable heroes use the customizable humanoid rig in `js/character-art.js` for idle, movement, and attacks. It faces the direction of travel and uses each character's class, race, armor, and weapon. The game no longer loads class animation PNG sequences.
 
-- Warrior, Ninja, Archer, Assassin, Druid, and Paladin frames were cut from the supplied Nine-Class Fantasy Sprite Sheet Atlas.
-- Samurai, Tank, Necromancer, and Berserker frames came from `rpg_character_animation_assets`.
-- Mage frames were derived from the supplied Mage front cutout because the animation asset folder did not include a Mage sequence.
-
-Some atlas attack cells contain only the spell or impact effect. The animation map holds the previous character pose in those cells so the hero stays visible through the attack.
+The supplied `rpg_character_animation_assets/full_sprite_atlas.png` remains the source reference for class appearance; its presentation-sheet frames are not used as game sprites. Mage has no sequence in the atlas, so the same animated rig handles Mage and every other class.
